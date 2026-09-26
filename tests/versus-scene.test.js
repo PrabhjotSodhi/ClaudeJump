@@ -477,6 +477,26 @@ test('a dash into the opponent knocks them away', () => {
   assert.equal(red.overlaps(blue), false);
 });
 
+test('a card pressed on the tick a player falls in the sea emits card-played once, not every sinking tick', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+
+  const red = findPlayer(scene, 'red');
+  scene.update({ red: noInput(), blue: noInput() }); // release the card key held from spawn
+
+  const cardEvents = [];
+  scene.events.on('card-played', (event) => cardEvents.push(event));
+
+  red.y = 300; // below the water line, falls in on this tick
+  scene.update({ red: { left: false, right: false, jump: false, card1: true }, blue: noInput() });
+  assert.equal(scene.phase, 'point');
+  assert.equal(red.inWater, true);
+
+  advance(scene, 60); // keep sinking well past the point pause
+
+  assert.equal(cardEvents.length, 1, 'the press should fire card-played exactly once');
+});
+
 test('startInFightPhase skips the Ready countdown for the first round only', () => {
   const scene = new VersusScene({ startInFightPhase: true });
   assert.equal(scene.phase, 'fight');

@@ -89,13 +89,13 @@ export class Player extends PhysicsEntity {
   }
 
   update(input, platforms) {
+    this.playedCardName = null;
     if (this.inWater) {
       this.y += SINK_SPEED;
       return;
     }
 
     this.hand.update();
-    this.playedCardName = null;
     this.handleCardInput(input, this.dizzyTicksRemaining <= 0);
 
     if (this.dizzyTicksRemaining > 0) {

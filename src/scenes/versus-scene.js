@@ -1,6 +1,7 @@
 import { SCREEN_WIDTH } from '../engine/config.js';
 import { EntityGroups } from '../engine/entity-groups.js';
 import { EventEmitter } from '../engine/events.js';
+import { SeededRandom } from '../engine/seeded-random.js';
 import { Platform } from '../entities/platform.js';
 import { Player } from '../entities/player.js';
 import { PLATFORM_LAYOUTS, PLAYER_SPAWNS, WATER_LINE_Y, drawBackground } from '../levels/versus-arena.js';
@@ -30,7 +31,7 @@ const SUDDEN_DEATH_RISE_PER_TICK = (WATER_LINE_Y - SUDDEN_DEATH_TARGET_Y) / SUDD
 export class VersusScene {
   constructor({ startInFightPhase = false, seed = Date.now() } = {}) {
     this.events = new EventEmitter();
-    this.seed = seed;
+    this.random = new SeededRandom(seed);
     this.entityGroups = new EntityGroups();
     for (const layout of PLATFORM_LAYOUTS) this.entityGroups.add('platforms', new Platform(layout));
 
@@ -54,8 +55,9 @@ export class VersusScene {
 
   startRound() {
     this.entityGroups.clear('players');
-    for (const [spawnIndex, spawn] of PLAYER_SPAWNS.entries()) {
-      this.entityGroups.add('players', new Player({ ...spawn, seed: this.seed + spawnIndex }));
+    for (const spawn of PLAYER_SPAWNS) {
+      const seed = Math.floor(this.random.next() * 2 ** 32);
+      this.entityGroups.add('players', new Player({ ...spawn, seed }));
     }
     if (this.skipNextReadyPhase) {
       this.phase = 'fight';

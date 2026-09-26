@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { SeededRandom } from '../src/engine/seeded-random.js';
 
-const CARD_NAMES = ['dash', 'fireball', 'shield', 'heal', 'bomb'];
+const CARD_NAMES = ['dash', 'rocket', 'bounce-pad', 'fire-floor', 'ice-floor'];
 
 test('the same seed deals the same cards', () => {
   const firstDeal = new SeededRandom(42).shuffle(CARD_NAMES);
