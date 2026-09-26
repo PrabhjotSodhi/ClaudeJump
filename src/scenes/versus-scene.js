@@ -9,6 +9,7 @@ import { Platform } from '../entities/platform.js';
 import { Player } from '../entities/player.js';
 import { Rocket, ROCKET_WIDTH, ROCKET_HEIGHT } from '../entities/rocket.js';
 import { PLATFORM_LAYOUTS, PLAYER_SPAWNS, WATER_LINE_Y, drawBackground } from '../levels/versus-arena.js';
+import { drawHeldCardIcons } from '../ui/held-card-icons.js';
 import { drawHud } from '../ui/hud.js';
 
 const WINS_NEEDED = 5;
@@ -58,6 +59,9 @@ export class VersusScene {
     this.skipNextReadyPhase = startInFightPhase;
     this.bumpingPairIds = new Set();
     this.stompingPairIds = new Set();
+    // Elapsed scene ticks, kept across rounds. Display-only effects (like the held card flash)
+    // time themselves off it instead of off rendered frames.
+    this.tickCount = 0;
     this.startRound();
   }
 
@@ -96,6 +100,7 @@ export class VersusScene {
   }
 
   update(inputByPlayerId) {
+    this.tickCount++;
     this.ticksRemaining--;
     switch (this.phase) {
       case 'ready':
@@ -471,6 +476,7 @@ export class VersusScene {
 
     renderer.clearGameLayer();
     this.entityGroups.renderAll(renderer.gameContext);
+    drawHeldCardIcons(renderer.gameContext, this);
 
     renderer.clearUiLayer();
     drawHud(renderer.uiContext, this);
