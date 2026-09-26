@@ -117,3 +117,15 @@ test('a running jump from a side platform lands on the middle platform', () => {
   assert.equal(red.y, 60); // standing on the middle platform (y 72, player height 12)
   assert.ok(red.x + red.width > 128 && red.x < 192, 'red should be within the middle platform bounds');
 });
+
+test('startInFightPhase skips the Ready countdown for the first round only', () => {
+  const scene = new VersusScene({ startInFightPhase: true });
+  assert.equal(scene.phase, 'fight');
+
+  findPlayer(scene, 'red').y = 300;
+  scene.update(neutralInputs());
+  assert.equal(scene.phase, 'point');
+
+  advance(scene, 90); // point pause resolves into the next round
+  assert.equal(scene.phase, 'ready');
+});

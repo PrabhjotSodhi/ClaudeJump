@@ -12,7 +12,7 @@ const POINT_PAUSE_TICKS = 90;
 const RESTART_DELAY_TICKS = 60;
 
 export class VersusScene {
-  constructor() {
+  constructor({ startInFightPhase = false } = {}) {
     this.events = new EventEmitter();
     this.entityGroups = new EntityGroups();
     for (const layout of PLATFORM_LAYOUTS) this.entityGroups.add('platforms', new Platform(layout));
@@ -21,6 +21,7 @@ export class VersusScene {
     this.backgroundDrawn = false;
     this.wins = {};
     for (const spawn of PLAYER_SPAWNS) this.wins[spawn.id] = 0;
+    this.skipNextReadyPhase = startInFightPhase;
     this.startRound();
   }
 
@@ -31,8 +32,14 @@ export class VersusScene {
   startRound() {
     this.entityGroups.clear('players');
     for (const spawn of PLAYER_SPAWNS) this.entityGroups.add('players', new Player(spawn));
-    this.phase = 'ready';
-    this.ticksRemaining = READY_TICKS;
+    if (this.skipNextReadyPhase) {
+      this.phase = 'fight';
+      this.ticksRemaining = GO_TICKS;
+      this.skipNextReadyPhase = false;
+    } else {
+      this.phase = 'ready';
+      this.ticksRemaining = READY_TICKS;
+    }
     this.winnerId = null;
   }
 
