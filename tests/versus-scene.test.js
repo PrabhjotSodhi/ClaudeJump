@@ -11,7 +11,7 @@ function neutralInputs() {
 }
 
 function advance(scene, tickCount, inputs = neutralInputs()) {
-  for (let i = 0; i < tickCount; i++) scene.update(inputs);
+  for (let tick = 0; tick < tickCount; tick++) scene.update(inputs);
 }
 
 function findPlayer(scene, id) {

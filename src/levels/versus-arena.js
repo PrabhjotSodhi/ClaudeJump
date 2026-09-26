@@ -16,8 +16,8 @@ const SKY_BOTTOM_COLOR = [110, 210, 255];
 
 export function drawBackground(context, screenWidth, screenHeight) {
   for (let y = 0; y < screenHeight; y++) {
-    const t = y / (screenHeight - 1);
-    const color = SKY_TOP_COLOR.map((start, index) => Math.round(start + (SKY_BOTTOM_COLOR[index] - start) * t));
+    const progress = y / (screenHeight - 1);
+    const color = SKY_TOP_COLOR.map((start, index) => Math.round(start + (SKY_BOTTOM_COLOR[index] - start) * progress));
     context.fillStyle = `rgb(${color})`;
     context.fillRect(0, y, screenWidth, 1);
   }
