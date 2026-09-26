@@ -1,3 +1,4 @@
+import { SCREEN_WIDTH } from '../engine/config.js';
 import { PhysicsEntity } from '../engine/physics-entity.js';
 
 export const PLAYER_WIDTH = 8;
@@ -96,14 +97,21 @@ export class Player extends PhysicsEntity {
     this.moveAndCollide(platforms);
   }
 
+  // Drawn a second time offset by a screen width while crossing an edge, so wrapping never shows a gap.
   render(context) {
-    const x = Math.round(this.x);
-    const y = Math.round(this.y);
+    this.renderAt(context, this.x);
+    if (this.x < 0) this.renderAt(context, this.x + SCREEN_WIDTH);
+    else if (this.x + this.width > SCREEN_WIDTH) this.renderAt(context, this.x - SCREEN_WIDTH);
+  }
+
+  renderAt(context, x) {
+    const drawX = Math.round(x);
+    const drawY = Math.round(this.y);
     context.fillStyle = SKIN_COLOR;
-    context.fillRect(x + 1, y, 6, 6);
+    context.fillRect(drawX + 1, drawY, 6, 6);
     context.fillStyle = this.color;
-    context.fillRect(x, y + 6, this.width, this.height - 6);
+    context.fillRect(drawX, drawY + 6, this.width, this.height - 6);
     context.fillStyle = EYE_COLOR;
-    context.fillRect(x + (this.facing > 0 ? 5 : 2), y + 2, 1, 1);
+    context.fillRect(drawX + (this.facing > 0 ? 5 : 2), drawY + 2, 1, 1);
   }
 }

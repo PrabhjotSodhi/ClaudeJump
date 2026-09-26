@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { SCREEN_WIDTH } from '../src/engine/config.js';
 import { VersusScene } from '../src/scenes/versus-scene.js';
 
 function noInput() {
@@ -309,6 +310,37 @@ test('a fast fall still lands a stomp at every drop height from 30 to 100 px', (
 
     assert.equal(stompEvents.length, 1, `drop height ${dropHeight}px should land exactly one stomp`);
   }
+});
+
+test('a player moving past the right edge reappears on the left with the same velocity', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+
+  const red = findPlayer(scene, 'red');
+  const blue = findPlayer(scene, 'blue');
+  red.x = SCREEN_WIDTH - 30;
+  red.y = 60;
+  blue.x = 150; // out of the way, on screen
+
+  const wrapEvents = [];
+  scene.events.on('player-wrapped', (event) => wrapEvents.push(event));
+
+  let velocityXBeforeWrap = null;
+  for (let tick = 0; tick < 30 && wrapEvents.length === 0; tick++) {
+    velocityXBeforeWrap = red.velocityX;
+    scene.update({ red: { left: false, right: true, jump: false }, blue: noInput() });
+    // Pin height between ticks so unrelated gravity drift (there is no real platform this far out)
+    // cannot be mistaken for the wrap itself changing y; the wrap only ever touches x.
+    red.velocityY = 0;
+    red.y = 60;
+  }
+
+  assert.equal(wrapEvents.length, 1);
+  assert.equal(wrapEvents[0].playerId, 'red');
+  assert.equal(wrapEvents[0].x, red.x);
+  assert.ok(red.x >= 0 && red.x < 10, 'red reappears near the left edge');
+  assert.ok(Math.abs(wrapEvents[0].y - 60) < 1, 'height is unaffected by the wrap');
+  assert.equal(red.velocityX, velocityXBeforeWrap, 'speed is unaffected by the wrap');
 });
 
 test('a running jump from a side platform lands on the middle platform', () => {
