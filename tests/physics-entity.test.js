@@ -81,3 +81,38 @@ test('a dizzy player ignores input for exactly 20 ticks', () => {
   player.update(rightAndJump, []);
   assert.ok(player.velocityX > 0, 'steering works again once dizziness ends');
 });
+
+test('a player can jump, then jump again in the air, but not a third time', () => {
+  const player = new Player({ id: 'red', color: '#ff0000', spawnX: 100, spawnY: 100, facing: 1 });
+  player.onGround = true;
+  player.update({ left: false, right: false, jump: false }, []); // release the jump key held from spawn
+
+  // A fresh jump snaps velocityY sharply upward; falling residue from an earlier jump's release never does.
+  function pressJumpWhileFalling() {
+    while (player.velocityY <= 0.5) player.update({ left: false, right: false, jump: false }, []);
+    player.update({ left: false, right: false, jump: true }, []);
+    const jumped = player.velocityY < -3;
+    player.update({ left: false, right: false, jump: false }, []);
+    return jumped;
+  }
+
+  assert.equal(pressJumpWhileFalling(), true, 'the ground jump should launch the player upward');
+  assert.equal(pressJumpWhileFalling(), true, 'the air jump should launch the player upward again');
+  assert.equal(pressJumpWhileFalling(), false, 'a third jump in the air should do nothing');
+});
+
+test('landing refreshes the air jump', () => {
+  const player = new Player({ id: 'red', color: '#ff0000', spawnX: 100, spawnY: 100, facing: 1 });
+  player.onGround = true;
+  player.update({ left: false, right: false, jump: false }, []); // release the jump key held from spawn
+
+  player.update({ left: false, right: false, jump: true }, []); // ground jump
+  player.update({ left: false, right: false, jump: false }, []);
+  player.update({ left: false, right: false, jump: true }, []); // air jump, consumes it
+  assert.equal(player.airJumpAvailable, false);
+
+  player.onGround = true; // simulate landing
+  player.update({ left: false, right: false, jump: false }, []);
+
+  assert.equal(player.airJumpAvailable, true);
+});
