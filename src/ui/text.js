@@ -88,6 +88,7 @@ export function drawText(
   { scale = 1, align = 'left', color = '#fff', outlineColor = '#141428' } = {},
 ) {
   text = text.toUpperCase();
+  context.imageSmoothingEnabled = false;
   const width = measureText(text) * scale;
   if (align === 'center') x -= Math.floor(width / 2);
   if (align === 'right') x -= width;
