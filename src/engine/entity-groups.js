@@ -16,12 +16,6 @@ export class EntityGroups {
     this.entitiesByGroupName.set(groupName, []);
   }
 
-  updateAll(...args) {
-    for (const entities of this.entitiesByGroupName.values()) {
-      for (const entity of entities) entity.update(...args);
-    }
-  }
-
   renderAll(...args) {
     for (const entities of this.entitiesByGroupName.values()) {
       for (const entity of entities) entity.render(...args);
