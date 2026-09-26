@@ -3,6 +3,7 @@
 // Rocket fires a projectile that explodes on impact, knocking back any player caught in the blast.
 // BouncePad drops a pad at the player's feet that launches anyone landing on it from above.
 // Fire sets the platform under the opponent alight, popping anyone standing on it periodically.
+// Ice freezes the platform under the opponent, cutting their ground acceleration so they slide.
 export const CARD_DEFINITIONS = {
   dash: {
     name: 'dash',
@@ -15,6 +16,9 @@ export const CARD_DEFINITIONS = {
   },
   fire: {
     name: 'fire',
+  },
+  ice: {
+    name: 'ice',
   },
 };
 
