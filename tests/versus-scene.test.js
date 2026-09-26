@@ -5,7 +5,6 @@ import { Crate } from '../src/entities/crate.js';
 import { Rocket } from '../src/entities/rocket.js';
 import { BouncePad } from '../src/entities/bounce-pad.js';
 import { VersusScene } from '../src/scenes/versus-scene.js';
-import { MatchStats } from '../src/ui/match-stats.js';
 
 function noInput() {
   return { left: false, right: false, jump: false };
@@ -1169,22 +1168,49 @@ test('a fall landed after the round is already decided is not counted in match s
   const scene = new VersusScene();
   advance(scene, READY_TICKS);
 
-  const stats = new MatchStats(['red', 'blue']);
-  stats.attach(scene.events, () => scene.phase === 'fight');
-
   const red = findPlayer(scene, 'red');
   const blue = findPlayer(scene, 'blue');
 
   red.y = 300; // red falls in during the fight, deciding the round
   scene.update(neutralInputs());
   assert.equal(scene.phase, 'point');
-  assert.deepEqual(stats.fallsIn, { red: 1, blue: 0 });
+  assert.deepEqual(scene.matchStats.fallsIn, { red: 1, blue: 0 });
 
   // A late rocket (or leftover momentum) knocks the winner in after the round is already over.
   blue.y = 300;
   scene.update(neutralInputs());
   assert.equal(blue.inWater, true, 'blue still falls in; the event still fires');
-  assert.deepEqual(stats.fallsIn, { red: 1, blue: 0 }, 'the post-decision fall is not counted');
+  assert.deepEqual(scene.matchStats.fallsIn, { red: 1, blue: 0 }, 'the post-decision fall is not counted');
+});
+
+// Dev mode drives a whole match through scene.update via step() with no render call in between
+// (the HUD, which used to own the tracker, never runs). MatchStats has to be attached from the
+// moment the scene is created, or every stomp and fall before the first render is lost.
+test('stats are counted even when a match runs entirely through updates, with no render', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+
+  const red = findPlayer(scene, 'red');
+  const blue = findPlayer(scene, 'blue');
+  blue.x = 150;
+  blue.y = 60;
+  blue.onGround = true;
+  red.x = 150;
+  red.y = 30;
+  red.previousY = red.y;
+  red.velocityY = 6;
+  red.onGround = false;
+
+  const stompEvents = [];
+  scene.events.on('player-stomped', (event) => stompEvents.push(event));
+  advance(scene, 10);
+  assert.equal(stompEvents.length, 1, 'the stomp should have landed');
+
+  findPlayer(scene, 'red').y = 300;
+  scene.update(neutralInputs());
+
+  assert.deepEqual(scene.matchStats.stomps, { red: 1, blue: 0 });
+  assert.deepEqual(scene.matchStats.fallsIn, { red: 1, blue: 0 });
 });
 
 test('a new match starts only once every player is ready', () => {

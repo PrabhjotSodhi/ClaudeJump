@@ -11,6 +11,7 @@ import { Rocket, ROCKET_WIDTH, ROCKET_HEIGHT } from '../entities/rocket.js';
 import { PLATFORM_LAYOUTS, PLAYER_SPAWNS, WATER_LINE_Y, drawBackground } from '../levels/versus-arena.js';
 import { drawHeldCardIcons } from '../ui/held-card-icons.js';
 import { drawHud } from '../ui/hud.js';
+import { MatchStats } from '../ui/match-stats.js';
 
 const WINS_NEEDED = 5;
 const READY_TICKS = 60;
@@ -62,6 +63,11 @@ export class VersusScene {
     // Elapsed scene ticks, kept across rounds. Display-only effects (like the held card flash)
     // time themselves off it instead of off rendered frames.
     this.tickCount = 0;
+    // Display data for the results screen, counted only from events. Created here (rather than
+    // lazily on first render) so it never misses an event: dev mode can run a whole match through
+    // step() with no render call in between. Game logic never reads it, only the HUD does.
+    this.matchStats = new MatchStats(Object.keys(this.wins));
+    this.matchStats.attach(this.events, () => this.phase === 'fight');
     this.startRound();
   }
 
@@ -487,6 +493,7 @@ export class VersusScene {
 
   startNewMatch() {
     for (const id in this.wins) this.wins[id] = 0;
+    this.matchStats.reset();
     this.events.emit('match-started', {});
     this.startRound();
   }

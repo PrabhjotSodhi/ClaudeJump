@@ -1,5 +1,4 @@
 import { SCREEN_HEIGHT, SCREEN_WIDTH, TICK_RATE } from '../engine/config.js';
-import { MatchStats } from './match-stats.js';
 import { drawText } from './text.js';
 
 const WARNING_MARKER_FLASH_TICKS = 20;
@@ -10,22 +9,6 @@ const BADGE_COLOR = '#ffdc28';
 const RESULTS_TOP_Y = 62;
 const RESULTS_ROW_HEIGHT = 9;
 const RESULTS_COLUMN_OFFSET_X = 74;
-
-const matchStatsByScene = new WeakMap();
-
-// Lazily created per scene, exactly like the held card flash tracker: it listens to the scene's
-// events but is never stored on or read from the scene itself.
-function matchStats(scene) {
-  let stats = matchStatsByScene.get(scene);
-  if (!stats) {
-    const playerIds = Object.keys(scene.wins);
-    stats = new MatchStats(playerIds);
-    stats.attach(scene.events, () => scene.phase === 'fight');
-    scene.events.on('match-started', () => stats.reset());
-    matchStatsByScene.set(scene, stats);
-  }
-  return stats;
-}
 
 function capitalize(id) {
   return id[0].toUpperCase() + id.slice(1);
@@ -70,7 +53,7 @@ function drawSuddenDeathWarning(context, scene) {
 // Placeholder layout: each player's column of stats, in their own color, with a gold badge for
 // the most stomps (every tied player gets one) and their readiness for the next match.
 function drawMatchResults(context, scene) {
-  const stats = matchStats(scene);
+  const stats = scene.matchStats;
   const badgeIds = new Set(stats.mostStomps());
 
   scene.players.forEach((player, columnIndex) => {
