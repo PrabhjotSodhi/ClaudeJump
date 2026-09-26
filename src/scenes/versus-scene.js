@@ -12,6 +12,7 @@ import { PLATFORM_LAYOUTS, PLAYER_SPAWNS, WATER_LINE_Y, drawBackground } from '.
 import { drawHeldCardIcons } from '../ui/held-card-icons.js';
 import { drawHud } from '../ui/hud.js';
 import { MatchStats } from '../ui/match-stats.js';
+import { drawWrapPuffs, WrapPuffTracker } from '../vfx/wrap-puff.js';
 
 const WINS_NEEDED = 5;
 const READY_TICKS = 60;
@@ -68,6 +69,13 @@ export class VersusScene {
     // step() with no render call in between. Game logic never reads it, only the HUD does.
     this.matchStats = new MatchStats(Object.keys(this.wins));
     this.matchStats.attach(this.events, () => this.phase === 'fight');
+    // Display-only, created here for the same reason: it must never miss a player-wrapped event.
+    this.wrapPuffTracker = new WrapPuffTracker();
+    this.wrapPuffTracker.attach(
+      this.events,
+      () => this.players,
+      () => this.tickCount,
+    );
     this.startRound();
   }
 
@@ -507,6 +515,7 @@ export class VersusScene {
     }
 
     renderer.clearGameLayer();
+    drawWrapPuffs(renderer.gameContext, this);
     this.entityGroups.renderAll(renderer.gameContext);
     drawHeldCardIcons(renderer.gameContext, this);
 
