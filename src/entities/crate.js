@@ -11,7 +11,7 @@ const CRATE_SHADOW_COLOR = '#5c3c1e';
 const CRATE_FILL_COLOR = '#a0703c';
 
 // A crate holding one card. It shows a warning marker at its landing spot, then drops and can
-// be taken by any player without a held card. Placeholder shapes only; see #20 for real art.
+// be taken by any player without a held card. Placeholder shapes only.
 export class Crate extends Entity {
   constructor({ x, y, cardName }) {
     super({ x, y, width: CRATE_WIDTH, height: CRATE_HEIGHT });

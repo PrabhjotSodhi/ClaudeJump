@@ -635,3 +635,31 @@ test('the same seed gives the same crate spots and cards', () => {
 
   assert.deepEqual(firstCrateAfterSpawn(7), firstCrateAfterSpawn(7));
 });
+
+test('while the sea is above the side platforms, every crate lands on the still-dry middle platform', () => {
+  for (let seed = 0; seed < 20; seed++) {
+    const scene = new VersusScene({ seed });
+    advance(scene, READY_TICKS);
+    scene.waterLineY = 90; // above the side platforms (top y 112), below the middle platform (top y 72)
+    scene.entityGroups.clear('crates');
+    scene.spawnCrate();
+
+    const crate = scene.entityGroups.get('crates')[0];
+    assert.ok(crate, 'a crate spawns since the middle platform is still dry');
+    assert.ok(crate.x >= 128 && crate.x + crate.width <= 192, 'the crate lands on the middle platform only');
+  }
+});
+
+test('a crate is removed once the rising sea reaches its platform', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+  const crate = addLandedCrate(scene, { x: 60, y: 104, cardName: 'dash' }); // side platform, top y 112
+
+  scene.waterLineY = 164;
+  scene.update(neutralInputs());
+  assert.equal(scene.entityGroups.get('crates')[0], crate, 'the crate stays while its platform is dry');
+
+  scene.waterLineY = 105; // risen past the crate's platform
+  scene.update(neutralInputs());
+  assert.equal(scene.entityGroups.get('crates').includes(crate), false, 'the submerged crate is removed');
+});

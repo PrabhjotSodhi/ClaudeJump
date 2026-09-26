@@ -66,9 +66,11 @@ export class VersusScene {
   }
 
   startRound() {
+    // Crates must be cleared (and so, on the first round, first inserted into the entity
+    // groups) before players, so they render underneath the players standing on them.
+    this.entityGroups.clear('crates');
     this.entityGroups.clear('players');
     this.entityGroups.clear('rockets');
-    this.entityGroups.clear('crates');
     for (const spawn of PLAYER_SPAWNS) this.entityGroups.add('players', new Player(spawn));
     this.ticksUntilCrateSpawn = CRATE_SPAWN_DELAY_TICKS;
     if (this.skipNextReadyPhase) {
@@ -211,7 +213,7 @@ export class VersusScene {
 
     const platform = platforms[Math.floor(this.random.next() * platforms.length)];
     const cardName = CARD_NAMES[Math.floor(this.random.next() * CARD_NAMES.length)];
-    const x = platform.x + platform.width / 2 - CRATE_WIDTH / 2;
+    const x = platform.x + this.random.next() * (platform.width - CRATE_WIDTH);
     const y = platform.y - CRATE_HEIGHT;
     this.entityGroups.add('crates', new Crate({ x, y, cardName }));
   }
