@@ -99,10 +99,12 @@ export class VersusScene {
         break;
       case 'point':
         this.updatePlayers(null);
+        this.updateRockets();
         if (this.ticksRemaining <= 0) this.startRound();
         break;
       case 'match':
         this.updatePlayers(null);
+        this.updateRockets();
         if (this.ticksRemaining <= 0 && Object.values(inputByPlayerId).some((input) => input.jump)) {
           for (const id in this.wins) this.wins[id] = 0;
           this.startRound();

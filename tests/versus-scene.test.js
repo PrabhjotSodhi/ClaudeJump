@@ -515,9 +515,12 @@ test('a rocket blast pushes a player away from the blast center and emits rocket
   const scene = new VersusScene();
   advance(scene, READY_TICKS);
 
-  const red = findPlayer(scene, 'red');
-  red.x = 150;
+  const red = findPlayer(scene, 'red'); // placed left of the blast center
+  red.x = 140;
   red.y = 100;
+  const blue = findPlayer(scene, 'blue'); // placed right of the blast center
+  blue.x = 160;
+  blue.y = 100;
 
   const rocket = new Rocket({ x: 150, y: 100, facing: 1, shooterId: 'blue' });
   rocket.ticksRemaining = 1; // one tick from expiring, so this update explodes it in place
@@ -528,7 +531,8 @@ test('a rocket blast pushes a player away from the blast center and emits rocket
 
   scene.update(neutralInputs());
 
-  assert.notEqual(red.knockbackVelocityX, 0, 'the blast pushes the nearby player');
+  assert.ok(red.knockbackVelocityX < 0, 'the player left of the blast is pushed further left');
+  assert.ok(blue.knockbackVelocityX > 0, 'the player right of the blast is pushed further right');
   assert.equal(explosionEvents.length, 1);
   assert.equal(explosionEvents[0].x, rocket.x + rocket.width / 2);
   assert.equal(explosionEvents[0].y, rocket.y + rocket.height / 2);
