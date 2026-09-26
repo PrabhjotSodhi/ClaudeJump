@@ -12,6 +12,7 @@ import { PLATFORM_LAYOUTS, PLAYER_SPAWNS, WATER_LINE_Y, drawBackground } from '.
 import { drawHeldCardIcons } from '../ui/held-card-icons.js';
 import { drawHud } from '../ui/hud.js';
 import { MatchStats } from '../ui/match-stats.js';
+import { drawPlayerTags } from '../ui/player-tags.js';
 import { drawWrapPuffs, WrapPuffTracker } from '../vfx/wrap-puff.js';
 
 const WINS_NEEDED = 5;
@@ -518,6 +519,7 @@ export class VersusScene {
     drawWrapPuffs(renderer.gameContext, this);
     this.entityGroups.renderAll(renderer.gameContext);
     drawHeldCardIcons(renderer.gameContext, this);
+    drawPlayerTags(renderer.gameContext, this);
 
     renderer.clearUiLayer();
     drawHud(renderer.uiContext, this);

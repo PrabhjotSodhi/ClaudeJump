@@ -43,6 +43,9 @@ const GLYPHS = {
 };
 const SPACE_WIDTH = 3;
 const GLYPH_GAP = 1;
+export const TEXT_GLYPH_HEIGHT = 5;
+// drawText outlines each glyph by one pixel on every side, including above and below.
+export const TEXT_OUTLINE_MARGIN = 1;
 const glyphCanvasCache = new Map();
 
 function glyphCanvas(character, color) {

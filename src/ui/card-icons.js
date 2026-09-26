@@ -1,6 +1,8 @@
 // Tiny pixel icons for each card, drawn on whole pixels so they stay crisp at any scale.
 export const CARD_ICON_WIDTH = 5;
 export const CARD_ICON_HEIGHT = 5;
+// drawCardIcon outlines the icon by one pixel on every side, including above and below.
+export const CARD_ICON_OUTLINE_MARGIN = 1;
 
 const ICON_PIXELS = {
   dash: ['#.#..', '.#.#.', '..#.#', '.#.#.', '#.#..'],
