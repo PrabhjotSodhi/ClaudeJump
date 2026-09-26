@@ -18,6 +18,7 @@ export class VersusScene {
     for (const layout of PLATFORM_LAYOUTS) this.entityGroups.add('platforms', new Platform(layout));
 
     this.waterLineY = WATER_LINE_Y;
+    this.backgroundDrawn = false;
     this.wins = {};
     for (const spawn of PLAYER_SPAWNS) this.wins[spawn.id] = 0;
     this.startRound();
@@ -91,7 +92,10 @@ export class VersusScene {
   }
 
   render(renderer) {
-    drawBackground(renderer.backgroundContext, renderer.backgroundCanvas.width, renderer.backgroundCanvas.height);
+    if (!this.backgroundDrawn) {
+      drawBackground(renderer.backgroundContext, renderer.backgroundCanvas.width, renderer.backgroundCanvas.height);
+      this.backgroundDrawn = true;
+    }
 
     renderer.clearGameLayer();
     this.entityGroups.renderAll(renderer.gameContext);
