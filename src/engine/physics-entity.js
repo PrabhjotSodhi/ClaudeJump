@@ -2,11 +2,7 @@ import { Entity } from './entity.js';
 
 export class PhysicsEntity extends Entity {
   constructor({ x, y, width, height }) {
-    super();
-    this.x = x;
-    this.y = y;
-    this.width = width;
-    this.height = height;
+    super({ x, y, width, height });
     this.velocityX = 0;
     this.velocityY = 0;
     this.onGround = false;
