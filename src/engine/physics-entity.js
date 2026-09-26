@@ -1,6 +1,8 @@
 import { Entity } from './entity.js';
 
-const KNOCKBACK_DECAY = 0.5;
+// Airborne knockback fades slowly (a hit sends a player flying), grounded knockback fades fast (it just shoves them).
+const AIR_KNOCKBACK_DECAY = 0.25;
+const GROUND_KNOCKBACK_DECAY = 0.5;
 
 export class PhysicsEntity extends Entity {
   constructor({ x, y, width, height }) {
@@ -42,9 +44,10 @@ export class PhysicsEntity extends Entity {
       this.velocityX = 0;
       this.knockbackVelocityX = 0;
     }
-    if (this.knockbackVelocityX > 0) this.knockbackVelocityX = Math.max(0, this.knockbackVelocityX - KNOCKBACK_DECAY);
+    const knockbackDecay = this.onGround ? GROUND_KNOCKBACK_DECAY : AIR_KNOCKBACK_DECAY;
+    if (this.knockbackVelocityX > 0) this.knockbackVelocityX = Math.max(0, this.knockbackVelocityX - knockbackDecay);
     else if (this.knockbackVelocityX < 0)
-      this.knockbackVelocityX = Math.min(0, this.knockbackVelocityX + KNOCKBACK_DECAY);
+      this.knockbackVelocityX = Math.min(0, this.knockbackVelocityX + knockbackDecay);
 
     this.previousY = this.y;
     this.y += this.velocityY;
