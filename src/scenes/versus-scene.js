@@ -112,11 +112,13 @@ export class VersusScene {
       const pushApart = overlapX / 2;
       leftPlayer.x -= pushApart;
       rightPlayer.x += pushApart;
-      leftPlayer.applyKnockback(-BUMP_KNOCKBACK_VELOCITY_X, 0);
-      rightPlayer.applyKnockback(BUMP_KNOCKBACK_VELOCITY_X, 0);
 
+      // Knockback fires only when the contact starts. Adding it on every overlapping tick made
+      // held-together players buzz: each push added more velocity, bouncing them apart and back in.
       if (!this.bumpingPairIds.has(pairId)) {
         this.bumpingPairIds.add(pairId);
+        leftPlayer.applyKnockback(-BUMP_KNOCKBACK_VELOCITY_X, 0);
+        rightPlayer.applyKnockback(BUMP_KNOCKBACK_VELOCITY_X, 0);
         this.events.emit('players-bumped', { playerIds: [playerA.id, playerB.id] });
       }
     }

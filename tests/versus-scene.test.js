@@ -194,6 +194,34 @@ test('players-bumped fires once per contact, not every tick', () => {
   assert.deepEqual(bumpEvents[0], { playerIds: ['red', 'blue'] });
 });
 
+test('two players held into each other settle at a gap of zero, not a buzz', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+
+  const red = findPlayer(scene, 'red');
+  const blue = findPlayer(scene, 'blue');
+  red.x = 132;
+  red.y = 60;
+  red.onGround = true;
+  blue.x = 178;
+  blue.y = 60;
+  blue.onGround = true;
+
+  const inputs = { red: { left: false, right: true, jump: false }, blue: { left: true, right: false, jump: false } };
+  let contactStarted = false;
+  for (let tick = 0; tick < 120; tick++) {
+    scene.update(inputs);
+    const gap = blue.x - (red.x + red.width);
+    if (!contactStarted) {
+      if (gap === 0) contactStarted = true;
+      continue;
+    }
+    assert.equal(gap, 0, `gap should stay at 0 once contact starts, tick ${tick}`);
+  }
+
+  assert.ok(contactStarted, 'the players should have made contact');
+});
+
 test('a running jump from a side platform lands on the middle platform', () => {
   const scene = new VersusScene();
   advance(scene, READY_TICKS);
