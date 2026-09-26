@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import { SCREEN_WIDTH } from '../src/engine/config.js';
 import { Crate } from '../src/entities/crate.js';
 import { Rocket } from '../src/entities/rocket.js';
+import { BouncePad } from '../src/entities/bounce-pad.js';
 import { VersusScene } from '../src/scenes/versus-scene.js';
 
 function noInput() {
@@ -551,6 +552,94 @@ test('a rocket wraps around the screen edges like a player', () => {
   scene.update(neutralInputs());
 
   assert.ok(rocket.x < SCREEN_WIDTH, 'the rocket reappears from the left edge once it has fully crossed the right one');
+});
+
+test('landing on a bounce pad launches the player higher than a jump', () => {
+  const jumpScene = new VersusScene();
+  advance(jumpScene, READY_TICKS);
+  const jumper = findPlayer(jumpScene, 'red');
+  jumpScene.update({ red: noInput(), blue: noInput() }); // release the jump key held from spawn
+  jumpScene.update({ red: { left: false, right: false, jump: true, card: false }, blue: noInput() });
+  const jumpVelocityY = jumper.velocityY;
+  assert.ok(jumpVelocityY < 0, 'a jump gives upward velocity');
+
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+  // Placed clear of any real platform, over the open air below the middle platform.
+  scene.entityGroups.add('bouncePads', new BouncePad({ x: 150, y: 140 }));
+
+  const red = findPlayer(scene, 'red');
+  red.x = 152;
+  red.y = 124; // feet above the pad's top surface
+  red.velocityY = 6; // already falling at max speed, so this tick's fall crosses the pad
+  red.onGround = false;
+
+  scene.update(neutralInputs());
+
+  assert.ok(red.velocityY < jumpVelocityY, 'the pad launches the player higher than a full jump');
+});
+
+test('walking into the side of a bounce pad does nothing', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+  // Sitting on top of the middle platform, at the same feet level a standing player already has.
+  scene.entityGroups.add('bouncePads', new BouncePad({ x: 150, y: 69 }));
+
+  const red = findPlayer(scene, 'red');
+  red.x = 130; // on the middle platform, approaching the pad from the side
+  red.y = 60;
+  red.velocityY = 0;
+  red.onGround = true;
+
+  for (let tick = 0; tick < 20; tick++) {
+    scene.update({ red: { left: false, right: true, jump: false, card: false }, blue: noInput() });
+  }
+
+  assert.equal(red.velocityY, 0, 'walking past the pad from the side never launches the player');
+});
+
+test('a player standing where a bounce pad appears is launched at once', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+
+  const red = findPlayer(scene, 'red');
+  const blue = findPlayer(scene, 'blue');
+  blue.heldCardName = 'bouncePad';
+  scene.update(neutralInputs()); // release the card key held from spawn
+
+  // Placed on the same tick the card is played, so the two players are not already pushed
+  // apart by the bump resolution a lasting overlap between them would otherwise trigger.
+  blue.x = 150;
+  blue.y = 60; // standing on the middle platform
+  blue.onGround = true;
+  red.x = blue.x;
+  red.y = blue.y;
+  red.onGround = true;
+  red.velocityY = 0;
+
+  scene.update({ red: noInput(), blue: { left: false, right: false, jump: false, card: true } });
+
+  assert.ok(red.velocityY < 0, 'a player already standing on the spot is launched immediately');
+});
+
+test('a bounce pad disappears after 300 ticks', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+
+  const red = findPlayer(scene, 'red');
+  red.heldCardName = 'bouncePad';
+  scene.update({ red: noInput(), blue: noInput() }); // release the card key held from spawn
+  scene.update({ red: { left: false, right: false, jump: false, card: true }, blue: noInput() }); // 1st tick since it appeared
+
+  assert.equal(scene.entityGroups.get('bouncePads').length, 1);
+
+  advance(scene, 298); // 299 ticks since it appeared
+
+  assert.equal(scene.entityGroups.get('bouncePads').length, 1, 'still there just before 300 ticks');
+
+  scene.update(neutralInputs()); // 300th tick since it appeared
+
+  assert.equal(scene.entityGroups.get('bouncePads').length, 0, 'gone once 300 ticks have passed');
 });
 
 function addLandedCrate(scene, { x, y, cardName }) {

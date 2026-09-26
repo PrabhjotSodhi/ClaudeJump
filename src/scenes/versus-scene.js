@@ -3,6 +3,7 @@ import { SCREEN_WIDTH } from '../engine/config.js';
 import { EntityGroups } from '../engine/entity-groups.js';
 import { EventEmitter } from '../engine/events.js';
 import { SeededRandom } from '../engine/seeded-random.js';
+import { BouncePad, BOUNCE_PAD_WIDTH, BOUNCE_PAD_HEIGHT, BOUNCE_PAD_LAUNCH_VELOCITY } from '../entities/bounce-pad.js';
 import { Crate, CRATE_WIDTH, CRATE_HEIGHT, CRATE_WARNING_TICKS } from '../entities/crate.js';
 import { Platform } from '../entities/platform.js';
 import { Player } from '../entities/player.js';
@@ -66,9 +67,10 @@ export class VersusScene {
   }
 
   startRound() {
-    // Crates must be cleared (and so, on the first round, first inserted into the entity
-    // groups) before players, so they render underneath the players standing on them.
+    // Crates and bounce pads must be cleared (and so, on the first round, first inserted into
+    // the entity groups) before players, so they render underneath the players standing on them.
     this.entityGroups.clear('crates');
+    this.entityGroups.clear('bouncePads');
     this.entityGroups.clear('players');
     this.entityGroups.clear('rockets');
     for (const spawn of PLAYER_SPAWNS) this.entityGroups.add('players', new Player(spawn));
@@ -103,6 +105,7 @@ export class VersusScene {
         this.updateSuddenDeath();
         this.updatePlayers(inputByPlayerId);
         this.updateRockets();
+        this.updateBouncePads();
         this.updateCrates();
         this.checkRoundEnd();
         break;
@@ -145,6 +148,7 @@ export class VersusScene {
       if (player.playedCardName) {
         this.events.emit('card-played', { playerId: player.id, cardName: player.playedCardName });
         if (player.playedCardName === 'rocket') this.spawnRocket(player);
+        if (player.playedCardName === 'bouncePad') this.spawnBouncePad(player);
       }
       if (!player.inWater && player.y + player.height >= this.waterLineY) {
         player.startSinking();
@@ -186,6 +190,43 @@ export class VersusScene {
 
     this.events.emit('rocket-exploded', { x: blastCenterX, y: blastCenterY });
     this.entityGroups.remove('rockets', rocket);
+  }
+
+  // Placed under the player's feet wherever they are, even in midair over the sea, so it doubles
+  // as a rescue move. Anyone already standing on that spot is launched immediately.
+  spawnBouncePad(player) {
+    const x = player.x + player.width / 2 - BOUNCE_PAD_WIDTH / 2;
+    const y = player.y + player.height - BOUNCE_PAD_HEIGHT;
+    const bouncePad = new BouncePad({ x, y });
+    this.entityGroups.add('bouncePads', bouncePad);
+    for (const otherPlayer of this.players) {
+      if (!otherPlayer.inWater && otherPlayer.overlaps(bouncePad)) otherPlayer.launchUpward(BOUNCE_PAD_LAUNCH_VELOCITY);
+    }
+  }
+
+  updateBouncePads() {
+    for (const bouncePad of this.entityGroups.get('bouncePads')) {
+      bouncePad.update();
+      if (bouncePad.expired) {
+        this.entityGroups.remove('bouncePads', bouncePad);
+        continue;
+      }
+      for (const player of this.players) {
+        if (!player.inWater && this.isLandingOnBouncePad(player, bouncePad)) {
+          player.launchUpward(BOUNCE_PAD_LAUNCH_VELOCITY);
+        }
+      }
+    }
+  }
+
+  // Only a fall that crosses the pad's top surface this tick counts as landing on it, the way a
+  // stomp is detected. Walking into its side never crosses that surface, so it does nothing.
+  isLandingOnBouncePad(player, bouncePad) {
+    if (player.velocityY <= 0) return false;
+    const previousFeetY = player.previousY + player.height;
+    const feetY = player.y + player.height;
+    if (previousFeetY > bouncePad.y || feetY <= bouncePad.y) return false;
+    return player.x + player.width > bouncePad.x && player.x < bouncePad.x + bouncePad.width;
   }
 
   updateCrates() {

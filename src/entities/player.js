@@ -56,6 +56,11 @@ export class Player extends PhysicsEntity {
     this.airJumpAvailable = true;
   }
 
+  launchUpward(velocityY) {
+    this.velocityY = velocityY;
+    this.onGround = false;
+  }
+
   // A stomp forces the same rise a jump would give, full height held or a shorter hop not held.
   bounceFromStomp() {
     this.velocityY = this.jumpHeld ? JUMP_VELOCITY : JUMP_VELOCITY * JUMP_CUT_MULTIPLIER;
