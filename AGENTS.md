@@ -72,6 +72,15 @@ Before calling work done, check which of these your change touches and confirm e
 - `npm run format:check` must pass. `npm run format` fixes it.
 - `npm run dev` serves the game at http://localhost:8000. Play what you changed.
 - Test observable behavior: scores, positions after N ticks, events emitted. Do not write tests that mirror the implementation.
+- Dev mode drives ticks by hand, which works even in a hidden tab where `requestAnimationFrame` is paused. Open `http://localhost:8000/?dev` and, from the console or a script:
+  ```js
+  window.claudeJump.step(60, {
+    red: { left: false, right: true, jump: false },
+    blue: { left: false, right: false, jump: false },
+  });
+  window.claudeJump.render();
+  ```
+  `step` runs the given number of ticks (one input record applied every tick, or an array of records applied one per tick) and returns a snapshot of phase, wins and player positions. `render` draws the current state once, so a screenshot taken right after matches what `step` left behind.
 
 ## Tickets and pull requests
 
