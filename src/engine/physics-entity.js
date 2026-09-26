@@ -1,15 +1,24 @@
 import { Entity } from './entity.js';
 
+const KNOCKBACK_DECAY = 0.5;
+
 export class PhysicsEntity extends Entity {
   constructor({ x, y, width, height }) {
     super({ x, y, width, height });
     this.velocityX = 0;
     this.velocityY = 0;
+    this.knockbackVelocityX = 0;
     this.onGround = false;
   }
 
   applyGravity(gravity, maxFallSpeed) {
     this.velocityY = Math.min(this.velocityY + gravity, maxFallSpeed);
+  }
+
+  // Adds to velocity instead of replacing it, so a hit never cancels a fall or a jump.
+  applyKnockback(velocityX, velocityY) {
+    this.knockbackVelocityX += velocityX;
+    this.velocityY += velocityY;
   }
 
   overlaps(rectangle) {
@@ -23,13 +32,18 @@ export class PhysicsEntity extends Entity {
 
   // Moves one axis at a time so a corner cannot be resolved diagonally into a wall.
   moveAndCollide(platforms) {
-    this.x += this.velocityX;
+    const totalVelocityX = this.velocityX + this.knockbackVelocityX;
+    this.x += totalVelocityX;
     for (const platform of platforms) {
       if (!this.overlaps(platform)) continue;
-      if (this.velocityX > 0) this.x = platform.x - this.width;
-      else if (this.velocityX < 0) this.x = platform.x + platform.width;
+      if (totalVelocityX > 0) this.x = platform.x - this.width;
+      else if (totalVelocityX < 0) this.x = platform.x + platform.width;
       this.velocityX = 0;
+      this.knockbackVelocityX = 0;
     }
+    if (this.knockbackVelocityX > 0) this.knockbackVelocityX = Math.max(0, this.knockbackVelocityX - KNOCKBACK_DECAY);
+    else if (this.knockbackVelocityX < 0)
+      this.knockbackVelocityX = Math.min(0, this.knockbackVelocityX + KNOCKBACK_DECAY);
 
     this.y += this.velocityY;
     this.onGround = false;
