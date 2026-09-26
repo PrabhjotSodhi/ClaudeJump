@@ -1,3 +1,4 @@
+import { SCREEN_WIDTH } from '../engine/config.js';
 import { EntityGroups } from '../engine/entity-groups.js';
 import { EventEmitter } from '../engine/events.js';
 import { Platform } from '../entities/platform.js';
@@ -90,8 +91,18 @@ export class VersusScene {
         player.startSinking();
         this.events.emit('player-fell-in-water', { playerId: player.id });
       }
+      this.wrapPlayerAroundScreen(player);
     }
     this.resolvePlayerCollisions();
+  }
+
+  // Only snaps once the player has fully left the screen; Player.render draws the crossing itself.
+  wrapPlayerAroundScreen(player) {
+    if (player.x + player.width < 0) player.x += SCREEN_WIDTH;
+    else if (player.x > SCREEN_WIDTH) player.x -= SCREEN_WIDTH;
+    else return;
+
+    this.events.emit('player-wrapped', { playerId: player.id, x: player.x, y: player.y });
   }
 
   // Resolves every pair in a fixed order so the outcome never depends on iteration order.

@@ -10,6 +10,10 @@ The game is built in plain JavaScript with a 2D canvas for drawing and one WebGL
 2. **The same game on every machine.** Game logic runs at a fixed 60 ticks per second. The same inputs always produce the same state. This is what makes replays and online play possible later.
 3. **Runs anywhere.** Any modern browser on Windows, Mac and Linux, straight from static files.
 
+## Design rules
+
+- Nothing that hurts a player may enter from off screen without a warning marker first.
+
 ## Glossary
 
 - **tick**: one fixed step of game logic, 1/60 of a second.
