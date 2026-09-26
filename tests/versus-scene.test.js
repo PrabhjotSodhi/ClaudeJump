@@ -235,6 +235,7 @@ test('a stomp bounces the stomper up and knocks the other player sideways, away 
   red.y = 45;
   red.velocityY = 2;
   red.onGround = false;
+  red.airJumpAvailable = false; // used up already, so a refresh from the stomp is observable
 
   const stompEvents = [];
   scene.events.on('player-stomped', (event) => stompEvents.push(event));
@@ -245,6 +246,7 @@ test('a stomp bounces the stomper up and knocks the other player sideways, away 
 
   assert.deepEqual(stompEvents, [{ stomperId: 'red', stompedId: 'blue' }]);
   assert.ok(red.velocityY < 0, 'the stomper bounces upward');
+  assert.equal(red.airJumpAvailable, true, 'a successful stomp refreshes the air jump');
   assert.ok(blue.knockbackVelocityX > 0, 'the stomped player is knocked away from the stomper');
   assert.ok(blue.dizzyTicksRemaining > 0, 'the stomped player is dizzy');
 });

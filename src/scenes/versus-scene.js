@@ -178,6 +178,7 @@ export class VersusScene {
 
   resolveStomp(stomper, stomped) {
     stomper.bounceFromStomp();
+    stomper.refreshAirJump();
 
     const stomperCenterX = stomper.x + stomper.width / 2;
     const stompedCenterX = stomped.x + stomped.width / 2;

@@ -10,6 +10,7 @@ const GROUND_ACCELERATION = 0.35;
 const AIR_ACCELERATION = 0.2;
 const JUMP_VELOCITY = -5.2;
 const JUMP_CUT_MULTIPLIER = 0.5;
+const AIR_JUMP_MULTIPLIER = 0.85;
 const COYOTE_TICKS = 6;
 const JUMP_BUFFER_TICKS = 6;
 const SINK_SPEED = 0.5;
@@ -33,6 +34,7 @@ export class Player extends PhysicsEntity {
     this.jumpHeld = true;
     this.inWater = false;
     this.dizzyTicksRemaining = 0;
+    this.airJumpAvailable = false;
   }
 
   startSinking() {
@@ -41,6 +43,10 @@ export class Player extends PhysicsEntity {
 
   makeDizzy(tickCount) {
     this.dizzyTicksRemaining = tickCount;
+  }
+
+  refreshAirJump() {
+    this.airJumpAvailable = true;
   }
 
   // A stomp forces the same rise a jump would give, full height held or a shorter hop not held.
@@ -70,12 +76,19 @@ export class Player extends PhysicsEntity {
     this.velocityX += clamp(moveDirection * RUN_SPEED - this.velocityX, -acceleration, acceleration);
 
     // Coyote time and the jump buffer forgive a press a few ticks early or late.
+    if (this.onGround) this.airJumpAvailable = true;
     this.coyoteTicksRemaining = this.onGround ? COYOTE_TICKS : this.coyoteTicksRemaining - 1;
     this.jumpBufferTicksRemaining--;
-    if (this.jumpBufferTicksRemaining > 0 && this.coyoteTicksRemaining > 0) {
-      this.velocityY = JUMP_VELOCITY;
-      this.jumpBufferTicksRemaining = 0;
-      this.coyoteTicksRemaining = 0;
+    if (this.jumpBufferTicksRemaining > 0) {
+      if (this.coyoteTicksRemaining > 0) {
+        this.velocityY = JUMP_VELOCITY;
+        this.jumpBufferTicksRemaining = 0;
+        this.coyoteTicksRemaining = 0;
+      } else if (this.airJumpAvailable) {
+        this.velocityY = JUMP_VELOCITY * AIR_JUMP_MULTIPLIER;
+        this.jumpBufferTicksRemaining = 0;
+        this.airJumpAvailable = false;
+      }
     }
     if (jumpReleased && this.velocityY < 0) this.velocityY *= JUMP_CUT_MULTIPLIER;
 
