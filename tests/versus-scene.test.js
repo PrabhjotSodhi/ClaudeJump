@@ -990,6 +990,146 @@ test('fire is cleared from every platform at the start of a new round', () => {
   assert.equal(middlePlatform.isBurning, false, 'fire does not carry over into the next round');
 });
 
+test('playing Ice Floor freezes the platform under the opponent', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+
+  const red = findPlayer(scene, 'red');
+  const blue = findPlayer(scene, 'blue');
+  blue.x = 150;
+  blue.y = 60; // standing on the middle platform, top y 72
+  blue.onGround = true;
+  red.heldCardName = 'ice';
+  scene.update(neutralInputs()); // release the card key held from spawn
+
+  const middlePlatform = findPlatformAt(scene, 128, 72);
+  assert.equal(middlePlatform.isIcy, false);
+
+  scene.update({ red: { left: false, right: false, jump: false, card: true }, blue: noInput() });
+
+  assert.equal(middlePlatform.isIcy, true, 'the platform under the opponent freezes');
+});
+
+test('Ice Floor uses the platform under an airborne opponent', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+
+  const red = findPlayer(scene, 'red');
+  const blue = findPlayer(scene, 'blue');
+  blue.x = 60;
+  blue.y = 90; // mid-air above the side platform (top y 112), not touching it
+  blue.onGround = false;
+  red.heldCardName = 'ice';
+  scene.update(neutralInputs());
+
+  scene.update({ red: { left: false, right: false, jump: false, card: true }, blue: noInput() });
+
+  const sidePlatform = findPlatformAt(scene, 40, 112);
+  assert.equal(sidePlatform.isIcy, true, 'the platform below the airborne opponent freezes');
+});
+
+test('nothing freezes and the card is still spent when the opponent has no platform below them', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+
+  const red = findPlayer(scene, 'red');
+  const blue = findPlayer(scene, 'blue');
+  blue.x = 0; // no platform sits under x 0 (see the crate test for the same gap)
+  blue.y = 90;
+  blue.onGround = false;
+  red.heldCardName = 'ice';
+  scene.update(neutralInputs());
+
+  scene.update({ red: { left: false, right: false, jump: false, card: true }, blue: noInput() });
+
+  assert.equal(red.heldCardName, null, 'the card is spent');
+  for (const platform of scene.entityGroups.get('platforms')) assert.equal(platform.isIcy, false);
+});
+
+test('a player on ice takes clearly longer to stop than on metal', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+
+  const blue = findPlayer(scene, 'blue');
+  blue.x = 150;
+  blue.y = 60;
+  blue.onGround = true;
+  blue.velocityX = 1.8; // full running speed, coasting with no input
+  const middlePlatform = findPlatformAt(scene, 128, 72);
+  middlePlatform.freezeWithIce();
+
+  let icyTicksToStop = 0;
+  while (blue.velocityX > 0) {
+    scene.update(neutralInputs());
+    icyTicksToStop++;
+    if (icyTicksToStop > 1000) throw new Error('the icy player never stopped');
+  }
+
+  const metalScene = new VersusScene();
+  advance(metalScene, READY_TICKS);
+  const metalBlue = findPlayer(metalScene, 'blue');
+  metalBlue.x = 150;
+  metalBlue.y = 60;
+  metalBlue.onGround = true;
+  metalBlue.velocityX = 1.8;
+
+  let metalTicksToStop = 0;
+  while (metalBlue.velocityX > 0) {
+    metalScene.update(neutralInputs());
+    metalTicksToStop++;
+    if (metalTicksToStop > 1000) throw new Error('the player on metal never stopped');
+  }
+
+  assert.ok(
+    icyTicksToStop > metalTicksToStop * 3,
+    `expected icy stop (${icyTicksToStop} ticks) to take much longer than metal (${metalTicksToStop} ticks)`,
+  );
+});
+
+test('the ice ends after 300 ticks', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+
+  const middlePlatform = findPlatformAt(scene, 128, 72);
+  middlePlatform.freezeWithIce();
+
+  advance(scene, 299);
+  assert.equal(middlePlatform.isIcy, true, 'still icy just before 300 ticks');
+
+  scene.update(neutralInputs());
+  assert.equal(middlePlatform.isIcy, false, 'the ice ends at 300 ticks');
+});
+
+test('ice is cleared from every platform at the start of a new round', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+
+  const middlePlatform = findPlatformAt(scene, 128, 72);
+  middlePlatform.freezeWithIce();
+
+  findPlayer(scene, 'red').y = 300;
+  scene.update(neutralInputs());
+  assert.equal(scene.phase, 'point');
+
+  advance(scene, 90); // point pause resolves back to a fresh 'ready' round
+  assert.equal(scene.phase, 'ready');
+  assert.equal(middlePlatform.isIcy, false, 'ice does not carry over into the next round');
+});
+
+test('ice replaces fire on the same platform, and fire replaces ice', () => {
+  const platform = findPlatformAt(new VersusScene(), 128, 72);
+
+  platform.igniteWithFire();
+  assert.equal(platform.isBurning, true);
+  platform.freezeWithIce();
+  assert.equal(platform.isBurning, false, 'ice puts the fire out');
+  assert.equal(platform.isIcy, true);
+
+  platform.igniteWithFire();
+  assert.equal(platform.isIcy, false, 'fire melts the ice');
+  assert.equal(platform.isBurning, true);
+});
+
 test('a crate with no platform below it falls into the sea and the next crate is scheduled', () => {
   const scene = new VersusScene();
   advance(scene, READY_TICKS);

@@ -9,6 +9,8 @@ const MAX_FALL_SPEED = 6;
 const RUN_SPEED = 1.8;
 const GROUND_ACCELERATION = 0.35;
 const AIR_ACCELERATION = 0.2;
+// A sharp drop from GROUND_ACCELERATION so a player on ice slides and struggles to stop.
+const ICE_GROUND_ACCELERATION = 0.05;
 const JUMP_VELOCITY = -5.2;
 const JUMP_CUT_MULTIPLIER = 0.5;
 const AIR_JUMP_MULTIPLIER = 0.85;
@@ -118,7 +120,12 @@ export class Player extends PhysicsEntity {
       this.velocityX = DASH_SPEED * this.facing;
       this.dashTicksRemaining--;
     } else {
-      const acceleration = this.onGround ? GROUND_ACCELERATION : AIR_ACCELERATION;
+      const onIcyGround = this.onGround && this.standingPlatform?.isIcy;
+      const acceleration = onIcyGround
+        ? ICE_GROUND_ACCELERATION
+        : this.onGround
+          ? GROUND_ACCELERATION
+          : AIR_ACCELERATION;
       this.velocityX += clamp(moveDirection * RUN_SPEED - this.velocityX, -acceleration, acceleration);
     }
 

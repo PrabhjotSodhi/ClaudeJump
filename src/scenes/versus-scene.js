@@ -155,6 +155,7 @@ export class VersusScene {
         if (player.playedCardName === 'rocket') this.spawnRocket(player);
         if (player.playedCardName === 'bouncePad') this.spawnBouncePad(player);
         if (player.playedCardName === 'fire') this.igniteFire(player);
+        if (player.playedCardName === 'ice') this.freezeIce(player);
       }
       if (!player.inWater && player.y + player.height >= this.waterLineY) {
         player.startSinking();
@@ -242,6 +243,15 @@ export class VersusScene {
     if (!opponent) return;
     const platform = this.findPlatformBelow(opponent);
     if (platform) platform.igniteWithFire();
+  }
+
+  // Freezes whichever platform sits under the opponent, standing on it or falling above it.
+  // Spends the card even when nothing is below them to freeze.
+  freezeIce(player) {
+    const opponent = this.players.find((otherPlayer) => otherPlayer.id !== player.id);
+    if (!opponent) return;
+    const platform = this.findPlatformBelow(opponent);
+    if (platform) platform.freezeWithIce();
   }
 
   findPlatformBelow(player) {
