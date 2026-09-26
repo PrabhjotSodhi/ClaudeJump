@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { SCREEN_WIDTH } from '../src/engine/config.js';
+import { Crate } from '../src/entities/crate.js';
 import { Rocket } from '../src/entities/rocket.js';
 import { VersusScene } from '../src/scenes/versus-scene.js';
 
@@ -450,14 +451,14 @@ test('a dash into the opponent knocks them away', () => {
   blue.y = 60;
   blue.onGround = true;
   const blueStartX = blue.x;
-  red.hand.slots[0] = 'dash'; // force the draw so the deck also holding rocket cards cannot pick this slot
+  red.heldCardName = 'dash';
 
   const cardEvents = [];
   scene.events.on('card-played', (event) => cardEvents.push(event));
 
-  // Release the jump/card keys held from spawn before pressing fresh, then dash with slot 1 (card1).
+  // Release the jump/card keys held from spawn before pressing fresh, then dash.
   scene.update({ red: noInput(), blue: noInput() });
-  scene.update({ red: { left: false, right: false, jump: false, card1: true }, blue: noInput() });
+  scene.update({ red: { left: false, right: false, jump: false, card: true }, blue: noInput() });
 
   assert.deepEqual(cardEvents, [{ playerId: 'red', cardName: 'dash' }]);
 
@@ -484,13 +485,14 @@ test('a card pressed on the tick a player falls in the sea emits card-played onc
   advance(scene, READY_TICKS);
 
   const red = findPlayer(scene, 'red');
+  red.heldCardName = 'dash';
   scene.update({ red: noInput(), blue: noInput() }); // release the card key held from spawn
 
   const cardEvents = [];
   scene.events.on('card-played', (event) => cardEvents.push(event));
 
   red.y = 300; // below the water line, falls in on this tick
-  scene.update({ red: { left: false, right: false, jump: false, card1: true }, blue: noInput() });
+  scene.update({ red: { left: false, right: false, jump: false, card: true }, blue: noInput() });
   assert.equal(scene.phase, 'point');
   assert.equal(red.inWater, true);
 
@@ -549,4 +551,115 @@ test('a rocket wraps around the screen edges like a player', () => {
   scene.update(neutralInputs());
 
   assert.ok(rocket.x < SCREEN_WIDTH, 'the rocket reappears from the left edge once it has fully crossed the right one');
+});
+
+function addLandedCrate(scene, { x, y, cardName }) {
+  const crate = new Crate({ x, y, cardName });
+  crate.landed = true;
+  scene.entityGroups.clear('crates');
+  scene.entityGroups.add('crates', crate);
+  return crate;
+}
+
+test('touching a crate with no card takes the card', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+
+  const red = findPlayer(scene, 'red');
+  red.x = 100;
+  red.y = 100;
+  const crate = addLandedCrate(scene, { x: red.x, y: red.y, cardName: 'dash' });
+
+  const pickupEvents = [];
+  scene.events.on('card-picked-up', (event) => pickupEvents.push(event));
+
+  scene.update(neutralInputs());
+
+  assert.deepEqual(pickupEvents, [{ playerId: 'red', cardName: 'dash' }]);
+  assert.equal(red.heldCardName, 'dash');
+  assert.equal(scene.entityGroups.get('crates').includes(crate), false, 'the taken crate is removed');
+});
+
+test('a player already holding a card cannot open a crate, and the crate stays', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+
+  const red = findPlayer(scene, 'red');
+  red.heldCardName = 'rocket';
+  red.x = 100;
+  red.y = 100;
+  const crate = addLandedCrate(scene, { x: red.x, y: red.y, cardName: 'dash' });
+
+  const pickupEvents = [];
+  scene.events.on('card-picked-up', (event) => pickupEvents.push(event));
+
+  scene.update(neutralInputs());
+
+  assert.deepEqual(pickupEvents, []);
+  assert.equal(red.heldCardName, 'rocket', 'the player keeps the card they already had');
+  assert.equal(scene.entityGroups.get('crates')[0], crate, 'the crate stays put');
+});
+
+test('the next crate lands 180 ticks after the previous one is taken', () => {
+  const scene = new VersusScene({ seed: 1 });
+  advance(scene, READY_TICKS);
+
+  const red = findPlayer(scene, 'red');
+  red.x = 132;
+  red.y = 60; // standing on the middle platform, so it never falls in the sea while this runs
+  red.onGround = true;
+  // Already holding a card so it cannot immediately take the next crate wherever it lands.
+  findPlayer(scene, 'blue').heldCardName = 'rocket';
+  addLandedCrate(scene, { x: red.x, y: red.y, cardName: 'dash' });
+
+  scene.update(neutralInputs()); // red takes the crate on this tick
+
+  let ticksSinceTaken = 0;
+  while (!scene.entityGroups.get('crates')[0]?.landed) {
+    scene.update(neutralInputs());
+    ticksSinceTaken++;
+    if (ticksSinceTaken > 300) throw new Error('the next crate never landed');
+  }
+
+  assert.equal(ticksSinceTaken, 180);
+});
+
+test('the same seed gives the same crate spots and cards', () => {
+  function firstCrateAfterSpawn(seed) {
+    const scene = new VersusScene({ seed });
+    advance(scene, READY_TICKS);
+    advance(scene, 130); // past the 120 tick spawn delay, before the crate has landed
+    const crate = scene.entityGroups.get('crates')[0];
+    return { x: crate.x, y: crate.y, cardName: crate.cardName };
+  }
+
+  assert.deepEqual(firstCrateAfterSpawn(7), firstCrateAfterSpawn(7));
+});
+
+test('while the sea is above the side platforms, every crate lands on the still-dry middle platform', () => {
+  for (let seed = 0; seed < 20; seed++) {
+    const scene = new VersusScene({ seed });
+    advance(scene, READY_TICKS);
+    scene.waterLineY = 90; // above the side platforms (top y 112), below the middle platform (top y 72)
+    scene.entityGroups.clear('crates');
+    scene.spawnCrate();
+
+    const crate = scene.entityGroups.get('crates')[0];
+    assert.ok(crate, 'a crate spawns since the middle platform is still dry');
+    assert.ok(crate.x >= 128 && crate.x + crate.width <= 192, 'the crate lands on the middle platform only');
+  }
+});
+
+test('a crate is removed once the rising sea reaches its platform', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+  const crate = addLandedCrate(scene, { x: 60, y: 104, cardName: 'dash' }); // side platform, top y 112
+
+  scene.waterLineY = 164;
+  scene.update(neutralInputs());
+  assert.equal(scene.entityGroups.get('crates')[0], crate, 'the crate stays while its platform is dry');
+
+  scene.waterLineY = 105; // risen past the crate's platform
+  scene.update(neutralInputs());
+  assert.equal(scene.entityGroups.get('crates').includes(crate), false, 'the submerged crate is removed');
 });

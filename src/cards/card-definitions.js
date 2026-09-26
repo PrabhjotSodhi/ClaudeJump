@@ -1,5 +1,6 @@
-// A fast burst in the facing direction. Dashing into the opponent knocks them back
-// through the same knockback path a bump uses (see versus-scene.js).
+// Every card a player can hold and play. Dash is a fast burst in the facing direction,
+// knocking the opponent back through the same knockback path a bump uses (see versus-scene.js).
+// Rocket fires a projectile that explodes on impact, knocking back any player caught in the blast.
 export const CARD_DEFINITIONS = {
   dash: {
     name: 'dash',
@@ -9,7 +10,4 @@ export const CARD_DEFINITIONS = {
   },
 };
 
-// How many copies of each card sit in a deck before it is shuffled.
-const COPIES_PER_CARD = 6;
-
-export const DECK_CARD_NAMES = Object.keys(CARD_DEFINITIONS).flatMap((name) => Array(COPIES_PER_CARD).fill(name));
+export const CARD_NAMES = Object.keys(CARD_DEFINITIONS);

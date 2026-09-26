@@ -37,9 +37,7 @@ export function createKeyboardInput(playerKeyMappings) {
           left: isDown(mapping.keys.left),
           right: isDown(mapping.keys.right),
           jump: isDown(mapping.keys.jump),
-          card1: isDown(mapping.keys.card1),
-          card2: isDown(mapping.keys.card2),
-          card3: isDown(mapping.keys.card3),
+          card: isDown(mapping.keys.card),
         };
       }
       tappedCodes.clear();
