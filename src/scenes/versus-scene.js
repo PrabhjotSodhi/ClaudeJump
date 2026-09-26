@@ -10,6 +10,11 @@ const READY_TICKS = 60;
 const GO_TICKS = 30;
 const POINT_PAUSE_TICKS = 90;
 const RESTART_DELAY_TICKS = 60;
+const BUMP_KNOCKBACK_VELOCITY_X = 1.5;
+// How far one player's feet may sit above the other's head and still count as jumping over, not landing on them.
+const BUMP_HEAD_CLEARANCE = 4;
+// Players pushed apart to a gap this small still count as the same contact, so the push does not refire the event every tick.
+const BUMP_CONTACT_GAP = 3;
 
 export class VersusScene {
   constructor({ startInFightPhase = false } = {}) {
@@ -22,6 +27,7 @@ export class VersusScene {
     this.wins = {};
     for (const spawn of PLAYER_SPAWNS) this.wins[spawn.id] = 0;
     this.skipNextReadyPhase = startInFightPhase;
+    this.bumpingPairIds = new Set();
     this.startRound();
   }
 
@@ -41,6 +47,7 @@ export class VersusScene {
       this.ticksRemaining = READY_TICKS;
     }
     this.winnerId = null;
+    this.bumpingPairIds.clear();
   }
 
   update(inputByPlayerId) {
@@ -79,6 +86,57 @@ export class VersusScene {
         this.events.emit('player-fell-in-water', { playerId: player.id });
       }
     }
+    this.resolvePlayerCollisions();
+  }
+
+  // Resolves every pair in a fixed order so the outcome never depends on iteration order.
+  resolvePlayerCollisions() {
+    const players = this.players;
+    for (let firstIndex = 0; firstIndex < players.length; firstIndex++) {
+      for (let secondIndex = firstIndex + 1; secondIndex < players.length; secondIndex++) {
+        this.resolvePlayerPair(players[firstIndex], players[secondIndex]);
+      }
+    }
+  }
+
+  resolvePlayerPair(playerA, playerB) {
+    const pairId = [playerA.id, playerB.id].sort().join('-');
+    const inWater = playerA.inWater || playerB.inWater;
+    const overlapping = !inWater && this.playersAreBumping(playerA, playerB, 0);
+    const stillInContact = !inWater && this.playersAreBumping(playerA, playerB, BUMP_CONTACT_GAP);
+
+    if (overlapping) {
+      const leftPlayer = playerA.x <= playerB.x ? playerA : playerB;
+      const rightPlayer = leftPlayer === playerA ? playerB : playerA;
+      const overlapX = leftPlayer.x + leftPlayer.width - rightPlayer.x;
+      const pushApart = overlapX / 2;
+      leftPlayer.x -= pushApart;
+      rightPlayer.x += pushApart;
+
+      // Knockback fires only when the contact starts. Adding it on every overlapping tick made
+      // held-together players buzz: each push added more velocity, bouncing them apart and back in.
+      if (!this.bumpingPairIds.has(pairId)) {
+        this.bumpingPairIds.add(pairId);
+        leftPlayer.applyKnockback(-BUMP_KNOCKBACK_VELOCITY_X, 0);
+        rightPlayer.applyKnockback(BUMP_KNOCKBACK_VELOCITY_X, 0);
+        this.events.emit('players-bumped', { playerIds: [playerA.id, playerB.id] });
+      }
+    }
+
+    if (!stillInContact) this.bumpingPairIds.delete(pairId);
+  }
+
+  // A player whose feet are clearly above the other's head is jumping over them, not bumping into them.
+  // horizontalPadding widens the gap that still counts as touching, so a bump kept apart by a few pixels
+  // is still the same contact instead of a fresh one.
+  playersAreBumping(playerA, playerB, horizontalPadding) {
+    const higherPlayer = playerA.y < playerB.y ? playerA : playerB;
+    const lowerPlayer = higherPlayer === playerA ? playerB : playerA;
+    if (higherPlayer.y + higherPlayer.height <= lowerPlayer.y + BUMP_HEAD_CLEARANCE) return false;
+
+    const leftPlayer = playerA.x <= playerB.x ? playerA : playerB;
+    const rightPlayer = leftPlayer === playerA ? playerB : playerA;
+    return leftPlayer.x + leftPlayer.width + horizontalPadding > rightPlayer.x;
   }
 
   checkRoundEnd() {
