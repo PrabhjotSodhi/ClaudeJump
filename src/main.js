@@ -25,7 +25,7 @@ async function main() {
   const renderer = new Renderer();
   const input = createKeyboardInput(keyMappings);
   const sceneManager = new SceneManager();
-  sceneManager.setScene(new VersusScene({ startInFightPhase: isDevMode }));
+  sceneManager.setScene(new VersusScene({ startInFightPhase: isDevMode, seed: isDevMode ? 0 : Date.now() }));
 
   function renderFrame(timestamp) {
     sceneManager.render(renderer);

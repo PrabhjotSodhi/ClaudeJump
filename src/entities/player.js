@@ -1,5 +1,6 @@
 import { SCREEN_WIDTH } from '../engine/config.js';
 import { PhysicsEntity } from '../engine/physics-entity.js';
+import { Hand } from '../cards/hand.js';
 
 export const PLAYER_WIDTH = 8;
 export const PLAYER_HEIGHT = 12;
@@ -15,6 +16,10 @@ const AIR_JUMP_MULTIPLIER = 0.85;
 const COYOTE_TICKS = 6;
 const JUMP_BUFFER_TICKS = 6;
 const SINK_SPEED = 0.5;
+const DASH_SPEED = 4.5;
+const DASH_TICKS = 10;
+
+const CARD_SLOT_KEYS = ['card1', 'card2', 'card3'];
 
 const SKIN_COLOR = '#f0c8a0';
 const EYE_COLOR = '#1e1e28';
@@ -24,7 +29,7 @@ function clamp(value, minimum, maximum) {
 }
 
 export class Player extends PhysicsEntity {
-  constructor({ id, color, spawnX, spawnY, facing }) {
+  constructor({ id, color, spawnX, spawnY, facing, seed }) {
     super({ x: spawnX - PLAYER_WIDTH / 2, y: spawnY - PLAYER_HEIGHT, width: PLAYER_WIDTH, height: PLAYER_HEIGHT });
     this.id = id;
     this.color = color;
@@ -36,6 +41,10 @@ export class Player extends PhysicsEntity {
     this.inWater = false;
     this.dizzyTicksRemaining = 0;
     this.airJumpAvailable = false;
+    this.hand = new Hand(seed);
+    this.cardKeysHeldPrevious = { card1: false, card2: false, card3: false };
+    this.playedCardName = null;
+    this.dashTicksRemaining = 0;
   }
 
   startSinking() {
@@ -55,11 +64,39 @@ export class Player extends PhysicsEntity {
     this.velocityY = this.jumpHeld ? JUMP_VELOCITY : JUMP_VELOCITY * JUMP_CUT_MULTIPLIER;
   }
 
+  // Card keys fire on the press, not while held, so keep tracking held state even when the
+  // player cannot act, so a key already down does not fire the moment it becomes able to again.
+  handleCardInput(input, canAct) {
+    for (let slotIndex = 0; slotIndex < CARD_SLOT_KEYS.length; slotIndex++) {
+      const key = CARD_SLOT_KEYS[slotIndex];
+      const pressed = input ? input[key] : false;
+      const justPressed = pressed && !this.cardKeysHeldPrevious[key];
+      this.cardKeysHeldPrevious[key] = pressed;
+      if (justPressed && canAct) this.playCard(slotIndex);
+    }
+  }
+
+  playCard(slotIndex) {
+    const cardName = this.hand.play(slotIndex);
+    if (!cardName) return;
+    this.playedCardName = cardName;
+    if (cardName === 'dash') this.startDash();
+  }
+
+  startDash() {
+    this.dashTicksRemaining = DASH_TICKS;
+    this.velocityX = DASH_SPEED * this.facing;
+  }
+
   update(input, platforms) {
+    this.playedCardName = null;
     if (this.inWater) {
       this.y += SINK_SPEED;
       return;
     }
+
+    this.hand.update();
+    this.handleCardInput(input, this.dizzyTicksRemaining <= 0);
 
     if (this.dizzyTicksRemaining > 0) {
       input = null;
@@ -73,8 +110,13 @@ export class Player extends PhysicsEntity {
     this.jumpHeld = jumpPressed;
     if (moveDirection) this.facing = moveDirection;
 
-    const acceleration = this.onGround ? GROUND_ACCELERATION : AIR_ACCELERATION;
-    this.velocityX += clamp(moveDirection * RUN_SPEED - this.velocityX, -acceleration, acceleration);
+    if (this.dashTicksRemaining > 0) {
+      this.velocityX = DASH_SPEED * this.facing;
+      this.dashTicksRemaining--;
+    } else {
+      const acceleration = this.onGround ? GROUND_ACCELERATION : AIR_ACCELERATION;
+      this.velocityX += clamp(moveDirection * RUN_SPEED - this.velocityX, -acceleration, acceleration);
+    }
 
     // Coyote time and the jump buffer forgive a press a few ticks early or late.
     if (this.onGround) this.airJumpAvailable = true;

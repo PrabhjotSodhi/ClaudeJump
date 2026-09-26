@@ -1,6 +1,7 @@
 import { SCREEN_WIDTH } from '../engine/config.js';
 import { EntityGroups } from '../engine/entity-groups.js';
 import { EventEmitter } from '../engine/events.js';
+import { SeededRandom } from '../engine/seeded-random.js';
 import { Platform } from '../entities/platform.js';
 import { Player } from '../entities/player.js';
 import { PLATFORM_LAYOUTS, PLAYER_SPAWNS, WATER_LINE_Y, drawBackground } from '../levels/versus-arena.js';
@@ -19,6 +20,7 @@ const BUMP_CONTACT_GAP = 3;
 const STOMP_KNOCKBACK_VELOCITY_X = 2.5;
 const STOMP_KNOCKBACK_VELOCITY_Y = 1;
 const DIZZY_TICKS = 20;
+const DASH_KNOCKBACK_VELOCITY_X = 4;
 
 const SUDDEN_DEATH_ROUND_TICKS = 1800; // 30 seconds; the round timer and the warning start point
 const SUDDEN_DEATH_WARNING_TICKS = 120; // 2 seconds of flashing markers before the sea rises
@@ -27,8 +29,9 @@ const SUDDEN_DEATH_TARGET_Y = 72; // middle platform top
 const SUDDEN_DEATH_RISE_PER_TICK = (WATER_LINE_Y - SUDDEN_DEATH_TARGET_Y) / SUDDEN_DEATH_RISE_TICKS;
 
 export class VersusScene {
-  constructor({ startInFightPhase = false } = {}) {
+  constructor({ startInFightPhase = false, seed = Date.now() } = {}) {
     this.events = new EventEmitter();
+    this.random = new SeededRandom(seed);
     this.entityGroups = new EntityGroups();
     for (const layout of PLATFORM_LAYOUTS) this.entityGroups.add('platforms', new Platform(layout));
 
@@ -52,7 +55,10 @@ export class VersusScene {
 
   startRound() {
     this.entityGroups.clear('players');
-    for (const spawn of PLAYER_SPAWNS) this.entityGroups.add('players', new Player(spawn));
+    for (const spawn of PLAYER_SPAWNS) {
+      const seed = Math.floor(this.random.next() * 2 ** 32);
+      this.entityGroups.add('players', new Player({ ...spawn, seed }));
+    }
     if (this.skipNextReadyPhase) {
       this.phase = 'fight';
       this.ticksRemaining = GO_TICKS;
@@ -118,6 +124,9 @@ export class VersusScene {
     const platforms = this.entityGroups.get('platforms');
     for (const player of this.players) {
       player.update(inputByPlayerId ? inputByPlayerId[player.id] : null, platforms);
+      if (player.playedCardName) {
+        this.events.emit('card-played', { playerId: player.id, cardName: player.playedCardName });
+      }
       if (!player.inWater && player.y + player.height >= this.waterLineY) {
         player.startSinking();
         this.events.emit('player-fell-in-water', { playerId: player.id });
@@ -176,8 +185,10 @@ export class VersusScene {
       // held-together players buzz: each push added more velocity, bouncing them apart and back in.
       if (!this.bumpingPairIds.has(pairId)) {
         this.bumpingPairIds.add(pairId);
-        leftPlayer.applyKnockback(-BUMP_KNOCKBACK_VELOCITY_X, 0);
-        rightPlayer.applyKnockback(BUMP_KNOCKBACK_VELOCITY_X, 0);
+        const isDashHit = playerA.dashTicksRemaining > 0 || playerB.dashTicksRemaining > 0;
+        const knockbackVelocityX = isDashHit ? DASH_KNOCKBACK_VELOCITY_X : BUMP_KNOCKBACK_VELOCITY_X;
+        leftPlayer.applyKnockback(-knockbackVelocityX, 0);
+        rightPlayer.applyKnockback(knockbackVelocityX, 0);
         this.events.emit('players-bumped', { playerIds: [playerA.id, playerB.id] });
       }
     }

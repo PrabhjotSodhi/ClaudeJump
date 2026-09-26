@@ -1,4 +1,17 @@
 [
-  { "id": "red", "keys": { "left": "KeyA", "right": "KeyD", "jump": "KeyW" } },
-  { "id": "blue", "keys": { "left": "ArrowLeft", "right": "ArrowRight", "jump": "ArrowUp" } }
+  {
+    "id": "red",
+    "keys": { "left": "KeyA", "right": "KeyD", "jump": "KeyW", "card1": "KeyC", "card2": "KeyV", "card3": "KeyB" }
+  },
+  {
+    "id": "blue",
+    "keys": {
+      "left": "ArrowLeft",
+      "right": "ArrowRight",
+      "jump": "ArrowUp",
+      "card1": "Comma",
+      "card2": "Period",
+      "card3": "Slash"
+    }
+  }
 ]
