@@ -32,16 +32,31 @@ export class Player extends PhysicsEntity {
     // Starts true so a jump key still held from the last round does not auto-jump on spawn.
     this.jumpHeld = true;
     this.inWater = false;
+    this.dizzyTicksRemaining = 0;
   }
 
   startSinking() {
     this.inWater = true;
   }
 
+  makeDizzy(tickCount) {
+    this.dizzyTicksRemaining = tickCount;
+  }
+
+  // A stomp forces the same rise a jump would give, full height held or a shorter hop not held.
+  bounceFromStomp() {
+    this.velocityY = this.jumpHeld ? JUMP_VELOCITY : JUMP_VELOCITY * JUMP_CUT_MULTIPLIER;
+  }
+
   update(input, platforms) {
     if (this.inWater) {
       this.y += SINK_SPEED;
       return;
+    }
+
+    if (this.dizzyTicksRemaining > 0) {
+      input = null;
+      this.dizzyTicksRemaining--;
     }
 
     const moveDirection = input ? input.right - input.left : 0;

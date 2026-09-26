@@ -9,6 +9,7 @@ export class PhysicsEntity extends Entity {
     this.velocityY = 0;
     this.knockbackVelocityX = 0;
     this.onGround = false;
+    this.previousY = y;
   }
 
   applyGravity(gravity, maxFallSpeed) {
@@ -45,6 +46,7 @@ export class PhysicsEntity extends Entity {
     else if (this.knockbackVelocityX < 0)
       this.knockbackVelocityX = Math.min(0, this.knockbackVelocityX + KNOCKBACK_DECAY);
 
+    this.previousY = this.y;
     this.y += this.velocityY;
     this.onGround = false;
     for (const platform of platforms) {

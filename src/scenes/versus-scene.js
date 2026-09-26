@@ -15,6 +15,9 @@ const BUMP_KNOCKBACK_VELOCITY_X = 1.5;
 const BUMP_HEAD_CLEARANCE = 4;
 // Players pushed apart to a gap this small still count as the same contact, so the push does not refire the event every tick.
 const BUMP_CONTACT_GAP = 3;
+const STOMP_KNOCKBACK_VELOCITY_X = 2.5;
+const STOMP_KNOCKBACK_VELOCITY_Y = 1;
+const DIZZY_TICKS = 20;
 
 export class VersusScene {
   constructor({ startInFightPhase = false } = {}) {
@@ -28,6 +31,7 @@ export class VersusScene {
     for (const spawn of PLAYER_SPAWNS) this.wins[spawn.id] = 0;
     this.skipNextReadyPhase = startInFightPhase;
     this.bumpingPairIds = new Set();
+    this.stompingPairIds = new Set();
     this.startRound();
   }
 
@@ -48,6 +52,7 @@ export class VersusScene {
     }
     this.winnerId = null;
     this.bumpingPairIds.clear();
+    this.stompingPairIds.clear();
   }
 
   update(inputByPlayerId) {
@@ -102,6 +107,18 @@ export class VersusScene {
   resolvePlayerPair(playerA, playerB) {
     const pairId = [playerA.id, playerB.id].sort().join('-');
     const inWater = playerA.inWater || playerB.inWater;
+
+    const stomp = !inWater && this.detectStomp(playerA, playerB);
+    if (stomp) {
+      if (!this.stompingPairIds.has(pairId)) {
+        this.stompingPairIds.add(pairId);
+        this.resolveStomp(stomp.stomper, stomp.stomped);
+      }
+      this.bumpingPairIds.delete(pairId);
+      return;
+    }
+    this.stompingPairIds.delete(pairId);
+
     const overlapping = !inWater && this.playersAreBumping(playerA, playerB, 0);
     const stillInContact = !inWater && this.playersAreBumping(playerA, playerB, BUMP_CONTACT_GAP);
 
@@ -137,6 +154,38 @@ export class VersusScene {
     const leftPlayer = playerA.x <= playerB.x ? playerA : playerB;
     const rightPlayer = leftPlayer === playerA ? playerB : playerA;
     return leftPlayer.x + leftPlayer.width + horizontalPadding > rightPlayer.x;
+  }
+
+  detectStomp(playerA, playerB) {
+    const leftPlayer = playerA.x <= playerB.x ? playerA : playerB;
+    const rightPlayer = leftPlayer === playerA ? playerB : playerA;
+    if (leftPlayer.x + leftPlayer.width <= rightPlayer.x) return null;
+
+    if (this.isStompingHead(playerA, playerB)) return { stomper: playerA, stomped: playerB };
+    if (this.isStompingHead(playerB, playerA)) return { stomper: playerB, stomped: playerA };
+    return null;
+  }
+
+  // A fast fall can cross the whole head band in a single tick, so a snapshot check can miss it.
+  // Detect the crossing instead: the stomper's feet were at or above the target's head before
+  // moving this tick, and are below it now.
+  isStompingHead(stomper, target) {
+    if (stomper.velocityY <= 0) return false;
+    const previousFeetY = stomper.previousY + stomper.height;
+    const feetY = stomper.y + stomper.height;
+    return previousFeetY <= target.y && feetY > target.y;
+  }
+
+  resolveStomp(stomper, stomped) {
+    stomper.bounceFromStomp();
+
+    const stomperCenterX = stomper.x + stomper.width / 2;
+    const stompedCenterX = stomped.x + stomped.width / 2;
+    const knockbackDirection = stompedCenterX >= stomperCenterX ? 1 : -1;
+    stomped.applyKnockback(knockbackDirection * STOMP_KNOCKBACK_VELOCITY_X, STOMP_KNOCKBACK_VELOCITY_Y);
+    stomped.makeDizzy(DIZZY_TICKS);
+
+    this.events.emit('player-stomped', { stomperId: stomper.id, stompedId: stomped.id });
   }
 
   checkRoundEnd() {

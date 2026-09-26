@@ -62,3 +62,22 @@ test('a player holding a direction still changes course during knockback', () =>
   assert.ok(holdLeftPlayer.x < holdLeftXBeforeReversal, 'holding left reverses course: x starts decreasing');
   assert.ok(idlePlayer.x > idleXBeforeReversal, 'holding nothing keeps drifting right with the knockback');
 });
+
+test('a dizzy player ignores input for exactly 20 ticks', () => {
+  const player = new Player({ id: 'blue', color: '#0000ff', spawnX: 100, spawnY: 100, facing: 1 });
+  player.onGround = true;
+  player.update({ left: false, right: false, jump: false }, []); // release the jump key held from spawn
+
+  const DIZZY_TICKS = 20;
+  player.makeDizzy(DIZZY_TICKS);
+
+  const rightAndJump = { left: false, right: true, jump: true };
+  for (let tick = 0; tick < DIZZY_TICKS; tick++) {
+    player.update(rightAndJump, []);
+    assert.equal(player.velocityX, 0, `steering should be ignored on dizzy tick ${tick}`);
+    assert.ok(player.velocityY >= 0, `jumping should be ignored on dizzy tick ${tick}`);
+  }
+
+  player.update(rightAndJump, []);
+  assert.ok(player.velocityX > 0, 'steering works again once dizziness ends');
+});
