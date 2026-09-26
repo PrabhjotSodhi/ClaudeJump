@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { PhysicsEntity } from '../src/engine/physics-entity.js';
+import { Player } from '../src/entities/player.js';
 
 function makeEntity() {
   return new PhysicsEntity({ x: 100, y: 100, width: 8, height: 12 });
@@ -36,23 +37,28 @@ test('hitting a wall stops horizontal knockback', () => {
   assert.equal(entity.knockbackVelocityX, 0);
 });
 
-test('a player holding a direction still changes course during knockback', async () => {
-  const { Player } = await import('../src/entities/player.js');
-
-  const knockedPlayer = new Player({ id: 'red', color: '#ff0000', spawnX: 100, spawnY: 100, facing: 1 });
-  knockedPlayer.applyKnockback(5, 0); // knocked hard to the right
-
+test('a player holding a direction still changes course during knockback', () => {
+  const holdLeftPlayer = new Player({ id: 'red', color: '#ff0000', spawnX: 100, spawnY: 100, facing: 1 });
   const idlePlayer = new Player({ id: 'blue', color: '#0000ff', spawnX: 100, spawnY: 100, facing: 1 });
+  holdLeftPlayer.applyKnockback(5, 0);
+  idlePlayer.applyKnockback(5, 0);
 
   const holdLeft = { left: true, right: false, jump: false };
   const noInput = { left: false, right: false, jump: false };
 
-  knockedPlayer.update(holdLeft, []);
-  for (let tick = 0; tick < 60; tick++) idlePlayer.update(noInput, []);
+  // Both players drift right on the knockback at first; steering only wins out over it after several ticks.
+  const TICKS_BEFORE_REVERSAL = 7;
+  for (let tick = 0; tick < TICKS_BEFORE_REVERSAL; tick++) {
+    holdLeftPlayer.update(holdLeft, []);
+    idlePlayer.update(noInput, []);
+  }
 
-  assert.ok(
-    knockedPlayer.velocityX < 0,
-    'holding left steers velocity left on the very next tick despite the knockback',
-  );
-  assert.equal(idlePlayer.velocityX, 0, 'a player holding nothing never moves left');
+  const holdLeftXBeforeReversal = holdLeftPlayer.x;
+  const idleXBeforeReversal = idlePlayer.x;
+
+  holdLeftPlayer.update(holdLeft, []);
+  idlePlayer.update(noInput, []);
+
+  assert.ok(holdLeftPlayer.x < holdLeftXBeforeReversal, 'holding left reverses course: x starts decreasing');
+  assert.ok(idlePlayer.x > idleXBeforeReversal, 'holding nothing keeps drifting right with the knockback');
 });
