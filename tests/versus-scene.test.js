@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { SCREEN_WIDTH } from '../src/engine/config.js';
+import { Rocket } from '../src/entities/rocket.js';
 import { VersusScene } from '../src/scenes/versus-scene.js';
 
 function noInput() {
@@ -449,6 +450,7 @@ test('a dash into the opponent knocks them away', () => {
   blue.y = 60;
   blue.onGround = true;
   const blueStartX = blue.x;
+  red.hand.slots[0] = 'dash'; // force the draw so the deck also holding rocket cards cannot pick this slot
 
   const cardEvents = [];
   scene.events.on('card-played', (event) => cardEvents.push(event));
@@ -507,4 +509,44 @@ test('startInFightPhase skips the Ready countdown for the first round only', () 
 
   advance(scene, 90); // point pause resolves into the next round
   assert.equal(scene.phase, 'ready');
+});
+
+test('a rocket blast pushes a player away from the blast center and emits rocket-exploded', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+
+  const red = findPlayer(scene, 'red'); // placed left of the blast center
+  red.x = 140;
+  red.y = 100;
+  const blue = findPlayer(scene, 'blue'); // placed right of the blast center
+  blue.x = 160;
+  blue.y = 100;
+
+  const rocket = new Rocket({ x: 150, y: 100, facing: 1, shooterId: 'blue' });
+  rocket.ticksRemaining = 1; // one tick from expiring, so this update explodes it in place
+  scene.entityGroups.add('rockets', rocket);
+
+  const explosionEvents = [];
+  scene.events.on('rocket-exploded', (event) => explosionEvents.push(event));
+
+  scene.update(neutralInputs());
+
+  assert.ok(red.knockbackVelocityX < 0, 'the player left of the blast is pushed further left');
+  assert.ok(blue.knockbackVelocityX > 0, 'the player right of the blast is pushed further right');
+  assert.equal(explosionEvents.length, 1);
+  assert.equal(explosionEvents[0].x, rocket.x + rocket.width / 2);
+  assert.equal(explosionEvents[0].y, rocket.y + rocket.height / 2);
+  assert.equal(scene.entityGroups.get('rockets').length, 0, 'the exploded rocket is removed');
+});
+
+test('a rocket wraps around the screen edges like a player', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+
+  const rocket = new Rocket({ x: SCREEN_WIDTH + 1, y: 100, facing: 1, shooterId: 'red' });
+  scene.entityGroups.add('rockets', rocket);
+
+  scene.update(neutralInputs());
+
+  assert.ok(rocket.x < SCREEN_WIDTH, 'the rocket reappears from the left edge once it has fully crossed the right one');
 });

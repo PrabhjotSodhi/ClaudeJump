@@ -4,6 +4,7 @@ import { EventEmitter } from '../engine/events.js';
 import { SeededRandom } from '../engine/seeded-random.js';
 import { Platform } from '../entities/platform.js';
 import { Player } from '../entities/player.js';
+import { Rocket, ROCKET_WIDTH, ROCKET_HEIGHT } from '../entities/rocket.js';
 import { PLATFORM_LAYOUTS, PLAYER_SPAWNS, WATER_LINE_Y, drawBackground } from '../levels/versus-arena.js';
 import { drawHud } from '../ui/hud.js';
 
@@ -21,6 +22,10 @@ const STOMP_KNOCKBACK_VELOCITY_X = 2.5;
 const STOMP_KNOCKBACK_VELOCITY_Y = 1;
 const DIZZY_TICKS = 20;
 const DASH_KNOCKBACK_VELOCITY_X = 4;
+// How far a rocket blast reaches, and how hard it knocks players inside that range.
+const BLAST_RADIUS = 24;
+const BLAST_KNOCKBACK_VELOCITY_X = 4;
+const BLAST_KNOCKBACK_VELOCITY_Y = -2;
 
 const SUDDEN_DEATH_ROUND_TICKS = 1800; // 30 seconds; the round timer and the warning start point
 const SUDDEN_DEATH_WARNING_TICKS = 120; // 2 seconds of flashing markers before the sea rises
@@ -55,6 +60,7 @@ export class VersusScene {
 
   startRound() {
     this.entityGroups.clear('players');
+    this.entityGroups.clear('rockets');
     for (const spawn of PLAYER_SPAWNS) {
       const seed = Math.floor(this.random.next() * 2 ** 32);
       this.entityGroups.add('players', new Player({ ...spawn, seed }));
@@ -88,14 +94,17 @@ export class VersusScene {
         this.fightTicks++;
         this.updateSuddenDeath();
         this.updatePlayers(inputByPlayerId);
+        this.updateRockets();
         this.checkRoundEnd();
         break;
       case 'point':
         this.updatePlayers(null);
+        this.updateRockets();
         if (this.ticksRemaining <= 0) this.startRound();
         break;
       case 'match':
         this.updatePlayers(null);
+        this.updateRockets();
         if (this.ticksRemaining <= 0 && Object.values(inputByPlayerId).some((input) => input.jump)) {
           for (const id in this.wins) this.wins[id] = 0;
           this.startRound();
@@ -126,6 +135,7 @@ export class VersusScene {
       player.update(inputByPlayerId ? inputByPlayerId[player.id] : null, platforms);
       if (player.playedCardName) {
         this.events.emit('card-played', { playerId: player.id, cardName: player.playedCardName });
+        if (player.playedCardName === 'rocket') this.spawnRocket(player);
       }
       if (!player.inWater && player.y + player.height >= this.waterLineY) {
         player.startSinking();
@@ -136,12 +146,49 @@ export class VersusScene {
     this.resolvePlayerCollisions();
   }
 
-  // Only snaps once the player has fully left the screen; Player.render draws the crossing itself.
-  wrapPlayerAroundScreen(player) {
-    if (player.x + player.width < 0) player.x += SCREEN_WIDTH;
-    else if (player.x > SCREEN_WIDTH) player.x -= SCREEN_WIDTH;
-    else return;
+  spawnRocket(player) {
+    const spawnX = player.facing > 0 ? player.x + player.width : player.x - ROCKET_WIDTH;
+    const spawnY = player.y + player.height / 2 - ROCKET_HEIGHT / 2;
+    this.entityGroups.add('rockets', new Rocket({ x: spawnX, y: spawnY, facing: player.facing, shooterId: player.id }));
+  }
 
+  updateRockets() {
+    const platforms = this.entityGroups.get('platforms');
+    for (const rocket of this.entityGroups.get('rockets')) {
+      rocket.update(this.players, platforms);
+      this.wrapAroundScreen(rocket);
+      if (rocket.exploded) this.resolveRocketExplosion(rocket);
+    }
+  }
+
+  resolveRocketExplosion(rocket) {
+    const blastCenterX = rocket.x + rocket.width / 2;
+    const blastCenterY = rocket.y + rocket.height / 2;
+    for (const player of this.players) {
+      if (player.inWater) continue;
+      const distanceX = player.x + player.width / 2 - blastCenterX;
+      const distanceY = player.y + player.height / 2 - blastCenterY;
+      const distance = Math.hypot(distanceX, distanceY);
+      if (distance > BLAST_RADIUS) continue;
+
+      const knockbackDirectionX = distance === 0 ? 1 : distanceX / distance;
+      player.applyKnockback(knockbackDirectionX * BLAST_KNOCKBACK_VELOCITY_X, BLAST_KNOCKBACK_VELOCITY_Y);
+    }
+
+    this.events.emit('rocket-exploded', { x: blastCenterX, y: blastCenterY });
+    this.entityGroups.remove('rockets', rocket);
+  }
+
+  // Only snaps once the entity has fully left the screen; its render draws the crossing itself.
+  wrapAroundScreen(entity) {
+    if (entity.x + entity.width < 0) entity.x += SCREEN_WIDTH;
+    else if (entity.x > SCREEN_WIDTH) entity.x -= SCREEN_WIDTH;
+    else return false;
+    return true;
+  }
+
+  wrapPlayerAroundScreen(player) {
+    if (!this.wrapAroundScreen(player)) return;
     this.events.emit('player-wrapped', { playerId: player.id, x: player.x, y: player.y });
   }
 

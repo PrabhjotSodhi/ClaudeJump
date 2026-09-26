@@ -4,6 +4,9 @@ export const CARD_DEFINITIONS = {
   dash: {
     name: 'dash',
   },
+  rocket: {
+    name: 'rocket',
+  },
 };
 
 // How many copies of each card sit in a deck before it is shuffled.
