@@ -94,7 +94,7 @@ export function drawText(
   if (align === 'right') x -= width;
 
   if (outlineColor) {
-    for (const [dx, dy] of [
+    for (const [offsetX, offsetY] of [
       [-1, 0],
       [1, 0],
       [0, -1],
@@ -104,7 +104,7 @@ export function drawText(
       [-1, 1],
       [1, 1],
     ]) {
-      drawRun(context, text, x + dx, y + dy, scale, outlineColor);
+      drawRun(context, text, x + offsetX, y + offsetY, scale, outlineColor);
     }
   }
   drawRun(context, text, x, y, scale, color);

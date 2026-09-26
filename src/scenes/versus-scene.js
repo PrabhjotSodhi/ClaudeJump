@@ -93,7 +93,9 @@ export class VersusScene {
 
   render(renderer) {
     if (!this.backgroundDrawn) {
-      drawBackground(renderer.backgroundContext, renderer.backgroundCanvas.width, renderer.backgroundCanvas.height);
+      renderer.updateBackground((context) =>
+        drawBackground(context, renderer.backgroundCanvas.width, renderer.backgroundCanvas.height),
+      );
       this.backgroundDrawn = true;
     }
 

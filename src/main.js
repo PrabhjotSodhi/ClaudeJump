@@ -33,12 +33,13 @@ async function main() {
     render(timestamp) {
       sceneManager.render(renderer);
       gameWindow.render({
-        backgroundCanvas: renderer.backgroundCanvas,
+        backgroundCanvas: renderer.backgroundChanged ? renderer.backgroundCanvas : null,
         gameCanvas: renderer.gameCanvas,
         uiCanvas: renderer.uiCanvas,
         waterLineY: sceneManager.currentScene.waterLineY,
         timeSeconds: timestamp / 1000,
       });
+      renderer.backgroundChanged = false;
     },
   });
   gameLoop.start();

@@ -15,6 +15,12 @@ export class Renderer {
     this.backgroundContext = this.backgroundCanvas.getContext('2d');
     this.gameContext = this.gameCanvas.getContext('2d');
     this.uiContext = this.uiCanvas.getContext('2d');
+    this.backgroundChanged = false;
+  }
+
+  updateBackground(draw) {
+    draw(this.backgroundContext);
+    this.backgroundChanged = true;
   }
 
   clearGameLayer() {

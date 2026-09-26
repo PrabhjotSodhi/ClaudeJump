@@ -81,7 +81,7 @@ export function createWindow(canvas, vertexShaderSource, fragmentShaderSource) {
 
   return {
     render({ backgroundCanvas, gameCanvas, uiCanvas, waterLineY, timeSeconds }) {
-      uploadLayer('background', backgroundCanvas);
+      if (backgroundCanvas) uploadLayer('background', backgroundCanvas);
       uploadLayer('game', gameCanvas);
       uploadLayer('ui', uiCanvas);
       webglContext.uniform1f(waterLineUniformLocation, waterLineY);
