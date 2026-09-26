@@ -836,6 +836,160 @@ test('a player touching where a waiting crate hides above the screen does not ta
   assert.equal(red.heldCardName, null);
 });
 
+function findPlatformAt(scene, x, y) {
+  return scene.entityGroups.get('platforms').find((platform) => platform.x === x && platform.y === y);
+}
+
+test('playing Fire Floor sets the platform under the opponent alight', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+
+  const red = findPlayer(scene, 'red');
+  const blue = findPlayer(scene, 'blue');
+  blue.x = 150;
+  blue.y = 60; // standing on the middle platform, top y 72
+  blue.onGround = true;
+  red.heldCardName = 'fire';
+  scene.update(neutralInputs()); // release the card key held from spawn
+
+  const middlePlatform = findPlatformAt(scene, 128, 72);
+  assert.equal(middlePlatform.isBurning, false);
+
+  scene.update({ red: { left: false, right: false, jump: false, card: true }, blue: noInput() });
+
+  assert.equal(middlePlatform.isBurning, true, 'the platform under the opponent catches fire');
+});
+
+test('Fire Floor uses the platform under an airborne opponent', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+
+  const red = findPlayer(scene, 'red');
+  const blue = findPlayer(scene, 'blue');
+  blue.x = 60;
+  blue.y = 90; // mid-air above the side platform (top y 112), not touching it
+  blue.onGround = false;
+  red.heldCardName = 'fire';
+  scene.update(neutralInputs());
+
+  scene.update({ red: { left: false, right: false, jump: false, card: true }, blue: noInput() });
+
+  const sidePlatform = findPlatformAt(scene, 40, 112);
+  assert.equal(sidePlatform.isBurning, true, 'the platform below the airborne opponent catches fire');
+});
+
+test('a player on a burning platform is popped every 30 ticks', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+
+  const blue = findPlayer(scene, 'blue');
+  blue.x = 150;
+  blue.y = 60;
+  blue.onGround = true;
+  const middlePlatform = findPlatformAt(scene, 128, 72);
+  middlePlatform.igniteWithFire();
+
+  const popTicks = [];
+  for (let tick = 1; tick <= 90; tick++) {
+    const velocityYBefore = blue.velocityY;
+    scene.update(neutralInputs());
+    if (velocityYBefore >= 0 && blue.velocityY < 0) popTicks.push(tick);
+  }
+
+  assert.deepEqual(popTicks, [30, 60, 90]);
+});
+
+test('a pop pushes a standing player upward and away from the platform center', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+
+  const blue = findPlayer(scene, 'blue');
+  blue.x = 150; // left of the middle platform's center (128 + 32 = 160)
+  blue.y = 60;
+  blue.onGround = true;
+  const middlePlatform = findPlatformAt(scene, 128, 72);
+  middlePlatform.igniteWithFire();
+
+  const popEvents = [];
+  scene.events.on('platform-popped', (event) => popEvents.push(event));
+
+  advance(scene, 30);
+
+  assert.equal(popEvents.length, 1);
+  assert.ok(blue.velocityY < 0, 'the popped player is launched upward');
+  assert.ok(blue.knockbackVelocityX < 0, 'blue sits left of center and is pushed further left');
+});
+
+test('the player who played Fire Floor is popped too if they stand on the burning platform', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+
+  const red = findPlayer(scene, 'red');
+  const blue = findPlayer(scene, 'blue');
+  red.x = 130;
+  red.y = 60;
+  red.onGround = true;
+  blue.x = 170;
+  blue.y = 60;
+  blue.onGround = true;
+  red.heldCardName = 'fire';
+  scene.update(neutralInputs());
+  scene.update({ red: { left: false, right: false, jump: false, card: true }, blue: noInput() });
+
+  advance(scene, 30);
+
+  assert.ok(red.velocityY < 0, 'the player who played the card is popped too when standing on the fire');
+  assert.ok(blue.velocityY < 0, 'the opponent standing on the same platform is popped too');
+});
+
+test('the fire ends after 180 ticks', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+
+  const middlePlatform = findPlatformAt(scene, 128, 72);
+  middlePlatform.igniteWithFire();
+
+  advance(scene, 179);
+  assert.equal(middlePlatform.isBurning, true, 'still burning just before 180 ticks');
+
+  scene.update(neutralInputs());
+  assert.equal(middlePlatform.isBurning, false, 'the fire ends at 180 ticks');
+});
+
+test('nothing burns and the card is still spent when the opponent is airborne with no platform below them', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+
+  const red = findPlayer(scene, 'red');
+  const blue = findPlayer(scene, 'blue');
+  blue.x = 0; // no platform sits under x 0 (see the crate test for the same gap)
+  blue.y = 90;
+  blue.onGround = false;
+  red.heldCardName = 'fire';
+  scene.update(neutralInputs());
+
+  scene.update({ red: { left: false, right: false, jump: false, card: true }, blue: noInput() });
+
+  assert.equal(red.heldCardName, null, 'the card is spent');
+  for (const platform of scene.entityGroups.get('platforms')) assert.equal(platform.isBurning, false);
+});
+
+test('fire is cleared from every platform at the start of a new round', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+
+  const middlePlatform = findPlatformAt(scene, 128, 72);
+  middlePlatform.igniteWithFire();
+
+  findPlayer(scene, 'red').y = 300;
+  scene.update(neutralInputs());
+  assert.equal(scene.phase, 'point');
+
+  advance(scene, 90); // point pause resolves back to a fresh 'ready' round
+  assert.equal(scene.phase, 'ready');
+  assert.equal(middlePlatform.isBurning, false, 'fire does not carry over into the next round');
+});
+
 test('a crate with no platform below it falls into the sea and the next crate is scheduled', () => {
   const scene = new VersusScene();
   advance(scene, READY_TICKS);
