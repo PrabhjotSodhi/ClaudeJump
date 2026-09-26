@@ -11,6 +11,7 @@ import { Rocket, ROCKET_WIDTH, ROCKET_HEIGHT } from '../entities/rocket.js';
 import { PLATFORM_LAYOUTS, PLAYER_SPAWNS, WATER_LINE_Y, drawBackground } from '../levels/versus-arena.js';
 import { drawHeldCardIcons } from '../ui/held-card-icons.js';
 import { drawHud } from '../ui/hud.js';
+import { MatchStats } from '../ui/match-stats.js';
 
 const WINS_NEEDED = 5;
 const READY_TICKS = 60;
@@ -62,6 +63,11 @@ export class VersusScene {
     // Elapsed scene ticks, kept across rounds. Display-only effects (like the held card flash)
     // time themselves off it instead of off rendered frames.
     this.tickCount = 0;
+    // Display data for the results screen, counted only from events. Created here (rather than
+    // lazily on first render) so it never misses an event: dev mode can run a whole match through
+    // step() with no render call in between. Game logic never reads it, only the HUD does.
+    this.matchStats = new MatchStats(Object.keys(this.wins));
+    this.matchStats.attach(this.events, () => this.phase === 'fight');
     this.startRound();
   }
 
@@ -127,10 +133,7 @@ export class VersusScene {
       case 'match':
         this.updatePlayers(null);
         this.updateRockets();
-        if (this.ticksRemaining <= 0 && Object.values(inputByPlayerId).some((input) => input.jump)) {
-          for (const id in this.wins) this.wins[id] = 0;
-          this.startRound();
-        }
+        if (this.ticksRemaining <= 0) this.updateMatchReadiness(inputByPlayerId);
         break;
     }
   }
@@ -463,7 +466,36 @@ export class VersusScene {
     if (this.wins[this.winnerId] >= WINS_NEEDED) {
       this.phase = 'match';
       this.ticksRemaining = RESTART_DELAY_TICKS;
+      this.matchReadyIds = new Set();
+      this.matchReadinessBaseline = null;
     }
+  }
+
+  // Each player readies up with a fresh press of jump. The baseline is captured from the real
+  // input on the first tick the results screen is showing, so a press already held over from the
+  // fight (or from mashing jump during the delay before the screen appears) never counts on its
+  // own: it must be released and pressed again once the screen is up.
+  updateMatchReadiness(inputByPlayerId) {
+    if (!this.matchReadinessBaseline) {
+      this.matchReadinessBaseline = {};
+      for (const playerId in inputByPlayerId) this.matchReadinessBaseline[playerId] = inputByPlayerId[playerId].jump;
+      return;
+    }
+
+    for (const playerId in inputByPlayerId) {
+      const jumpPressed = inputByPlayerId[playerId].jump;
+      if (jumpPressed && !this.matchReadinessBaseline[playerId]) this.matchReadyIds.add(playerId);
+      this.matchReadinessBaseline[playerId] = jumpPressed;
+    }
+
+    if (this.matchReadyIds.size >= Object.keys(this.wins).length) this.startNewMatch();
+  }
+
+  startNewMatch() {
+    for (const id in this.wins) this.wins[id] = 0;
+    this.matchStats.reset();
+    this.events.emit('match-started', {});
+    this.startRound();
   }
 
   render(renderer) {
