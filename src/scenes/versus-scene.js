@@ -237,13 +237,13 @@ export class VersusScene {
       return;
     }
 
-    crate.update();
+    crate.update(this.entityGroups.get('platforms'));
     if (crate.y + crate.height >= this.waterLineY) {
       this.entityGroups.remove('crates', crate);
       this.scheduleNextCrate();
       return;
     }
-    if (crate.landed) this.checkCratePickup(crate);
+    this.checkCratePickup(crate);
   }
 
   // The landing spot and the card both come from the scene's seeded random, so the same seed
