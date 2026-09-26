@@ -222,6 +222,65 @@ test('two players held into each other settle at a gap of zero, not a buzz', () 
   assert.ok(contactStarted, 'the players should have made contact');
 });
 
+test('a stomp bounces the stomper up and knocks the other player sideways, away from the stomper', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+
+  const red = findPlayer(scene, 'red');
+  const blue = findPlayer(scene, 'blue');
+  blue.x = 150;
+  blue.y = 60;
+  blue.onGround = true;
+  red.x = 146; // left of blue's center, so a stomp should knock blue further right
+  red.y = 45;
+  red.velocityY = 2;
+  red.onGround = false;
+
+  const stompEvents = [];
+  scene.events.on('player-stomped', (event) => stompEvents.push(event));
+
+  for (let tick = 0; tick < 5; tick++) {
+    scene.update({ red: { left: false, right: false, jump: true }, blue: noInput() });
+  }
+
+  assert.deepEqual(stompEvents, [{ stomperId: 'red', stompedId: 'blue' }]);
+  assert.ok(red.velocityY < 0, 'the stomper bounces upward');
+  assert.ok(blue.knockbackVelocityX > 0, 'the stomped player is knocked away from the stomper');
+  assert.ok(blue.dizzyTicksRemaining > 0, 'the stomped player is dizzy');
+});
+
+test('holding jump during a stomp bounces higher than not holding it', () => {
+  function stompAndBounce(jumpHeldDuringStomp) {
+    const scene = new VersusScene();
+    advance(scene, READY_TICKS);
+
+    const red = findPlayer(scene, 'red');
+    const blue = findPlayer(scene, 'blue');
+    blue.x = 150;
+    blue.y = 60;
+    blue.onGround = true;
+    red.x = 150;
+    red.y = 45;
+    red.velocityY = 2;
+    red.onGround = false;
+    scene.update({ red: noInput(), blue: noInput() }); // release the jump key held from spawn
+
+    for (let tick = 0; tick < 5; tick++) {
+      scene.update({ red: { left: false, right: false, jump: jumpHeldDuringStomp }, blue: noInput() });
+      if (red.velocityY < 0) return red.velocityY;
+    }
+    throw new Error('the stomp never bounced the stomper');
+  }
+
+  const bounceHoldingJump = stompAndBounce(true);
+  const bounceWithoutJump = stompAndBounce(false);
+
+  assert.ok(
+    bounceHoldingJump < bounceWithoutJump,
+    'holding jump should launch the stomper higher (a more negative velocity)',
+  );
+});
+
 test('a running jump from a side platform lands on the middle platform', () => {
   const scene = new VersusScene();
   advance(scene, READY_TICKS);
