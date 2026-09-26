@@ -100,6 +100,100 @@ test('running the same input records twice produces identical game state', () =>
   assert.deepEqual(runToSnapshot(), runToSnapshot());
 });
 
+test('two players running into each other end up side by side, never overlapping', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+
+  const red = findPlayer(scene, 'red');
+  const blue = findPlayer(scene, 'blue');
+  red.x = 132;
+  red.y = 60;
+  red.onGround = true;
+  blue.x = 178;
+  blue.y = 60;
+  blue.onGround = true;
+
+  for (let tick = 0; tick < 60; tick++) {
+    scene.update({ red: { left: false, right: true, jump: false }, blue: { left: true, right: false, jump: false } });
+  }
+
+  assert.equal(red.overlaps(blue), false);
+  assert.ok(red.x < blue.x, 'red stays on the left, blue stays on the right');
+});
+
+test('a player running into a standing player pushes them', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+
+  const red = findPlayer(scene, 'red');
+  const blue = findPlayer(scene, 'blue');
+  red.x = 132;
+  red.y = 60;
+  red.onGround = true;
+  blue.x = 170;
+  blue.y = 60;
+  blue.onGround = true;
+  const blueStartX = blue.x;
+
+  for (let tick = 0; tick < 40; tick++) {
+    scene.update({ red: { left: false, right: true, jump: false }, blue: noInput() });
+  }
+
+  assert.ok(blue.x > blueStartX, 'the standing player gets shoved away');
+  assert.equal(red.overlaps(blue), false);
+});
+
+test('a player jumping over another is not pushed sideways', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+
+  const red = findPlayer(scene, 'red');
+  const blue = findPlayer(scene, 'blue');
+  red.x = 132;
+  red.y = 60;
+  red.onGround = true;
+  blue.x = 150;
+  blue.y = 60;
+  blue.onGround = true;
+  const blueStartX = blue.x;
+
+  const bumpEvents = [];
+  scene.events.on('players-bumped', (event) => bumpEvents.push(event));
+
+  scene.update({ red: noInput(), blue: noInput() }); // releases the jump key held from spawn before pressing it fresh
+
+  for (let tick = 0; tick < 35; tick++) {
+    scene.update({ red: { left: false, right: true, jump: tick < 15 }, blue: noInput() });
+  }
+
+  assert.equal(blue.x, blueStartX, 'jumping over does not shove the other player');
+  assert.deepEqual(bumpEvents, []);
+});
+
+test('players-bumped fires once per contact, not every tick', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+
+  const red = findPlayer(scene, 'red');
+  const blue = findPlayer(scene, 'blue');
+  red.x = 132;
+  red.y = 60;
+  red.onGround = true;
+  blue.x = 178;
+  blue.y = 60;
+  blue.onGround = true;
+
+  const bumpEvents = [];
+  scene.events.on('players-bumped', (event) => bumpEvents.push(event));
+
+  for (let tick = 0; tick < 60; tick++) {
+    scene.update({ red: { left: false, right: true, jump: false }, blue: { left: true, right: false, jump: false } });
+  }
+
+  assert.equal(bumpEvents.length, 1);
+  assert.deepEqual(bumpEvents[0], { playerIds: ['red', 'blue'] });
+});
+
 test('a running jump from a side platform lands on the middle platform', () => {
   const scene = new VersusScene();
   advance(scene, READY_TICKS);
