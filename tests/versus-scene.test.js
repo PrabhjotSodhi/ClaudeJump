@@ -5,6 +5,7 @@ import { Crate } from '../src/entities/crate.js';
 import { Rocket } from '../src/entities/rocket.js';
 import { BouncePad } from '../src/entities/bounce-pad.js';
 import { VersusScene } from '../src/scenes/versus-scene.js';
+import { MatchStats } from '../src/ui/match-stats.js';
 
 function noInput() {
   return { left: false, right: false, jump: false };
@@ -1151,4 +1152,70 @@ test('a crate with no platform below it falls into the sea and the next crate is
     ticksSinceLost++;
     if (ticksSinceLost > 300) throw new Error('the next crate was never scheduled');
   }
+});
+
+const RESTART_DELAY_TICKS = 60;
+
+function reachMatchPhase(scene) {
+  for (let win = 1; win <= 5; win++) {
+    advance(scene, READY_TICKS);
+    findPlayer(scene, 'blue').y = 300;
+    scene.update(neutralInputs());
+    if (win < 5) advance(scene, 90); // point pause resolves back to a fresh 'ready' round
+  }
+}
+
+test('a fall landed after the round is already decided is not counted in match stats', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+
+  const stats = new MatchStats(['red', 'blue']);
+  stats.attach(scene.events, () => scene.phase === 'fight');
+
+  const red = findPlayer(scene, 'red');
+  const blue = findPlayer(scene, 'blue');
+
+  red.y = 300; // red falls in during the fight, deciding the round
+  scene.update(neutralInputs());
+  assert.equal(scene.phase, 'point');
+  assert.deepEqual(stats.fallsIn, { red: 1, blue: 0 });
+
+  // A late rocket (or leftover momentum) knocks the winner in after the round is already over.
+  blue.y = 300;
+  scene.update(neutralInputs());
+  assert.equal(blue.inWater, true, 'blue still falls in; the event still fires');
+  assert.deepEqual(stats.fallsIn, { red: 1, blue: 0 }, 'the post-decision fall is not counted');
+});
+
+test('a new match starts only once every player is ready', () => {
+  const scene = new VersusScene();
+  reachMatchPhase(scene);
+  assert.equal(scene.phase, 'match');
+
+  // The results screen is not showing yet; a jump here (still held from the fight) never counts.
+  for (let tick = 0; tick < RESTART_DELAY_TICKS; tick++) {
+    scene.update({ red: { left: false, right: false, jump: true }, blue: { left: false, right: false, jump: true } });
+  }
+  assert.equal(scene.phase, 'match');
+
+  // The results screen is showing now, but both players are still holding jump from before it
+  // appeared. A press held over like this must not count.
+  scene.update({ red: { left: false, right: false, jump: true }, blue: { left: false, right: false, jump: true } });
+  assert.equal(scene.phase, 'match', 'a press held over from before the results screen does not ready anyone up');
+  assert.equal(scene.matchReadyIds.size, 0);
+
+  // Red releases and presses again: a fresh press, so only red is ready.
+  scene.update(neutralInputs());
+  scene.update({ red: { left: false, right: false, jump: true }, blue: noInput() });
+  assert.equal(scene.matchReadyIds.has('red'), true);
+  assert.equal(scene.matchReadyIds.has('blue'), false);
+  assert.equal(scene.phase, 'match', 'the match does not restart until every player is ready');
+
+  // Blue releases and presses too: now both are ready.
+  scene.update(neutralInputs());
+  scene.update({ red: noInput(), blue: { left: false, right: false, jump: true } });
+
+  assert.equal(scene.phase, 'ready', 'the new match starts once every player is ready');
+  assert.equal(scene.wins.red, 0);
+  assert.equal(scene.wins.blue, 0);
 });
