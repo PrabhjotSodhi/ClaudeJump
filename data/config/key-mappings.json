@@ -1,0 +1,4 @@
+[
+  { "id": "red", "keys": { "left": "KeyA", "right": "KeyD", "jump": "KeyW" } },
+  { "id": "blue", "keys": { "left": "ArrowLeft", "right": "ArrowRight", "jump": "ArrowUp" } }
+]
