@@ -27,6 +27,32 @@ test('horizontal knockback decays to zero over time', () => {
   assert.equal(entity.knockbackVelocityX, 0);
 });
 
+function knockbackDistance(onGround, knockbackVelocityX) {
+  const entity = makeEntity();
+  entity.onGround = onGround;
+  entity.applyKnockback(knockbackVelocityX, 0);
+  const startX = entity.x;
+
+  for (let tick = 0; tick < 200; tick++) {
+    entity.onGround = onGround; // moveAndCollide clears onGround each tick when there are no platforms to land on
+    entity.moveAndCollide([]);
+  }
+
+  return entity.x - startX;
+}
+
+test('air knockback carries farther than the same ground knockback', () => {
+  const groundDistance = knockbackDistance(true, 6);
+  const airDistance = knockbackDistance(false, 6);
+  assert.ok(airDistance > groundDistance);
+  assert.ok(groundDistance < 40, `expected under 40px on the ground, got ${groundDistance}px`);
+});
+
+test('a horizontal knockback of 6 in the air carries the player between 60 and 90 px', () => {
+  const distance = knockbackDistance(false, 6);
+  assert.ok(distance >= 60 && distance <= 90, `expected 60-90px, got ${distance}px`);
+});
+
 test('hitting a wall stops horizontal knockback', () => {
   const entity = makeEntity();
   const wall = { x: 108, y: 90, width: 8, height: 40 };
@@ -47,7 +73,8 @@ test('a player holding a direction still changes course during knockback', () =>
   const noInput = { left: false, right: false, jump: false };
 
   // Both players drift right on the knockback at first; steering only wins out over it after several ticks.
-  const TICKS_BEFORE_REVERSAL = 7;
+  // Air knockback decays slowly, so this takes longer than it would on the ground.
+  const TICKS_BEFORE_REVERSAL = 13;
   for (let tick = 0; tick < TICKS_BEFORE_REVERSAL; tick++) {
     holdLeftPlayer.update(holdLeft, []);
     idlePlayer.update(noInput, []);
