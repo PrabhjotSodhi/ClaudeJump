@@ -1,0 +1,3 @@
+[build]
+  command = "mkdir -p dist && cp -r index.html src data dist"
+  publish = "dist"
