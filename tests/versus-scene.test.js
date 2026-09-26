@@ -321,6 +321,8 @@ test('a player moving past the right edge reappears on the left with the same ve
   red.x = SCREEN_WIDTH - 30;
   red.y = 60;
   blue.x = 150; // out of the way, on screen
+  blue.y = 60; // standing on the middle platform, not mid-air where it would fall in and end the round
+  blue.onGround = true;
 
   const wrapEvents = [];
   scene.events.on('player-wrapped', (event) => wrapEvents.push(event));
@@ -359,6 +361,77 @@ test('a running jump from a side platform lands on the middle platform', () => {
   assert.equal(red.inWater, false);
   assert.equal(red.y, 60); // standing on the middle platform (y 72, player height 12)
   assert.ok(red.x + red.width > 128 && red.x < 192, 'red should be within the middle platform bounds');
+});
+
+const SUDDEN_DEATH_ROUND_TICKS = 1800;
+const SUDDEN_DEATH_WARNING_TICKS = 120;
+
+test('the sudden death warning starts exactly 1800 ticks after Go!', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+  assert.equal(scene.phase, 'fight');
+
+  const suddenDeathEvents = [];
+  scene.events.on('sudden-death-started', (event) => suddenDeathEvents.push(event));
+
+  advance(scene, SUDDEN_DEATH_ROUND_TICKS - 1);
+  assert.equal(scene.suddenDeathPhase, 'none');
+  assert.deepEqual(suddenDeathEvents, []);
+
+  scene.update(neutralInputs());
+  assert.equal(scene.suddenDeathPhase, 'warning');
+  assert.deepEqual(suddenDeathEvents, [{}]);
+});
+
+test('the sea rises only after the warning ends, and a player standing below it loses the round', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+  advance(scene, SUDDEN_DEATH_ROUND_TICKS);
+  assert.equal(scene.suddenDeathPhase, 'warning');
+
+  const waterLineBeforeRising = scene.waterLineY;
+  advance(scene, SUDDEN_DEATH_WARNING_TICKS - 1);
+  assert.equal(scene.waterLineY, waterLineBeforeRising, 'the sea stays put during the warning');
+
+  scene.update(neutralInputs());
+  assert.equal(scene.suddenDeathPhase, 'rising');
+  assert.ok(scene.waterLineY < waterLineBeforeRising, 'the sea starts rising');
+
+  // Fast-forward the sea between the two platform heights (side platforms bottom at 112, middle at 72):
+  // red on the middle platform should stay dry while blue on a side platform is swallowed.
+  scene.waterLineY = 90;
+  const red = findPlayer(scene, 'red');
+  red.x = 132;
+  red.y = 60; // standing on the middle platform, top y 72
+  red.onGround = true;
+  const blue = findPlayer(scene, 'blue');
+  blue.x = 60;
+  blue.y = 100; // standing on the side platform, top y 112
+  blue.onGround = true;
+
+  scene.update(neutralInputs());
+
+  assert.equal(blue.inWater, true, 'the risen sea reaches the side platform');
+  assert.equal(red.inWater, false, 'the middle platform is still above the sea');
+  assert.equal(scene.phase, 'point');
+  assert.equal(scene.winnerId, 'red');
+});
+
+test('the timer and the sea reset for the next round', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+  advance(scene, SUDDEN_DEATH_ROUND_TICKS);
+  assert.equal(scene.suddenDeathPhase, 'warning');
+
+  findPlayer(scene, 'red').y = 300;
+  scene.update(neutralInputs());
+  assert.equal(scene.phase, 'point');
+
+  advance(scene, 90); // point pause resolves back to a fresh 'ready' round
+  assert.equal(scene.phase, 'ready');
+  assert.equal(scene.suddenDeathPhase, 'none');
+  assert.equal(scene.fightTicks, 0);
+  assert.equal(scene.waterLineY, 164);
 });
 
 test('startInFightPhase skips the Ready countdown for the first round only', () => {

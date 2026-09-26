@@ -20,6 +20,12 @@ const STOMP_KNOCKBACK_VELOCITY_X = 2.5;
 const STOMP_KNOCKBACK_VELOCITY_Y = 1;
 const DIZZY_TICKS = 20;
 
+const SUDDEN_DEATH_ROUND_TICKS = 1800; // 30 seconds; the round timer and the warning start point
+const SUDDEN_DEATH_WARNING_TICKS = 120; // 2 seconds of flashing markers before the sea rises
+const SUDDEN_DEATH_RISE_TICKS = 1200; // 20 seconds for the sea to reach the middle platform
+const SUDDEN_DEATH_TARGET_Y = 72; // middle platform top
+const SUDDEN_DEATH_RISE_PER_TICK = (WATER_LINE_Y - SUDDEN_DEATH_TARGET_Y) / SUDDEN_DEATH_RISE_TICKS;
+
 export class VersusScene {
   constructor({ startInFightPhase = false } = {}) {
     this.events = new EventEmitter();
@@ -40,6 +46,10 @@ export class VersusScene {
     return this.entityGroups.get('players');
   }
 
+  get suddenDeathCountdownTicks() {
+    return Math.max(0, SUDDEN_DEATH_ROUND_TICKS - this.fightTicks);
+  }
+
   startRound() {
     this.entityGroups.clear('players');
     for (const spawn of PLAYER_SPAWNS) this.entityGroups.add('players', new Player(spawn));
@@ -54,6 +64,9 @@ export class VersusScene {
     this.winnerId = null;
     this.bumpingPairIds.clear();
     this.stompingPairIds.clear();
+    this.waterLineY = WATER_LINE_Y;
+    this.fightTicks = 0;
+    this.suddenDeathPhase = 'none';
   }
 
   update(inputByPlayerId) {
@@ -66,6 +79,8 @@ export class VersusScene {
         }
         break;
       case 'fight':
+        this.fightTicks++;
+        this.updateSuddenDeath();
         this.updatePlayers(inputByPlayerId);
         this.checkRoundEnd();
         break;
@@ -83,11 +98,27 @@ export class VersusScene {
     }
   }
 
+  updateSuddenDeath() {
+    if (this.suddenDeathPhase === 'none' && this.fightTicks >= SUDDEN_DEATH_ROUND_TICKS) {
+      this.suddenDeathPhase = 'warning';
+      this.events.emit('sudden-death-started', {});
+    } else if (
+      this.suddenDeathPhase === 'warning' &&
+      this.fightTicks >= SUDDEN_DEATH_ROUND_TICKS + SUDDEN_DEATH_WARNING_TICKS
+    ) {
+      this.suddenDeathPhase = 'rising';
+    }
+
+    if (this.suddenDeathPhase === 'rising') {
+      this.waterLineY = Math.max(SUDDEN_DEATH_TARGET_Y, this.waterLineY - SUDDEN_DEATH_RISE_PER_TICK);
+    }
+  }
+
   updatePlayers(inputByPlayerId) {
     const platforms = this.entityGroups.get('platforms');
     for (const player of this.players) {
       player.update(inputByPlayerId ? inputByPlayerId[player.id] : null, platforms);
-      if (!player.inWater && player.y > this.waterLineY) {
+      if (!player.inWater && player.y + player.height >= this.waterLineY) {
         player.startSinking();
         this.events.emit('player-fell-in-water', { playerId: player.id });
       }
