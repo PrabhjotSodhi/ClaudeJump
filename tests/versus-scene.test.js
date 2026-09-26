@@ -20,6 +20,7 @@ function findPlayer(scene, id) {
 }
 
 const READY_TICKS = 60;
+const BUMP_KNOCKBACK_VELOCITY_X = 1.5;
 
 test('falling in the sea scores the other player', () => {
   const scene = new VersusScene();
@@ -432,6 +433,48 @@ test('the timer and the sea reset for the next round', () => {
   assert.equal(scene.suddenDeathPhase, 'none');
   assert.equal(scene.fightTicks, 0);
   assert.equal(scene.waterLineY, 164);
+});
+
+test('a dash into the opponent knocks them away', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+
+  const red = findPlayer(scene, 'red');
+  const blue = findPlayer(scene, 'blue');
+  red.x = 132;
+  red.y = 60;
+  red.onGround = true;
+  red.facing = 1;
+  blue.x = 150;
+  blue.y = 60;
+  blue.onGround = true;
+  const blueStartX = blue.x;
+
+  const cardEvents = [];
+  scene.events.on('card-played', (event) => cardEvents.push(event));
+
+  // Release the jump/card keys held from spawn before pressing fresh, then dash with slot 1 (card1).
+  scene.update({ red: noInput(), blue: noInput() });
+  scene.update({ red: { left: false, right: false, jump: false, card1: true }, blue: noInput() });
+
+  assert.deepEqual(cardEvents, [{ playerId: 'red', cardName: 'dash' }]);
+
+  const bumpEvents = [];
+  scene.events.on('players-bumped', (event) => bumpEvents.push(event));
+
+  for (let tick = 0; tick < 10 && bumpEvents.length === 0; tick++) {
+    scene.update({ red: noInput(), blue: noInput() });
+  }
+
+  assert.equal(bumpEvents.length, 1, 'the dash carries red into blue');
+  assert.ok(blue.knockbackVelocityX > BUMP_KNOCKBACK_VELOCITY_X, 'a dash hit knocks harder than an ordinary bump');
+
+  for (let tick = 0; tick < 15; tick++) {
+    scene.update({ red: noInput(), blue: noInput() });
+  }
+
+  assert.ok(blue.x > blueStartX, 'the dashed-into player is knocked away');
+  assert.equal(red.overlaps(blue), false);
 });
 
 test('startInFightPhase skips the Ready countdown for the first round only', () => {
