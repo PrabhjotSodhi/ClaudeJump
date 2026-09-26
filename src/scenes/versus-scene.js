@@ -515,9 +515,9 @@ export class VersusScene {
     }
 
     renderer.clearGameLayer();
+    drawWrapPuffs(renderer.gameContext, this);
     this.entityGroups.renderAll(renderer.gameContext);
     drawHeldCardIcons(renderer.gameContext, this);
-    drawWrapPuffs(renderer.gameContext, this);
 
     renderer.clearUiLayer();
     drawHud(renderer.uiContext, this);

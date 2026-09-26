@@ -5,7 +5,11 @@ import { PLAYER_HEIGHT, PLAYER_WIDTH } from '../entities/player.js';
 // screen's refresh rate. Never read by game logic, and never changes it: it only reacts to
 // the player-wrapped event.
 const FADE_TICKS = 18; // about 0.3 seconds at 60 ticks per second
-const PUFF_SIZE = 10;
+// A hollow ring, clearly bigger than the 8x12 player, so it reads as a puff around them
+// instead of a block sitting on top of them.
+const PUFF_WIDTH = PLAYER_WIDTH + 8;
+const PUFF_HEIGHT = PLAYER_HEIGHT + 8;
+const PUFF_RING_THICKNESS = 3;
 
 export class WrapPuffTracker {
   constructor() {
@@ -26,16 +30,28 @@ export class WrapPuffTracker {
   }
 }
 
-// Drawn on the game layer, right after the entities, so the puff sits at the same spot the
-// player is drawn at the moment they wrap.
+function drawRing(context, x, y) {
+  context.fillRect(x, y, PUFF_WIDTH, PUFF_RING_THICKNESS);
+  context.fillRect(x, y + PUFF_HEIGHT - PUFF_RING_THICKNESS, PUFF_WIDTH, PUFF_RING_THICKNESS);
+  context.fillRect(x, y + PUFF_RING_THICKNESS, PUFF_RING_THICKNESS, PUFF_HEIGHT - 2 * PUFF_RING_THICKNESS);
+  context.fillRect(
+    x + PUFF_WIDTH - PUFF_RING_THICKNESS,
+    y + PUFF_RING_THICKNESS,
+    PUFF_RING_THICKNESS,
+    PUFF_HEIGHT - 2 * PUFF_RING_THICKNESS,
+  );
+}
+
+// Drawn on the game layer, before the entities, so the player renders on top of it instead of
+// the puff hiding them the moment they wrap.
 export function drawWrapPuffs(context, scene) {
   for (const puff of scene.wrapPuffTracker.activePuffs(scene.tickCount)) {
     const age = scene.tickCount - puff.spawnTick;
     context.globalAlpha = 1 - age / FADE_TICKS;
     context.fillStyle = puff.color;
-    const drawX = Math.round(puff.x + PLAYER_WIDTH / 2 - PUFF_SIZE / 2);
-    const drawY = Math.round(puff.y + PLAYER_HEIGHT / 2 - PUFF_SIZE / 2);
-    context.fillRect(drawX, drawY, PUFF_SIZE, PUFF_SIZE);
+    const drawX = Math.round(puff.x + PLAYER_WIDTH / 2 - PUFF_WIDTH / 2);
+    const drawY = Math.round(puff.y + PLAYER_HEIGHT / 2 - PUFF_HEIGHT / 2);
+    drawRing(context, drawX, drawY);
   }
   context.globalAlpha = 1;
 }
