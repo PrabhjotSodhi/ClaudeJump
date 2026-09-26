@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import { SCREEN_WIDTH } from '../src/engine/config.js';
 import { Crate } from '../src/entities/crate.js';
 import { Rocket } from '../src/entities/rocket.js';
+import { BouncePad } from '../src/entities/bounce-pad.js';
 import { VersusScene } from '../src/scenes/versus-scene.js';
 
 function noInput() {
@@ -551,6 +552,130 @@ test('a rocket wraps around the screen edges like a player', () => {
   scene.update(neutralInputs());
 
   assert.ok(rocket.x < SCREEN_WIDTH, 'the rocket reappears from the left edge once it has fully crossed the right one');
+});
+
+// Runs until the player's velocityY turns non-negative (the arc has peaked) and returns how far
+// above the starting height the player rose. Bails out well before either arc could plausibly
+// still be rising, so a broken launch that never turns over fails loudly instead of looping.
+function riseToApex(scene, playerId, input) {
+  const player = findPlayer(scene, playerId);
+  const startY = player.y;
+  let apexY = startY;
+  for (let tick = 0; tick < 120; tick++) {
+    scene.update(input);
+    apexY = Math.min(apexY, player.y);
+    if (player.velocityY >= 0) break;
+  }
+  return startY - apexY;
+}
+
+test('landing on a bounce pad launches the player higher than a jump', () => {
+  const jumpScene = new VersusScene();
+  advance(jumpScene, READY_TICKS);
+  jumpScene.update(neutralInputs()); // release the jump key held from spawn
+  // Held the whole way up, so the jump reaches its full, uncut height.
+  const jumpRise = riseToApex(jumpScene, 'red', {
+    red: { left: false, right: false, jump: true, card: false },
+    blue: noInput(),
+  });
+  assert.ok(jumpRise > 0, 'a held jump rises above its starting height');
+
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+  // A gap with no platform above or below it, so nothing but gravity shapes either player's arc.
+  scene.entityGroups.add('bouncePads', new BouncePad({ x: 118, y: 140 }));
+
+  const red = findPlayer(scene, 'red');
+  red.x = 120;
+  red.y = 124; // feet above the pad's top surface
+  red.velocityY = 6; // already falling at max speed, so this tick's fall crosses the pad
+  red.onGround = false;
+  scene.update(neutralInputs()); // the fall crosses the pad and launches red this tick
+  assert.ok(red.velocityY < 0, 'the pad launches the player upward');
+
+  const padRise = riseToApex(scene, 'red', neutralInputs());
+
+  assert.ok(padRise > jumpRise, 'the pad launches the player higher than a full held jump');
+});
+
+test('walking into the side of a bounce pad does nothing', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+  // Sitting on top of the middle platform, at the same feet level a standing player already has.
+  scene.entityGroups.add('bouncePads', new BouncePad({ x: 150, y: 69 }));
+
+  const red = findPlayer(scene, 'red');
+  red.x = 130; // on the middle platform, approaching the pad from the side
+  red.y = 60;
+  red.velocityY = 0;
+  red.onGround = true;
+
+  for (let tick = 0; tick < 20; tick++) {
+    scene.update({ red: { left: false, right: true, jump: false, card: false }, blue: noInput() });
+  }
+
+  assert.equal(red.velocityY, 0, 'walking past the pad from the side never launches the player');
+});
+
+test('a player falling well below a bounce pad, overlapping it only horizontally, is not launched', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+  // A gap with no platform, so the fall is uninterrupted and stays clear of the water line.
+  scene.entityGroups.add('bouncePads', new BouncePad({ x: 118, y: 80 }));
+
+  const red = findPlayer(scene, 'red');
+  red.x = 120; // overlaps the pad horizontally
+  red.y = 140; // feet already far below the pad's top surface, not crossing it this tick
+  red.velocityY = 6; // falling
+  red.onGround = false;
+
+  scene.update(neutralInputs());
+
+  assert.ok(red.velocityY > 0, 'still falling, never launched, despite the horizontal overlap');
+});
+
+test('a player standing where a bounce pad appears is launched at once', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+
+  const red = findPlayer(scene, 'red');
+  const blue = findPlayer(scene, 'blue');
+  blue.heldCardName = 'bouncePad';
+  scene.update(neutralInputs()); // release the card key held from spawn
+
+  // Placed on the same tick the card is played, so the two players are not already pushed
+  // apart by the bump resolution a lasting overlap between them would otherwise trigger.
+  blue.x = 150;
+  blue.y = 60; // standing on the middle platform
+  blue.onGround = true;
+  red.x = blue.x;
+  red.y = blue.y;
+  red.onGround = true;
+  red.velocityY = 0;
+
+  scene.update({ red: noInput(), blue: { left: false, right: false, jump: false, card: true } });
+
+  assert.ok(red.velocityY < 0, 'a player already standing on the spot is launched immediately');
+});
+
+test('a bounce pad disappears after 300 ticks', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+
+  const red = findPlayer(scene, 'red');
+  red.heldCardName = 'bouncePad';
+  scene.update({ red: noInput(), blue: noInput() }); // release the card key held from spawn
+  scene.update({ red: { left: false, right: false, jump: false, card: true }, blue: noInput() }); // 1st tick since it appeared
+
+  assert.equal(scene.entityGroups.get('bouncePads').length, 1);
+
+  advance(scene, 298); // 299 ticks since it appeared
+
+  assert.equal(scene.entityGroups.get('bouncePads').length, 1, 'still there just before 300 ticks');
+
+  scene.update(neutralInputs()); // 300th tick since it appeared
+
+  assert.equal(scene.entityGroups.get('bouncePads').length, 0, 'gone once 300 ticks have passed');
 });
 
 function addLandedCrate(scene, { x, y, cardName }) {
