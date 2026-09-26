@@ -281,6 +281,34 @@ test('holding jump during a stomp bounces higher than not holding it', () => {
   );
 });
 
+test('a fast fall still lands a stomp at every drop height from 30 to 100 px', () => {
+  for (let dropHeight = 30; dropHeight <= 100; dropHeight++) {
+    const scene = new VersusScene();
+    advance(scene, READY_TICKS);
+
+    const red = findPlayer(scene, 'red');
+    const blue = findPlayer(scene, 'blue');
+    blue.x = 150;
+    blue.y = 60;
+    blue.onGround = true;
+    red.x = 150;
+    red.y = blue.y - dropHeight;
+    red.previousY = red.y;
+    red.velocityY = 6; // already at max fall speed, the fastest a player can fall
+    red.onGround = false;
+
+    const stompEvents = [];
+    scene.events.on('player-stomped', (event) => stompEvents.push(event));
+
+    const ticksToLand = Math.ceil(dropHeight / 6) + 3;
+    for (let tick = 0; tick < ticksToLand; tick++) {
+      scene.update({ red: noInput(), blue: noInput() });
+    }
+
+    assert.equal(stompEvents.length, 1, `drop height ${dropHeight}px should land exactly one stomp`);
+  }
+});
+
 test('a running jump from a side platform lands on the middle platform', () => {
   const scene = new VersusScene();
   advance(scene, READY_TICKS);

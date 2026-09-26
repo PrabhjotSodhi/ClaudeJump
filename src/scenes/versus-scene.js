@@ -156,21 +156,24 @@ export class VersusScene {
     return leftPlayer.x + leftPlayer.width + horizontalPadding > rightPlayer.x;
   }
 
-  // The head-clearance band that lets a jump pass over is exactly where a landing foot lands as a stomp:
-  // falling, within that band, and overlapping on x.
   detectStomp(playerA, playerB) {
-    const higherPlayer = playerA.y < playerB.y ? playerA : playerB;
-    const lowerPlayer = higherPlayer === playerA ? playerB : playerA;
-    if (higherPlayer.velocityY <= 0) return null;
-
-    const feetY = higherPlayer.y + higherPlayer.height;
-    if (feetY <= lowerPlayer.y || feetY > lowerPlayer.y + BUMP_HEAD_CLEARANCE) return null;
-
     const leftPlayer = playerA.x <= playerB.x ? playerA : playerB;
     const rightPlayer = leftPlayer === playerA ? playerB : playerA;
     if (leftPlayer.x + leftPlayer.width <= rightPlayer.x) return null;
 
-    return { stomper: higherPlayer, stomped: lowerPlayer };
+    if (this.isStompingHead(playerA, playerB)) return { stomper: playerA, stomped: playerB };
+    if (this.isStompingHead(playerB, playerA)) return { stomper: playerB, stomped: playerA };
+    return null;
+  }
+
+  // A fast fall can cross the whole head band in a single tick, so a snapshot check can miss it.
+  // Detect the crossing instead: the stomper's feet were at or above the target's head before
+  // moving this tick, and are below it now.
+  isStompingHead(stomper, target) {
+    if (stomper.velocityY <= 0) return false;
+    const previousFeetY = stomper.previousY + stomper.height;
+    const feetY = stomper.y + stomper.height;
+    return previousFeetY <= target.y && feetY > target.y;
   }
 
   resolveStomp(stomper, stomped) {
