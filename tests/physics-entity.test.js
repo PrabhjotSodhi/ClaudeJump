@@ -53,6 +53,32 @@ test('a horizontal knockback of 6 in the air carries the player between 60 and 9
   assert.ok(distance >= 60 && distance <= 90, `expected 60-90px, got ${distance}px`);
 });
 
+function groundedKnockbackDistance(standingPlatform, knockbackVelocityX) {
+  const entity = makeEntity();
+  entity.onGround = true;
+  entity.applyKnockback(knockbackVelocityX, 0);
+  const startX = entity.x;
+
+  for (let tick = 0; tick < 200; tick++) {
+    // moveAndCollide clears onGround and standingPlatform each tick when there are no platforms
+    // to land on, so both are re-forced to simulate resting on the same spot throughout.
+    entity.onGround = true;
+    entity.standingPlatform = standingPlatform;
+    entity.moveAndCollide([]);
+  }
+
+  return entity.x - startX;
+}
+
+test('the same grounded knockback carries a player clearly farther on ice than on metal', () => {
+  const metalDistance = groundedKnockbackDistance(null, 6);
+  const iceDistance = groundedKnockbackDistance({ isIcy: true }, 6);
+  assert.ok(
+    iceDistance > metalDistance * 1.5,
+    `expected ice (${iceDistance}px) to carry much farther than metal (${metalDistance}px)`,
+  );
+});
+
 test('hitting a wall stops horizontal knockback', () => {
   const entity = makeEntity();
   const wall = { x: 108, y: 90, width: 8, height: 40 };
