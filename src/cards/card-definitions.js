@@ -9,7 +9,4 @@ export const CARD_DEFINITIONS = {
   },
 };
 
-// How many copies of each card sit in a deck before it is shuffled.
-const COPIES_PER_CARD = 6;
-
-export const DECK_CARD_NAMES = Object.keys(CARD_DEFINITIONS).flatMap((name) => Array(COPIES_PER_CARD).fill(name));
+export const CARD_NAMES = Object.keys(CARD_DEFINITIONS);
