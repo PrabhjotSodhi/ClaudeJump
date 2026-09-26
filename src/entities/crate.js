@@ -31,6 +31,11 @@ export class Crate extends Entity {
     this.landed = false;
   }
 
+  // False while the crate is still just a marker, waiting above the screen out of anyone's reach.
+  get isFalling() {
+    return this.landed || this.ticksUntilLanded < this.fallTicks;
+  }
+
   update(platforms = []) {
     if (this.landed) return;
     this.ticksUntilLanded--;

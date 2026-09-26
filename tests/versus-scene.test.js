@@ -798,8 +798,8 @@ test('a player can take a crate while it is still in the air', () => {
   red.x = 100;
   red.y = 100;
 
-  // Marked to land 8 pixels below where it currently is, so it is still airborne this tick.
-  const crate = new Crate({ x: red.x, y: red.y + 8, cardName: 'dash' });
+  // Marked far enough below that the fall is already under way and still airborne this tick.
+  const crate = new Crate({ x: red.x, y: red.y + 40, cardName: 'dash' });
   crate.y = red.y;
   scene.entityGroups.clear('crates');
   scene.entityGroups.add('crates', crate);
@@ -810,8 +810,30 @@ test('a player can take a crate while it is still in the air', () => {
   scene.update(neutralInputs());
 
   assert.equal(crate.landed, false, 'the crate is still airborne');
+  assert.equal(crate.isFalling, true, 'the fall is already under way');
   assert.deepEqual(pickupEvents, [{ playerId: 'red', cardName: 'dash' }]);
   assert.equal(red.heldCardName, 'dash');
+});
+
+test('a player touching where a waiting crate hides above the screen does not take it', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+
+  const red = findPlayer(scene, 'red');
+  const crate = new Crate({ x: 100, y: 108, cardName: 'dash' }); // marked spot far enough that the fall has not started
+  red.x = crate.x;
+  red.y = crate.y; // standing exactly where the hidden, waiting crate currently sits
+
+  const pickupEvents = [];
+  scene.events.on('card-picked-up', (event) => pickupEvents.push(event));
+
+  scene.entityGroups.clear('crates');
+  scene.entityGroups.add('crates', crate);
+  scene.update(neutralInputs());
+
+  assert.equal(crate.isFalling, false, 'the crate has not started falling yet');
+  assert.deepEqual(pickupEvents, [], 'nothing is taken from a crate that has not appeared yet');
+  assert.equal(red.heldCardName, null);
 });
 
 test('a crate with no platform below it falls into the sea and the next crate is scheduled', () => {

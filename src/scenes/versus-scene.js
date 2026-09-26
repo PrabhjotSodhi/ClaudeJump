@@ -243,7 +243,7 @@ export class VersusScene {
       this.scheduleNextCrate();
       return;
     }
-    this.checkCratePickup(crate);
+    if (crate.isFalling) this.checkCratePickup(crate);
   }
 
   // The landing spot and the card both come from the scene's seeded random, so the same seed
