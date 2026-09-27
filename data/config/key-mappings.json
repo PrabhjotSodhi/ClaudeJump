@@ -1,10 +1,16 @@
 [
   {
     "id": "red",
-    "keys": { "left": "KeyA", "right": "KeyD", "jump": "KeyW", "card": "KeyC" }
+    "keys": { "left": "KeyA", "right": "KeyD", "jump": "KeyW", "down": "KeyS", "card": "KeyC" }
   },
   {
     "id": "blue",
-    "keys": { "left": "ArrowLeft", "right": "ArrowRight", "jump": "ArrowUp", "card": "Comma" }
+    "keys": {
+      "left": "ArrowLeft",
+      "right": "ArrowRight",
+      "jump": "ArrowUp",
+      "down": "ArrowDown",
+      "card": "Comma"
+    }
   }
 ]
