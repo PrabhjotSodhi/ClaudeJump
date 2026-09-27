@@ -481,6 +481,50 @@ test('a dash into the opponent knocks them away', () => {
   assert.equal(red.overlaps(blue), false);
 });
 
+test('a dash into an opponent already being pushed against still lands the dash hit', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+
+  const red = findPlayer(scene, 'red');
+  const blue = findPlayer(scene, 'blue');
+  red.x = 264;
+  red.y = 116;
+  red.onGround = true;
+  red.facing = 1;
+  blue.x = 289; // one pixel of gap, so the push closes it within the first tick
+  blue.y = 116;
+  blue.onGround = true;
+
+  const pushInputs = {
+    red: { left: false, right: true, jump: false },
+    blue: { left: true, right: false, jump: false },
+  };
+  for (let tick = 0; tick < 10; tick++) {
+    scene.update(pushInputs);
+  }
+
+  assert.equal(blue.x - (red.x + red.width), 0, 'red is already pushed up against blue before dashing');
+
+  red.heldCardName = 'dash';
+  const bumpEvents = [];
+  scene.events.on('players-bumped', (event) => bumpEvents.push(event));
+
+  scene.update({ red: noInput(), blue: noInput() }); // release the jump/card keys held from the push
+  scene.update({ red: { left: false, right: false, jump: false, card: true }, blue: noInput() });
+
+  assert.equal(bumpEvents.length, 1, 'the dash lands a hit immediately, even though the players were already touching');
+  assert.ok(
+    blue.knockbackVelocityX > BUMP_KNOCKBACK_VELOCITY_X,
+    'a dash into a touching opponent knocks as hard as a dash from range',
+  );
+
+  for (let tick = 0; tick < 15; tick++) {
+    scene.update({ red: noInput(), blue: noInput() });
+  }
+
+  assert.ok(blue.x - (red.x + red.width) > 0, 'blue ends clearly separated from red');
+});
+
 test('a card pressed on the tick a player falls in the sea emits card-played once, not every sinking tick', () => {
   const scene = new VersusScene();
   advance(scene, READY_TICKS);
