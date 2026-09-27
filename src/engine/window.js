@@ -39,6 +39,7 @@ function resizeToFitWindow(canvas, webglContext) {
 
 export function createWindow(canvas, vertexShaderSource, fragmentShaderSource) {
   const webglContext = canvas.getContext('webgl', { antialias: false });
+  if (!webglContext) return null;
   const program = createProgram(webglContext, vertexShaderSource, fragmentShaderSource);
 
   webglContext.bindBuffer(webglContext.ARRAY_BUFFER, webglContext.createBuffer());

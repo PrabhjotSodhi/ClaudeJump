@@ -24,6 +24,11 @@ async function main() {
 
   const canvas = document.getElementById('screen');
   const gameWindow = createWindow(canvas, vertexShaderSource, fragmentShaderSource);
+  if (!gameWindow) {
+    canvas.style.display = 'none';
+    document.getElementById('webgl-message').style.display = 'block';
+    return;
+  }
   const renderer = new Renderer();
   const keyboardInput = createKeyboardInput(keyMappings);
   const gamepadInput = createGamepadInput(keyMappings.map((mapping) => mapping.id));
