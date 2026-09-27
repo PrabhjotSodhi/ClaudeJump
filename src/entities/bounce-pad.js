@@ -1,9 +1,9 @@
 import { Entity } from '../engine/entity.js';
 
-export const BOUNCE_PAD_WIDTH = 12;
-export const BOUNCE_PAD_HEIGHT = 3;
+export const BOUNCE_PAD_WIDTH = 24;
+export const BOUNCE_PAD_HEIGHT = 6;
 export const BOUNCE_PAD_LIFETIME_TICKS = 300; // 5 seconds
-export const BOUNCE_PAD_LAUNCH_VELOCITY = -7.5; // stronger than a full jump's -5.2
+export const BOUNCE_PAD_LAUNCH_VELOCITY = -15; // stronger than a full jump's -10.4
 
 const PAD_COLOR = '#3898c8';
 const PAD_HIGHLIGHT_COLOR = '#78d8f0';
@@ -28,6 +28,6 @@ export class BouncePad extends Entity {
     context.fillStyle = PAD_COLOR;
     context.fillRect(drawX, drawY, this.width, this.height);
     context.fillStyle = PAD_HIGHLIGHT_COLOR;
-    context.fillRect(drawX + 1, drawY, this.width - 2, 1);
+    context.fillRect(drawX + 2, drawY, this.width - 4, 2);
   }
 }

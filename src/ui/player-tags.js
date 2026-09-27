@@ -5,10 +5,10 @@ import { drawText, TEXT_GLYPH_HEIGHT, TEXT_OUTLINE_MARGIN } from './text.js';
 
 // Gap left between the tag's outlined bottom and the icon's outlined top, so the tag sits at a
 // fixed spot whether or not a card is held and never jumps when one is picked up or played.
-const GAP_ABOVE_ICON = 2;
+const GAP_ABOVE_ICON = 4;
 // How far the tag's outlined top may be pinned down from the very top of the screen, so a player
 // launched off the top edge by a bounce pad or a double jump still shows a findable tag.
-const TOP_EDGE_MARGIN = 1;
+const TOP_EDGE_MARGIN = 2;
 
 const TAG_LABEL_BY_PLAYER_ID = { red: 'P1', blue: 'P2' };
 

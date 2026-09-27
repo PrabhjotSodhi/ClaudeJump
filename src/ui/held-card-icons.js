@@ -3,7 +3,7 @@ import { HeldCardFlashTracker } from './held-card-flash.js';
 import { drawFollowingWrap } from './screen-wrap.js';
 
 // Gap between the icon and the player's head, leaving room above the icon for the color tag.
-const ICON_GAP_ABOVE_HEAD = 3;
+const ICON_GAP_ABOVE_HEAD = 6;
 
 const flashTrackersByScene = new WeakMap();
 

@@ -1,8 +1,10 @@
 // Tiny pixel icons for each card, drawn on whole pixels so they stay crisp at any scale.
-export const CARD_ICON_WIDTH = 5;
-export const CARD_ICON_HEIGHT = 5;
+export const CARD_ICON_WIDTH = 10;
+export const CARD_ICON_HEIGHT = 10;
 // drawCardIcon outlines the icon by one pixel on every side, including above and below.
-export const CARD_ICON_OUTLINE_MARGIN = 1;
+export const CARD_ICON_OUTLINE_MARGIN = 2;
+// Each icon pixel is drawn this many screen pixels wide, so the 5x5 design stays the same size.
+const ICON_PIXEL_SCALE = 2;
 
 const ICON_PIXELS = {
   dash: ['#.#..', '.#.#.', '..#.#', '.#.#.', '#.#..'],
@@ -13,21 +15,27 @@ const ICON_PIXELS = {
 };
 
 const ICON_OUTLINE_OFFSETS = [
-  [-1, 0],
-  [1, 0],
-  [0, -1],
-  [0, 1],
-  [-1, -1],
-  [1, -1],
-  [-1, 1],
-  [1, 1],
+  [-ICON_PIXEL_SCALE, 0],
+  [ICON_PIXEL_SCALE, 0],
+  [0, -ICON_PIXEL_SCALE],
+  [0, ICON_PIXEL_SCALE],
+  [-ICON_PIXEL_SCALE, -ICON_PIXEL_SCALE],
+  [ICON_PIXEL_SCALE, -ICON_PIXEL_SCALE],
+  [-ICON_PIXEL_SCALE, ICON_PIXEL_SCALE],
+  [ICON_PIXEL_SCALE, ICON_PIXEL_SCALE],
 ];
 
 function fillPixels(context, rows, x, y, color) {
   context.fillStyle = color;
   rows.forEach((row, rowIndex) =>
     [...row].forEach((cell, columnIndex) => {
-      if (cell === '#') context.fillRect(x + columnIndex, y + rowIndex, 1, 1);
+      if (cell === '#')
+        context.fillRect(
+          x + columnIndex * ICON_PIXEL_SCALE,
+          y + rowIndex * ICON_PIXEL_SCALE,
+          ICON_PIXEL_SCALE,
+          ICON_PIXEL_SCALE,
+        );
     }),
   );
 }
@@ -44,7 +52,12 @@ function drawOutlined(context, rows, x, y, outlineColor) {
 // outline, so the moment the card is played reads as a brief flash before it disappears.
 function drawFlashing(context, rows, x, y, outlineColor) {
   context.fillStyle = outlineColor;
-  context.fillRect(x - 1, y - 1, CARD_ICON_WIDTH + 2, CARD_ICON_HEIGHT + 2);
+  context.fillRect(
+    x - CARD_ICON_OUTLINE_MARGIN,
+    y - CARD_ICON_OUTLINE_MARGIN,
+    CARD_ICON_WIDTH + CARD_ICON_OUTLINE_MARGIN * 2,
+    CARD_ICON_HEIGHT + CARD_ICON_OUTLINE_MARGIN * 2,
+  );
   fillPixels(context, rows, x, y, '#fff');
 }
 

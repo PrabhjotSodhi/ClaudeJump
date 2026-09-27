@@ -4,18 +4,30 @@ import { MENU_BACKGROUND_COLOR, NO_WATER_LINE_Y } from '../ui/menu-screen.js';
 import { drawText } from '../ui/text.js';
 import { PlayerSelectScene } from './player-select-scene.js';
 
-const TITLE_Y = 30;
-const TITLE_SCALE = 3;
-const OPTIONS_TOP_Y = 80;
-const OPTION_ROW_HEIGHT = 14;
-const OPTIONS_LEFT_X = 150;
+const TITLE_Y = 60;
+const TITLE_SCALE = 6;
+const OPTIONS_TOP_Y = 160;
+const OPTION_ROW_HEIGHT = 28;
+const OPTIONS_LEFT_X = 300;
 const SELECTED_OPTION_COLOR = '#ffdc28';
-const SELECTION_MARKER_X = OPTIONS_LEFT_X - 10;
-const SELECTION_MARKER_HEIGHT = 9;
-const CONTROLS_TOP_Y = 130;
-const CONTROLS_ROW_HEIGHT = 10;
+const SELECTION_MARKER_X = OPTIONS_LEFT_X - 20;
+const SELECTION_MARKER_HEIGHT = 18;
+const CONTROLS_TOP_Y = 260;
+const CONTROLS_ROW_HEIGHT = 20;
 const RED_COLOR = PLAYER_SPAWNS.find((spawn) => spawn.id === 'red').color;
 const BLUE_COLOR = PLAYER_SPAWNS.find((spawn) => spawn.id === 'blue').color;
+
+const FULLSCREEN_BUTTON_SIZE = 28;
+const FULLSCREEN_BUTTON_MARGIN = 12;
+const FULLSCREEN_BUTTON_ARM_LENGTH = 10;
+// Bottom-right corner button, in screen pixels, that main.js hit-tests a click against to
+// toggle fullscreen. Kept as data here so drawing and hit-testing never drift apart.
+export const FULLSCREEN_BUTTON = {
+  x: SCREEN_WIDTH - FULLSCREEN_BUTTON_MARGIN - FULLSCREEN_BUTTON_SIZE,
+  y: SCREEN_HEIGHT - FULLSCREEN_BUTTON_MARGIN - FULLSCREEN_BUTTON_SIZE,
+  width: FULLSCREEN_BUTTON_SIZE,
+  height: FULLSCREEN_BUTTON_SIZE,
+};
 
 // Survival goes here once it exists. The menu grows by one entry, nothing else changes.
 export const MENU_OPTIONS = [{ id: 'versus', label: 'Versus' }];
@@ -88,14 +100,34 @@ function drawSelectionMarker(context, textTopY) {
   }
 }
 
+// Four corner brackets, the common shorthand for a fullscreen toggle, so no new art is needed.
+function drawFullscreenButton(context) {
+  const { x, y, width, height } = FULLSCREEN_BUTTON;
+  context.strokeStyle = '#fff';
+  context.lineWidth = 3;
+  for (const [cornerX, cornerY, directionX, directionY] of [
+    [x, y, 1, 1],
+    [x + width, y, -1, 1],
+    [x, y + height, 1, -1],
+    [x + width, y + height, -1, -1],
+  ]) {
+    context.beginPath();
+    context.moveTo(cornerX + directionX * FULLSCREEN_BUTTON_ARM_LENGTH, cornerY);
+    context.lineTo(cornerX, cornerY);
+    context.lineTo(cornerX, cornerY + directionY * FULLSCREEN_BUTTON_ARM_LENGTH);
+    context.stroke();
+  }
+}
+
 function drawTitleUi(context, scene) {
   drawText(context, 'ClaudeJump', SCREEN_WIDTH / 2, TITLE_Y, { scale: TITLE_SCALE, align: 'center' });
+  drawFullscreenButton(context);
 
   scene.options.forEach((option, index) => {
     const y = OPTIONS_TOP_Y + index * OPTION_ROW_HEIGHT;
     const isSelected = index === scene.selectedIndex;
     drawText(context, option.label, OPTIONS_LEFT_X, y, {
-      scale: 2,
+      scale: 4,
       color: isSelected ? SELECTED_OPTION_COLOR : '#fff',
     });
     if (isSelected) drawSelectionMarker(context, y);

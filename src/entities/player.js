@@ -1,23 +1,23 @@
 import { SCREEN_WIDTH } from '../engine/config.js';
 import { PhysicsEntity } from '../engine/physics-entity.js';
 
-export const PLAYER_WIDTH = 8;
-export const PLAYER_HEIGHT = 12;
+export const PLAYER_WIDTH = 16;
+export const PLAYER_HEIGHT = 24;
 
-const GRAVITY = 0.3;
-const MAX_FALL_SPEED = 6;
-const RUN_SPEED = 1.8;
-const GROUND_ACCELERATION = 0.35;
-const AIR_ACCELERATION = 0.2;
+const GRAVITY = 0.6;
+const MAX_FALL_SPEED = 12;
+const RUN_SPEED = 3.6;
+const GROUND_ACCELERATION = 0.7;
+const AIR_ACCELERATION = 0.4;
 // A sharp drop from GROUND_ACCELERATION so a player on ice slides and struggles to stop.
-const ICE_GROUND_ACCELERATION = 0.05;
-const JUMP_VELOCITY = -5.2;
+const ICE_GROUND_ACCELERATION = 0.1;
+const JUMP_VELOCITY = -10.4;
 const JUMP_CUT_MULTIPLIER = 0.5;
 const AIR_JUMP_MULTIPLIER = 0.85;
 const COYOTE_TICKS = 6;
 const JUMP_BUFFER_TICKS = 6;
-const SINK_SPEED = 0.5;
-const DASH_SPEED = 4.5;
+const SINK_SPEED = 1;
+const DASH_SPEED = 9;
 const DASH_TICKS = 10;
 
 const SKIN_COLOR = '#f0c8a0';
@@ -161,10 +161,10 @@ export class Player extends PhysicsEntity {
     const drawX = Math.round(x);
     const drawY = Math.round(this.y);
     context.fillStyle = SKIN_COLOR;
-    context.fillRect(drawX + 1, drawY, 6, 6);
+    context.fillRect(drawX + 2, drawY, 12, 12);
     context.fillStyle = this.color;
-    context.fillRect(drawX, drawY + 6, this.width, this.height - 6);
+    context.fillRect(drawX, drawY + 12, this.width, this.height - 12);
     context.fillStyle = EYE_COLOR;
-    context.fillRect(drawX + (this.facing > 0 ? 5 : 2), drawY + 2, 1, 1);
+    context.fillRect(drawX + (this.facing > 0 ? 10 : 4), drawY + 4, 2, 2);
   }
 }

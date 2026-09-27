@@ -1,7 +1,7 @@
 import { Entity } from '../engine/entity.js';
 
-export const CRATE_WIDTH = 8;
-export const CRATE_HEIGHT = 8;
+export const CRATE_WIDTH = 16;
+export const CRATE_HEIGHT = 16;
 // How long the marker shows at the landing spot before the crate lands there, warning included.
 export const CRATE_WARNING_TICKS = 60;
 
@@ -11,7 +11,7 @@ const CRATE_SHADOW_COLOR = '#5c3c1e';
 const CRATE_FILL_COLOR = '#a0703c';
 // How many pixels the crate falls each tick. Kept steady so a later sway can be layered on top
 // without changing how long the fall takes.
-const FALL_SPEED = 2;
+const FALL_SPEED = 4;
 // Comfortably above the top of the screen so the crate is never visible before it starts falling.
 const FALL_START_Y = -CRATE_HEIGHT;
 
@@ -63,6 +63,6 @@ export class Crate extends Entity {
     context.fillStyle = CRATE_SHADOW_COLOR;
     context.fillRect(drawX, drawY, this.width, this.height);
     context.fillStyle = CRATE_FILL_COLOR;
-    context.fillRect(drawX + 1, drawY + 1, this.width - 2, this.height - 2);
+    context.fillRect(drawX + 2, drawY + 2, this.width - 4, this.height - 4);
   }
 }

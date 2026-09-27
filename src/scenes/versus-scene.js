@@ -20,27 +20,27 @@ const READY_TICKS = 60;
 const GO_TICKS = 30;
 const POINT_PAUSE_TICKS = 90;
 const RESTART_DELAY_TICKS = 60;
-const BUMP_KNOCKBACK_VELOCITY_X = 1.5;
+const BUMP_KNOCKBACK_VELOCITY_X = 3;
 // How far one player's feet may sit above the other's head and still count as jumping over, not landing on them.
-const BUMP_HEAD_CLEARANCE = 4;
+const BUMP_HEAD_CLEARANCE = 8;
 // Players pushed apart to a gap this small still count as the same contact, so the push does not refire the event every tick.
-const BUMP_CONTACT_GAP = 3;
-const STOMP_KNOCKBACK_VELOCITY_X = 2.5;
-const STOMP_KNOCKBACK_VELOCITY_Y = 1;
+const BUMP_CONTACT_GAP = 6;
+const STOMP_KNOCKBACK_VELOCITY_X = 5;
+const STOMP_KNOCKBACK_VELOCITY_Y = 2;
 const DIZZY_TICKS = 20;
-const DASH_KNOCKBACK_VELOCITY_X = 4;
+const DASH_KNOCKBACK_VELOCITY_X = 8;
 // How far a rocket blast reaches, and how hard it knocks players inside that range.
-const BLAST_RADIUS = 24;
-const BLAST_KNOCKBACK_VELOCITY_X = 4;
-const BLAST_KNOCKBACK_VELOCITY_Y = -2;
+const BLAST_RADIUS = 48;
+const BLAST_KNOCKBACK_VELOCITY_X = 8;
+const BLAST_KNOCKBACK_VELOCITY_Y = -4;
 // How hard a fire pop launches a player standing on the burning platform.
-const FIRE_POP_KNOCKBACK_VELOCITY_X = 2.5;
-const FIRE_POP_KNOCKBACK_VELOCITY_Y = -3.5;
+const FIRE_POP_KNOCKBACK_VELOCITY_X = 5;
+const FIRE_POP_KNOCKBACK_VELOCITY_Y = -7;
 
 const SUDDEN_DEATH_ROUND_TICKS = 1800; // 30 seconds; the round timer and the warning start point
 const SUDDEN_DEATH_WARNING_TICKS = 120; // 2 seconds of flashing markers before the sea rises
 const SUDDEN_DEATH_RISE_TICKS = 1200; // 20 seconds for the sea to reach the middle platform
-const SUDDEN_DEATH_TARGET_Y = 72; // middle platform top
+const SUDDEN_DEATH_TARGET_Y = 144; // middle platform top
 const SUDDEN_DEATH_RISE_PER_TICK = (WATER_LINE_Y - SUDDEN_DEATH_TARGET_Y) / SUDDEN_DEATH_RISE_TICKS;
 
 // A crate lands this many ticks after the previous one was taken (or lost to the rising sea).
@@ -301,7 +301,7 @@ export class VersusScene {
   isStandingOnPlatform(player, platform) {
     const feetY = player.y + player.height;
     return (
-      player.x + player.width > platform.x && player.x < platform.x + platform.width && Math.abs(feetY - platform.y) < 1
+      player.x + player.width > platform.x && player.x < platform.x + platform.width && Math.abs(feetY - platform.y) < 2
     );
   }
 

@@ -6,7 +6,7 @@ The game is built in plain JavaScript with a 2D canvas for drawing and one WebGL
 
 ## Never compromise on
 
-1. **Crisp pixels.** Everything is drawn at 320x180 and scaled up by a whole number. Nothing blurs, nothing is drawn between pixels.
+1. **Crisp pixels.** Everything is drawn at 640x360 and scaled up by a whole number. Nothing blurs, nothing is drawn between pixels.
 2. **The same game on every machine.** Game logic runs at a fixed 60 ticks per second. The same inputs always produce the same state. This is what makes replays and online play possible later.
 3. **Runs anywhere.** Any modern browser on Windows, Mac and Linux, straight from static files.
 
@@ -20,7 +20,7 @@ The game is built in plain JavaScript with a 2D canvas for drawing and one WebGL
 - **input record**: one player's controls for one tick, such as `{ left, right, jump }`.
 - **entity**: anything that lives in the world and has `update()` and `render()`. Players, platforms, rockets and crabs are entities.
 - **scene**: one screen of the game with its own rules: title, Versus or Survival.
-- **layer**: one 320x180 canvas. The background, game and UI layers are combined by the shader.
+- **layer**: one 640x360 canvas. The background, game and UI layers are combined by the shader.
 - **event**: a message that something happened, such as a player falling in the water.
 
 ## How it works

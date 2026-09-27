@@ -1,13 +1,13 @@
 import { SCREEN_WIDTH } from '../engine/config.js';
 import { Entity } from '../engine/entity.js';
 
-export const ROCKET_WIDTH = 6;
-export const ROCKET_HEIGHT = 3;
+export const ROCKET_WIDTH = 12;
+export const ROCKET_HEIGHT = 6;
 
-const ROCKET_SPEED = 2.2;
+const ROCKET_SPEED = 4.4;
 // How much the rocket's velocity may turn toward its target each tick, so it curves gently
 // instead of snapping to face the opponent.
-const STEER_ACCELERATION = 0.05;
+const STEER_ACCELERATION = 0.1;
 const LIFETIME_TICKS = 240; // explodes on its own after 4 seconds so it can never circle forever
 
 const BODY_COLOR = '#c85050';
@@ -114,8 +114,8 @@ export class Rocket extends Entity {
     const drawX = Math.round(x);
     const drawY = Math.round(this.y);
     context.fillStyle = FLAME_COLOR;
-    context.fillRect(drawX, drawY + 1, 1, 1);
+    context.fillRect(drawX, drawY + 2, 2, 2);
     context.fillStyle = BODY_COLOR;
-    context.fillRect(drawX + 1, drawY, this.width - 1, this.height);
+    context.fillRect(drawX + 2, drawY, this.width - 2, this.height);
   }
 }

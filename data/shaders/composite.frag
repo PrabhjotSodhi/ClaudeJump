@@ -24,19 +24,19 @@ vec3 sceneColor(vec2 pixelPosition) {
 
 void main() {
   vec2 pixelPosition = floor(v_uv * u_resolution);
-  float surfaceY = u_waterLine + floor(sin(pixelPosition.x * 0.3 + u_time * 4.8) * 1.5 + 0.5);
+  float surfaceY = u_waterLine + floor(sin(pixelPosition.x * 0.15 + u_time * 4.8) * 3.0 + 0.5);
   float depth = pixelPosition.y - surfaceY;
 
   vec3 color;
   if (depth < 0.0) {
     color = sceneColor(pixelPosition);
-  } else if (depth < 1.0) {
+  } else if (depth < 2.0) {
     color = CREST_COLOR;
   } else {
-    float ripple = floor(sin(pixelPosition.y * 0.9 + u_time * 4.0) * 1.5 + 0.5);
+    float ripple = floor(sin(pixelPosition.y * 0.45 + u_time * 4.0) * 3.0 + 0.5);
     vec3 reflection = sceneColor(clamp(vec2(pixelPosition.x + ripple, surfaceY - depth), vec2(0.0), u_resolution - 1.0));
-    color = mix(WATER_TOP_COLOR, WATER_DEEP_COLOR, clamp(depth / 14.0, 0.0, 1.0));
-    color = mix(color, reflection, 0.4 * (1.0 - clamp(depth / 16.0, 0.0, 1.0)));
+    color = mix(WATER_TOP_COLOR, WATER_DEEP_COLOR, clamp(depth / 28.0, 0.0, 1.0));
+    color = mix(color, reflection, 0.4 * (1.0 - clamp(depth / 32.0, 0.0, 1.0)));
     vec4 underwaterGame = samplePixel(u_gameLayer, pixelPosition);
     color = mix(color, underwaterGame.rgb * WATER_TOP_COLOR * 1.4, underwaterGame.a * 0.5);
   }

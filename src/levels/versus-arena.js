@@ -1,14 +1,14 @@
-export const WATER_LINE_Y = 164;
+export const WATER_LINE_Y = 328;
 
 export const PLATFORM_LAYOUTS = [
-  { x: 40, y: 112, width: 72, height: 8 },
-  { x: 208, y: 112, width: 72, height: 8 },
-  { x: 128, y: 72, width: 64, height: 8 },
+  { x: 80, y: 224, width: 144, height: 16 },
+  { x: 416, y: 224, width: 144, height: 16 },
+  { x: 256, y: 144, width: 128, height: 16 },
 ];
 
 export const PLAYER_SPAWNS = [
-  { id: 'red', color: '#dc2828', spawnX: 76, spawnY: 112, facing: 1 },
-  { id: 'blue', color: '#2846dc', spawnX: 244, spawnY: 112, facing: -1 },
+  { id: 'red', color: '#dc2828', spawnX: 152, spawnY: 224, facing: 1 },
+  { id: 'blue', color: '#2846dc', spawnX: 488, spawnY: 224, facing: -1 },
 ];
 
 const SKY_TOP_COLOR = [30, 110, 230];

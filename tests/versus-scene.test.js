@@ -23,7 +23,7 @@ function findPlayer(scene, id) {
 }
 
 const READY_TICKS = 60;
-const BUMP_KNOCKBACK_VELOCITY_X = 1.5;
+const BUMP_KNOCKBACK_VELOCITY_X = 3;
 
 test('falling in the sea scores the other player', () => {
   const scene = new VersusScene();
@@ -33,7 +33,7 @@ test('falling in the sea scores the other player', () => {
   const waterEvents = [];
   scene.events.on('player-fell-in-water', (event) => waterEvents.push(event));
 
-  findPlayer(scene, 'red').y = 300;
+  findPlayer(scene, 'red').y = 600;
   scene.update(neutralInputs());
 
   assert.deepEqual(waterEvents, [{ playerId: 'red' }]);
@@ -48,7 +48,7 @@ test('reaching 5 points ends the match', () => {
 
   for (let win = 1; win <= 5; win++) {
     advance(scene, READY_TICKS);
-    findPlayer(scene, 'blue').y = 300;
+    findPlayer(scene, 'blue').y = 600;
     scene.update(neutralInputs());
 
     assert.equal(scene.wins.red, win);
@@ -65,8 +65,8 @@ test('both players falling on the same tick is a draw', () => {
   const scene = new VersusScene();
   advance(scene, READY_TICKS);
 
-  findPlayer(scene, 'red').y = 300;
-  findPlayer(scene, 'blue').y = 300;
+  findPlayer(scene, 'red').y = 600;
+  findPlayer(scene, 'blue').y = 600;
   scene.update(neutralInputs());
 
   assert.equal(scene.phase, 'point');
@@ -111,11 +111,11 @@ test('two players running into each other end up side by side, never overlapping
 
   const red = findPlayer(scene, 'red');
   const blue = findPlayer(scene, 'blue');
-  red.x = 132;
-  red.y = 60;
+  red.x = 264;
+  red.y = 120;
   red.onGround = true;
-  blue.x = 178;
-  blue.y = 60;
+  blue.x = 356;
+  blue.y = 120;
   blue.onGround = true;
 
   for (let tick = 0; tick < 60; tick++) {
@@ -132,11 +132,11 @@ test('a player running into a standing player pushes them', () => {
 
   const red = findPlayer(scene, 'red');
   const blue = findPlayer(scene, 'blue');
-  red.x = 132;
-  red.y = 60;
+  red.x = 264;
+  red.y = 120;
   red.onGround = true;
-  blue.x = 170;
-  blue.y = 60;
+  blue.x = 340;
+  blue.y = 120;
   blue.onGround = true;
   const blueStartX = blue.x;
 
@@ -154,11 +154,11 @@ test('a player jumping over another is not pushed sideways', () => {
 
   const red = findPlayer(scene, 'red');
   const blue = findPlayer(scene, 'blue');
-  red.x = 132;
-  red.y = 60;
+  red.x = 264;
+  red.y = 120;
   red.onGround = true;
-  blue.x = 150;
-  blue.y = 60;
+  blue.x = 300;
+  blue.y = 120;
   blue.onGround = true;
   const blueStartX = blue.x;
 
@@ -181,11 +181,11 @@ test('players-bumped fires once per contact, not every tick', () => {
 
   const red = findPlayer(scene, 'red');
   const blue = findPlayer(scene, 'blue');
-  red.x = 132;
-  red.y = 60;
+  red.x = 264;
+  red.y = 120;
   red.onGround = true;
-  blue.x = 178;
-  blue.y = 60;
+  blue.x = 356;
+  blue.y = 120;
   blue.onGround = true;
 
   const bumpEvents = [];
@@ -205,11 +205,11 @@ test('two players held into each other settle at a gap of zero, not a buzz', () 
 
   const red = findPlayer(scene, 'red');
   const blue = findPlayer(scene, 'blue');
-  red.x = 132;
-  red.y = 60;
+  red.x = 264;
+  red.y = 120;
   red.onGround = true;
-  blue.x = 178;
-  blue.y = 60;
+  blue.x = 356;
+  blue.y = 120;
   blue.onGround = true;
 
   const inputs = { red: { left: false, right: true, jump: false }, blue: { left: true, right: false, jump: false } };
@@ -233,12 +233,12 @@ test('a stomp bounces the stomper up and knocks the other player sideways, away 
 
   const red = findPlayer(scene, 'red');
   const blue = findPlayer(scene, 'blue');
-  blue.x = 150;
-  blue.y = 60;
+  blue.x = 300;
+  blue.y = 120;
   blue.onGround = true;
-  red.x = 146; // left of blue's center, so a stomp should knock blue further right
-  red.y = 45;
-  red.velocityY = 2;
+  red.x = 292; // left of blue's center, so a stomp should knock blue further right
+  red.y = 90;
+  red.velocityY = 4;
   red.onGround = false;
   red.airJumpAvailable = false; // used up already, so a refresh from the stomp is observable
 
@@ -263,12 +263,12 @@ test('holding jump during a stomp bounces higher than not holding it', () => {
 
     const red = findPlayer(scene, 'red');
     const blue = findPlayer(scene, 'blue');
-    blue.x = 150;
-    blue.y = 60;
+    blue.x = 300;
+    blue.y = 120;
     blue.onGround = true;
-    red.x = 150;
-    red.y = 45;
-    red.velocityY = 2;
+    red.x = 300;
+    red.y = 90;
+    red.velocityY = 4;
     red.onGround = false;
     scene.update({ red: noInput(), blue: noInput() }); // release the jump key held from spawn
 
@@ -288,26 +288,26 @@ test('holding jump during a stomp bounces higher than not holding it', () => {
   );
 });
 
-test('a fast fall still lands a stomp at every drop height from 30 to 100 px', () => {
-  for (let dropHeight = 30; dropHeight <= 100; dropHeight++) {
+test('a fast fall still lands a stomp at every drop height from 60 to 200 px', () => {
+  for (let dropHeight = 60; dropHeight <= 200; dropHeight += 2) {
     const scene = new VersusScene();
     advance(scene, READY_TICKS);
 
     const red = findPlayer(scene, 'red');
     const blue = findPlayer(scene, 'blue');
-    blue.x = 150;
-    blue.y = 60;
+    blue.x = 300;
+    blue.y = 120;
     blue.onGround = true;
-    red.x = 150;
+    red.x = 300;
     red.y = blue.y - dropHeight;
     red.previousY = red.y;
-    red.velocityY = 6; // already at max fall speed, the fastest a player can fall
+    red.velocityY = 12; // already at max fall speed, the fastest a player can fall
     red.onGround = false;
 
     const stompEvents = [];
     scene.events.on('player-stomped', (event) => stompEvents.push(event));
 
-    const ticksToLand = Math.ceil(dropHeight / 6) + 3;
+    const ticksToLand = Math.ceil(dropHeight / 12) + 3;
     for (let tick = 0; tick < ticksToLand; tick++) {
       scene.update({ red: noInput(), blue: noInput() });
     }
@@ -322,10 +322,10 @@ test('a player moving past the right edge reappears on the left with the same ve
 
   const red = findPlayer(scene, 'red');
   const blue = findPlayer(scene, 'blue');
-  red.x = SCREEN_WIDTH - 30;
-  red.y = 60;
-  blue.x = 150; // out of the way, on screen
-  blue.y = 60; // standing on the middle platform, not mid-air where it would fall in and end the round
+  red.x = SCREEN_WIDTH - 60;
+  red.y = 120;
+  blue.x = 300; // out of the way, on screen
+  blue.y = 120; // standing on the middle platform, not mid-air where it would fall in and end the round
   blue.onGround = true;
 
   const wrapEvents = [];
@@ -338,14 +338,14 @@ test('a player moving past the right edge reappears on the left with the same ve
     // Pin height between ticks so unrelated gravity drift (there is no real platform this far out)
     // cannot be mistaken for the wrap itself changing y; the wrap only ever touches x.
     red.velocityY = 0;
-    red.y = 60;
+    red.y = 120;
   }
 
   assert.equal(wrapEvents.length, 1);
   assert.equal(wrapEvents[0].playerId, 'red');
   assert.equal(wrapEvents[0].x, red.x);
-  assert.ok(red.x >= 0 && red.x < 10, 'red reappears near the left edge');
-  assert.ok(Math.abs(wrapEvents[0].y - 60) < 1, 'height is unaffected by the wrap');
+  assert.ok(red.x >= 0 && red.x < 20, 'red reappears near the left edge');
+  assert.ok(Math.abs(wrapEvents[0].y - 120) < 2, 'height is unaffected by the wrap');
   assert.equal(red.velocityX, velocityXBeforeWrap, 'speed is unaffected by the wrap');
 });
 
@@ -363,8 +363,8 @@ test('a running jump from a side platform lands on the middle platform', () => {
   const red = findPlayer(scene, 'red');
   assert.equal(red.onGround, true);
   assert.equal(red.inWater, false);
-  assert.equal(red.y, 60); // standing on the middle platform (y 72, player height 12)
-  assert.ok(red.x + red.width > 128 && red.x < 192, 'red should be within the middle platform bounds');
+  assert.equal(red.y, 120); // standing on the middle platform (y 144, player height 24)
+  assert.ok(red.x + red.width > 256 && red.x < 384, 'red should be within the middle platform bounds');
 });
 
 const SUDDEN_DEATH_ROUND_TICKS = 1800;
@@ -401,16 +401,16 @@ test('the sea rises only after the warning ends, and a player standing below it 
   assert.equal(scene.suddenDeathPhase, 'rising');
   assert.ok(scene.waterLineY < waterLineBeforeRising, 'the sea starts rising');
 
-  // Fast-forward the sea between the two platform heights (side platforms bottom at 112, middle at 72):
+  // Fast-forward the sea between the two platform heights (side platforms bottom at 224, middle at 144):
   // red on the middle platform should stay dry while blue on a side platform is swallowed.
-  scene.waterLineY = 90;
+  scene.waterLineY = 180;
   const red = findPlayer(scene, 'red');
-  red.x = 132;
-  red.y = 60; // standing on the middle platform, top y 72
+  red.x = 264;
+  red.y = 120; // standing on the middle platform, top y 144
   red.onGround = true;
   const blue = findPlayer(scene, 'blue');
-  blue.x = 60;
-  blue.y = 100; // standing on the side platform, top y 112
+  blue.x = 120;
+  blue.y = 200; // standing on the side platform, top y 224
   blue.onGround = true;
 
   scene.update(neutralInputs());
@@ -427,7 +427,7 @@ test('the timer and the sea reset for the next round', () => {
   advance(scene, SUDDEN_DEATH_ROUND_TICKS);
   assert.equal(scene.suddenDeathPhase, 'warning');
 
-  findPlayer(scene, 'red').y = 300;
+  findPlayer(scene, 'red').y = 600;
   scene.update(neutralInputs());
   assert.equal(scene.phase, 'point');
 
@@ -435,7 +435,7 @@ test('the timer and the sea reset for the next round', () => {
   assert.equal(scene.phase, 'ready');
   assert.equal(scene.suddenDeathPhase, 'none');
   assert.equal(scene.fightTicks, 0);
-  assert.equal(scene.waterLineY, 164);
+  assert.equal(scene.waterLineY, 328);
 });
 
 test('a dash into the opponent knocks them away', () => {
@@ -444,12 +444,12 @@ test('a dash into the opponent knocks them away', () => {
 
   const red = findPlayer(scene, 'red');
   const blue = findPlayer(scene, 'blue');
-  red.x = 132;
-  red.y = 60;
+  red.x = 264;
+  red.y = 120;
   red.onGround = true;
   red.facing = 1;
-  blue.x = 150;
-  blue.y = 60;
+  blue.x = 300;
+  blue.y = 120;
   blue.onGround = true;
   const blueStartX = blue.x;
   red.heldCardName = 'dash';
@@ -492,7 +492,7 @@ test('a card pressed on the tick a player falls in the sea emits card-played onc
   const cardEvents = [];
   scene.events.on('card-played', (event) => cardEvents.push(event));
 
-  red.y = 300; // below the water line, falls in on this tick
+  red.y = 600; // below the water line, falls in on this tick
   scene.update({ red: { left: false, right: false, jump: false, card: true }, blue: noInput() });
   assert.equal(scene.phase, 'point');
   assert.equal(red.inWater, true);
@@ -506,7 +506,7 @@ test('startInFightPhase skips the Ready countdown for the first round only', () 
   const scene = new VersusScene({ startInFightPhase: true });
   assert.equal(scene.phase, 'fight');
 
-  findPlayer(scene, 'red').y = 300;
+  findPlayer(scene, 'red').y = 600;
   scene.update(neutralInputs());
   assert.equal(scene.phase, 'point');
 
@@ -519,13 +519,13 @@ test('a rocket blast pushes a player away from the blast center and emits rocket
   advance(scene, READY_TICKS);
 
   const red = findPlayer(scene, 'red'); // placed left of the blast center
-  red.x = 140;
-  red.y = 100;
+  red.x = 280;
+  red.y = 200;
   const blue = findPlayer(scene, 'blue'); // placed right of the blast center
-  blue.x = 160;
-  blue.y = 100;
+  blue.x = 320;
+  blue.y = 200;
 
-  const rocket = new Rocket({ x: 150, y: 100, facing: 1, shooterId: 'blue' });
+  const rocket = new Rocket({ x: 300, y: 200, facing: 1, shooterId: 'blue' });
   rocket.ticksRemaining = 1; // one tick from expiring, so this update explodes it in place
   scene.entityGroups.add('rockets', rocket);
 
@@ -546,7 +546,7 @@ test('a rocket wraps around the screen edges like a player', () => {
   const scene = new VersusScene();
   advance(scene, READY_TICKS);
 
-  const rocket = new Rocket({ x: SCREEN_WIDTH + 1, y: 100, facing: 1, shooterId: 'red' });
+  const rocket = new Rocket({ x: SCREEN_WIDTH + 2, y: 200, facing: 1, shooterId: 'red' });
   scene.entityGroups.add('rockets', rocket);
 
   scene.update(neutralInputs());
@@ -583,12 +583,12 @@ test('landing on a bounce pad launches the player higher than a jump', () => {
   const scene = new VersusScene();
   advance(scene, READY_TICKS);
   // A gap with no platform above or below it, so nothing but gravity shapes either player's arc.
-  scene.entityGroups.add('bouncePads', new BouncePad({ x: 118, y: 140 }));
+  scene.entityGroups.add('bouncePads', new BouncePad({ x: 236, y: 280 }));
 
   const red = findPlayer(scene, 'red');
-  red.x = 120;
-  red.y = 124; // feet above the pad's top surface
-  red.velocityY = 6; // already falling at max speed, so this tick's fall crosses the pad
+  red.x = 240;
+  red.y = 248; // feet above the pad's top surface
+  red.velocityY = 12; // already falling at max speed, so this tick's fall crosses the pad
   red.onGround = false;
   scene.update(neutralInputs()); // the fall crosses the pad and launches red this tick
   assert.ok(red.velocityY < 0, 'the pad launches the player upward');
@@ -602,11 +602,11 @@ test('walking into the side of a bounce pad does nothing', () => {
   const scene = new VersusScene();
   advance(scene, READY_TICKS);
   // Sitting on top of the middle platform, at the same feet level a standing player already has.
-  scene.entityGroups.add('bouncePads', new BouncePad({ x: 150, y: 69 }));
+  scene.entityGroups.add('bouncePads', new BouncePad({ x: 300, y: 138 }));
 
   const red = findPlayer(scene, 'red');
-  red.x = 130; // on the middle platform, approaching the pad from the side
-  red.y = 60;
+  red.x = 260; // on the middle platform, approaching the pad from the side
+  red.y = 120;
   red.velocityY = 0;
   red.onGround = true;
 
@@ -621,12 +621,12 @@ test('a player falling well below a bounce pad, overlapping it only horizontally
   const scene = new VersusScene();
   advance(scene, READY_TICKS);
   // A gap with no platform, so the fall is uninterrupted and stays clear of the water line.
-  scene.entityGroups.add('bouncePads', new BouncePad({ x: 118, y: 80 }));
+  scene.entityGroups.add('bouncePads', new BouncePad({ x: 236, y: 160 }));
 
   const red = findPlayer(scene, 'red');
-  red.x = 120; // overlaps the pad horizontally
-  red.y = 140; // feet already far below the pad's top surface, not crossing it this tick
-  red.velocityY = 6; // falling
+  red.x = 240; // overlaps the pad horizontally
+  red.y = 280; // feet already far below the pad's top surface, not crossing it this tick
+  red.velocityY = 12; // falling
   red.onGround = false;
 
   scene.update(neutralInputs());
@@ -645,8 +645,8 @@ test('a player standing where a bounce pad appears is launched at once', () => {
 
   // Placed on the same tick the card is played, so the two players are not already pushed
   // apart by the bump resolution a lasting overlap between them would otherwise trigger.
-  blue.x = 150;
-  blue.y = 60; // standing on the middle platform
+  blue.x = 300;
+  blue.y = 120; // standing on the middle platform
   blue.onGround = true;
   red.x = blue.x;
   red.y = blue.y;
@@ -692,8 +692,8 @@ test('touching a crate with no card takes the card', () => {
   advance(scene, READY_TICKS);
 
   const red = findPlayer(scene, 'red');
-  red.x = 100;
-  red.y = 100;
+  red.x = 200;
+  red.y = 200;
   const crate = addLandedCrate(scene, { x: red.x, y: red.y, cardName: 'dash' });
 
   const pickupEvents = [];
@@ -712,8 +712,8 @@ test('a player already holding a card cannot open a crate, and the crate stays',
 
   const red = findPlayer(scene, 'red');
   red.heldCardName = 'rocket';
-  red.x = 100;
-  red.y = 100;
+  red.x = 200;
+  red.y = 200;
   const crate = addLandedCrate(scene, { x: red.x, y: red.y, cardName: 'dash' });
 
   const pickupEvents = [];
@@ -731,8 +731,8 @@ test('the next crate lands 180 ticks after the previous one is taken', () => {
   advance(scene, READY_TICKS);
 
   const red = findPlayer(scene, 'red');
-  red.x = 132;
-  red.y = 60; // standing on the middle platform, so it never falls in the sea while this runs
+  red.x = 264;
+  red.y = 120; // standing on the middle platform, so it never falls in the sea while this runs
   red.onGround = true;
   // Already holding a card so it cannot immediately take the next crate wherever it lands.
   findPlayer(scene, 'blue').heldCardName = 'rocket';
@@ -766,26 +766,26 @@ test('while the sea is above the side platforms, every crate lands on the still-
   for (let seed = 0; seed < 20; seed++) {
     const scene = new VersusScene({ seed });
     advance(scene, READY_TICKS);
-    scene.waterLineY = 90; // above the side platforms (top y 112), below the middle platform (top y 72)
+    scene.waterLineY = 180; // above the side platforms (top y 224), below the middle platform (top y 144)
     scene.entityGroups.clear('crates');
     scene.spawnCrate();
 
     const crate = scene.entityGroups.get('crates')[0];
     assert.ok(crate, 'a crate spawns since the middle platform is still dry');
-    assert.ok(crate.x >= 128 && crate.x + crate.width <= 192, 'the crate lands on the middle platform only');
+    assert.ok(crate.x >= 256 && crate.x + crate.width <= 384, 'the crate lands on the middle platform only');
   }
 });
 
 test('a crate is removed once the rising sea reaches its platform', () => {
   const scene = new VersusScene();
   advance(scene, READY_TICKS);
-  const crate = addLandedCrate(scene, { x: 60, y: 104, cardName: 'dash' }); // side platform, top y 112
+  const crate = addLandedCrate(scene, { x: 120, y: 208, cardName: 'dash' }); // side platform, top y 224
 
-  scene.waterLineY = 164;
+  scene.waterLineY = 328;
   scene.update(neutralInputs());
   assert.equal(scene.entityGroups.get('crates')[0], crate, 'the crate stays while its platform is dry');
 
-  scene.waterLineY = 105; // risen past the crate's platform
+  scene.waterLineY = 210; // risen past the crate's platform
   scene.update(neutralInputs());
   assert.equal(scene.entityGroups.get('crates').includes(crate), false, 'the submerged crate is removed');
 });
@@ -795,11 +795,11 @@ test('a player can take a crate while it is still in the air', () => {
   advance(scene, READY_TICKS);
 
   const red = findPlayer(scene, 'red');
-  red.x = 100;
-  red.y = 100;
+  red.x = 200;
+  red.y = 200;
 
   // Marked far enough below that the fall is already under way and still airborne this tick.
-  const crate = new Crate({ x: red.x, y: red.y + 40, cardName: 'dash' });
+  const crate = new Crate({ x: red.x, y: red.y + 80, cardName: 'dash' });
   crate.y = red.y;
   scene.entityGroups.clear('crates');
   scene.entityGroups.add('crates', crate);
@@ -820,7 +820,7 @@ test('a player touching where a waiting crate hides above the screen does not ta
   advance(scene, READY_TICKS);
 
   const red = findPlayer(scene, 'red');
-  const crate = new Crate({ x: 100, y: 108, cardName: 'dash' }); // marked spot far enough that the fall has not started
+  const crate = new Crate({ x: 200, y: 216, cardName: 'dash' }); // marked spot far enough that the fall has not started
   red.x = crate.x;
   red.y = crate.y; // standing exactly where the hidden, waiting crate currently sits
 
@@ -846,13 +846,13 @@ test('playing Fire Floor sets the platform under the opponent alight', () => {
 
   const red = findPlayer(scene, 'red');
   const blue = findPlayer(scene, 'blue');
-  blue.x = 150;
-  blue.y = 60; // standing on the middle platform, top y 72
+  blue.x = 300;
+  blue.y = 120; // standing on the middle platform, top y 144
   blue.onGround = true;
   red.heldCardName = 'fire';
   scene.update(neutralInputs()); // release the card key held from spawn
 
-  const middlePlatform = findPlatformAt(scene, 128, 72);
+  const middlePlatform = findPlatformAt(scene, 256, 144);
   assert.equal(middlePlatform.isBurning, false);
 
   scene.update({ red: { left: false, right: false, jump: false, card: true }, blue: noInput() });
@@ -866,15 +866,15 @@ test('Fire Floor uses the platform under an airborne opponent', () => {
 
   const red = findPlayer(scene, 'red');
   const blue = findPlayer(scene, 'blue');
-  blue.x = 60;
-  blue.y = 90; // mid-air above the side platform (top y 112), not touching it
+  blue.x = 120;
+  blue.y = 180; // mid-air above the side platform (top y 224), not touching it
   blue.onGround = false;
   red.heldCardName = 'fire';
   scene.update(neutralInputs());
 
   scene.update({ red: { left: false, right: false, jump: false, card: true }, blue: noInput() });
 
-  const sidePlatform = findPlatformAt(scene, 40, 112);
+  const sidePlatform = findPlatformAt(scene, 80, 224);
   assert.equal(sidePlatform.isBurning, true, 'the platform below the airborne opponent catches fire');
 });
 
@@ -883,10 +883,10 @@ test('a player on a burning platform is popped every 30 ticks', () => {
   advance(scene, READY_TICKS);
 
   const blue = findPlayer(scene, 'blue');
-  blue.x = 150;
-  blue.y = 60;
+  blue.x = 300;
+  blue.y = 120;
   blue.onGround = true;
-  const middlePlatform = findPlatformAt(scene, 128, 72);
+  const middlePlatform = findPlatformAt(scene, 256, 144);
   middlePlatform.igniteWithFire();
 
   const popTicks = [];
@@ -904,10 +904,10 @@ test('a pop pushes a standing player upward and away from the platform center', 
   advance(scene, READY_TICKS);
 
   const blue = findPlayer(scene, 'blue');
-  blue.x = 150; // left of the middle platform's center (128 + 32 = 160)
-  blue.y = 60;
+  blue.x = 300; // left of the middle platform's center (256 + 64 = 320)
+  blue.y = 120;
   blue.onGround = true;
-  const middlePlatform = findPlatformAt(scene, 128, 72);
+  const middlePlatform = findPlatformAt(scene, 256, 144);
   middlePlatform.igniteWithFire();
 
   const popEvents = [];
@@ -926,11 +926,11 @@ test('the player who played Fire Floor is popped too if they stand on the burnin
 
   const red = findPlayer(scene, 'red');
   const blue = findPlayer(scene, 'blue');
-  red.x = 130;
-  red.y = 60;
+  red.x = 260;
+  red.y = 120;
   red.onGround = true;
-  blue.x = 170;
-  blue.y = 60;
+  blue.x = 340;
+  blue.y = 120;
   blue.onGround = true;
   red.heldCardName = 'fire';
   scene.update(neutralInputs());
@@ -946,7 +946,7 @@ test('the fire ends after 180 ticks', () => {
   const scene = new VersusScene();
   advance(scene, READY_TICKS);
 
-  const middlePlatform = findPlatformAt(scene, 128, 72);
+  const middlePlatform = findPlatformAt(scene, 256, 144);
   middlePlatform.igniteWithFire();
 
   advance(scene, 179);
@@ -963,7 +963,7 @@ test('nothing burns and the card is still spent when the opponent is airborne wi
   const red = findPlayer(scene, 'red');
   const blue = findPlayer(scene, 'blue');
   blue.x = 0; // no platform sits under x 0 (see the crate test for the same gap)
-  blue.y = 90;
+  blue.y = 180;
   blue.onGround = false;
   red.heldCardName = 'fire';
   scene.update(neutralInputs());
@@ -978,10 +978,10 @@ test('fire is cleared from every platform at the start of a new round', () => {
   const scene = new VersusScene();
   advance(scene, READY_TICKS);
 
-  const middlePlatform = findPlatformAt(scene, 128, 72);
+  const middlePlatform = findPlatformAt(scene, 256, 144);
   middlePlatform.igniteWithFire();
 
-  findPlayer(scene, 'red').y = 300;
+  findPlayer(scene, 'red').y = 600;
   scene.update(neutralInputs());
   assert.equal(scene.phase, 'point');
 
@@ -996,13 +996,13 @@ test('playing Ice Floor freezes the platform under the opponent', () => {
 
   const red = findPlayer(scene, 'red');
   const blue = findPlayer(scene, 'blue');
-  blue.x = 150;
-  blue.y = 60; // standing on the middle platform, top y 72
+  blue.x = 300;
+  blue.y = 120; // standing on the middle platform, top y 144
   blue.onGround = true;
   red.heldCardName = 'ice';
   scene.update(neutralInputs()); // release the card key held from spawn
 
-  const middlePlatform = findPlatformAt(scene, 128, 72);
+  const middlePlatform = findPlatformAt(scene, 256, 144);
   assert.equal(middlePlatform.isIcy, false);
 
   scene.update({ red: { left: false, right: false, jump: false, card: true }, blue: noInput() });
@@ -1016,15 +1016,15 @@ test('Ice Floor uses the platform under an airborne opponent', () => {
 
   const red = findPlayer(scene, 'red');
   const blue = findPlayer(scene, 'blue');
-  blue.x = 60;
-  blue.y = 90; // mid-air above the side platform (top y 112), not touching it
+  blue.x = 120;
+  blue.y = 180; // mid-air above the side platform (top y 224), not touching it
   blue.onGround = false;
   red.heldCardName = 'ice';
   scene.update(neutralInputs());
 
   scene.update({ red: { left: false, right: false, jump: false, card: true }, blue: noInput() });
 
-  const sidePlatform = findPlatformAt(scene, 40, 112);
+  const sidePlatform = findPlatformAt(scene, 80, 224);
   assert.equal(sidePlatform.isIcy, true, 'the platform below the airborne opponent freezes');
 });
 
@@ -1035,7 +1035,7 @@ test('nothing freezes and the card is still spent when the opponent has no platf
   const red = findPlayer(scene, 'red');
   const blue = findPlayer(scene, 'blue');
   blue.x = 0; // no platform sits under x 0 (see the crate test for the same gap)
-  blue.y = 90;
+  blue.y = 180;
   blue.onGround = false;
   red.heldCardName = 'ice';
   scene.update(neutralInputs());
@@ -1051,11 +1051,11 @@ test('a player on ice takes clearly longer to stop than on metal', () => {
   advance(scene, READY_TICKS);
 
   const blue = findPlayer(scene, 'blue');
-  blue.x = 150;
-  blue.y = 60;
+  blue.x = 300;
+  blue.y = 120;
   blue.onGround = true;
-  blue.velocityX = 1.8; // full running speed, coasting with no input
-  const middlePlatform = findPlatformAt(scene, 128, 72);
+  blue.velocityX = 3.6; // full running speed, coasting with no input
+  const middlePlatform = findPlatformAt(scene, 256, 144);
   middlePlatform.freezeWithIce();
 
   let icyTicksToStop = 0;
@@ -1068,10 +1068,10 @@ test('a player on ice takes clearly longer to stop than on metal', () => {
   const metalScene = new VersusScene();
   advance(metalScene, READY_TICKS);
   const metalBlue = findPlayer(metalScene, 'blue');
-  metalBlue.x = 150;
-  metalBlue.y = 60;
+  metalBlue.x = 300;
+  metalBlue.y = 120;
   metalBlue.onGround = true;
-  metalBlue.velocityX = 1.8;
+  metalBlue.velocityX = 3.6;
 
   let metalTicksToStop = 0;
   while (metalBlue.velocityX > 0) {
@@ -1090,7 +1090,7 @@ test('the ice ends after 300 ticks', () => {
   const scene = new VersusScene();
   advance(scene, READY_TICKS);
 
-  const middlePlatform = findPlatformAt(scene, 128, 72);
+  const middlePlatform = findPlatformAt(scene, 256, 144);
   middlePlatform.freezeWithIce();
 
   advance(scene, 299);
@@ -1104,10 +1104,10 @@ test('ice is cleared from every platform at the start of a new round', () => {
   const scene = new VersusScene();
   advance(scene, READY_TICKS);
 
-  const middlePlatform = findPlatformAt(scene, 128, 72);
+  const middlePlatform = findPlatformAt(scene, 256, 144);
   middlePlatform.freezeWithIce();
 
-  findPlayer(scene, 'red').y = 300;
+  findPlayer(scene, 'red').y = 600;
   scene.update(neutralInputs());
   assert.equal(scene.phase, 'point');
 
@@ -1117,7 +1117,7 @@ test('ice is cleared from every platform at the start of a new round', () => {
 });
 
 test('ice replaces fire on the same platform, and fire replaces ice', () => {
-  const platform = findPlatformAt(new VersusScene(), 128, 72);
+  const platform = findPlatformAt(new VersusScene(), 256, 144);
 
   platform.igniteWithFire();
   assert.equal(platform.isBurning, true);
@@ -1135,8 +1135,8 @@ test('a crate with no platform below it falls into the sea and the next crate is
   advance(scene, READY_TICKS);
 
   // x 0 sits under no platform, so nothing stops the fall.
-  const crate = new Crate({ x: 0, y: scene.waterLineY - 20, cardName: 'dash' });
-  crate.y = scene.waterLineY - crate.height - 1; // one fall tick from the sea
+  const crate = new Crate({ x: 0, y: scene.waterLineY - 40, cardName: 'dash' });
+  crate.y = scene.waterLineY - crate.height - 2; // one fall tick from the sea
   crate.ticksUntilLanded = 0;
   scene.entityGroups.clear('crates');
   scene.entityGroups.add('crates', crate);
@@ -1158,7 +1158,7 @@ const RESTART_DELAY_TICKS = 60;
 function reachMatchPhase(scene) {
   for (let win = 1; win <= 5; win++) {
     advance(scene, READY_TICKS);
-    findPlayer(scene, 'blue').y = 300;
+    findPlayer(scene, 'blue').y = 600;
     scene.update(neutralInputs());
     if (win < 5) advance(scene, 90); // point pause resolves back to a fresh 'ready' round
   }
@@ -1171,13 +1171,13 @@ test('a fall landed after the round is already decided is not counted in match s
   const red = findPlayer(scene, 'red');
   const blue = findPlayer(scene, 'blue');
 
-  red.y = 300; // red falls in during the fight, deciding the round
+  red.y = 600; // red falls in during the fight, deciding the round
   scene.update(neutralInputs());
   assert.equal(scene.phase, 'point');
   assert.deepEqual(scene.matchStats.fallsIn, { red: 1, blue: 0 });
 
   // A late rocket (or leftover momentum) knocks the winner in after the round is already over.
-  blue.y = 300;
+  blue.y = 600;
   scene.update(neutralInputs());
   assert.equal(blue.inWater, true, 'blue still falls in; the event still fires');
   assert.deepEqual(scene.matchStats.fallsIn, { red: 1, blue: 0 }, 'the post-decision fall is not counted');
@@ -1192,13 +1192,13 @@ test('stats are counted even when a match runs entirely through updates, with no
 
   const red = findPlayer(scene, 'red');
   const blue = findPlayer(scene, 'blue');
-  blue.x = 150;
-  blue.y = 60;
+  blue.x = 300;
+  blue.y = 120;
   blue.onGround = true;
-  red.x = 150;
-  red.y = 30;
+  red.x = 300;
+  red.y = 60;
   red.previousY = red.y;
-  red.velocityY = 6;
+  red.velocityY = 12;
   red.onGround = false;
 
   const stompEvents = [];
@@ -1206,7 +1206,7 @@ test('stats are counted even when a match runs entirely through updates, with no
   advance(scene, 10);
   assert.equal(stompEvents.length, 1, 'the stomp should have landed');
 
-  findPlayer(scene, 'red').y = 300;
+  findPlayer(scene, 'red').y = 600;
   scene.update(neutralInputs());
 
   assert.deepEqual(scene.matchStats.stomps, { red: 1, blue: 0 });

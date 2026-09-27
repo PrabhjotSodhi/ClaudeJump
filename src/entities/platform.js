@@ -64,12 +64,12 @@ export class Platform extends Entity {
     context.fillStyle = SHADOW_COLOR;
     context.fillRect(this.x, this.y, this.width, this.height);
     context.fillStyle = this.isBurning ? FIRE_FILL_COLOR : this.isIcy ? ICE_FILL_COLOR : FILL_COLOR;
-    context.fillRect(this.x + 1, this.y + 1, this.width - 2, this.height - 2);
+    context.fillRect(this.x + 2, this.y + 2, this.width - 4, this.height - 4);
     context.fillStyle = HIGHLIGHT_COLOR;
-    context.fillRect(this.x + 1, this.y + 1, this.width - 2, 1);
+    context.fillRect(this.x + 2, this.y + 2, this.width - 4, 2);
     context.fillStyle = SHADOW_COLOR;
     const centerY = this.y + Math.floor(this.height / 2);
-    context.fillRect(this.x + 3, centerY, 1, 1);
-    context.fillRect(this.x + this.width - 4, centerY, 1, 1);
+    context.fillRect(this.x + 6, centerY, 2, 2);
+    context.fillRect(this.x + this.width - 8, centerY, 2, 2);
   }
 }
