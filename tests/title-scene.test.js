@@ -67,7 +67,7 @@ test('holding down does not repeat every tick', () => {
   assert.equal(scene.selectedIndex, 1);
 });
 
-test('a fresh jump press confirms the selection and switches to Versus', () => {
+test('a fresh jump press confirms the selection and opens player select', () => {
   let scene;
   const scenes = [];
   const sceneManager = { setScene: (nextScene) => scenes.push(nextScene) };
@@ -76,7 +76,7 @@ test('a fresh jump press confirms the selection and switches to Versus', () => {
   scene.update(inputsWithJump('red'));
 
   assert.equal(scenes.length, 1);
-  assert.equal(scenes[0].constructor.name, 'VersusScene');
+  assert.equal(scenes[0].constructor.name, 'PlayerSelectScene');
 });
 
 test('a held jump does not confirm more than once', () => {
