@@ -71,7 +71,7 @@ test('a fresh jump press confirms the selection and switches to Versus', () => {
   let scene;
   const scenes = [];
   const sceneManager = { setScene: (nextScene) => scenes.push(nextScene) };
-  scene = new TitleScene({ sceneManager, createSeed: () => 0 });
+  scene = new TitleScene({ sceneManager, seed: 0 });
 
   scene.update(inputsWithJump('red'));
 
@@ -82,7 +82,7 @@ test('a fresh jump press confirms the selection and switches to Versus', () => {
 test('a held jump does not confirm more than once', () => {
   const scenes = [];
   const sceneManager = { setScene: (nextScene) => scenes.push(nextScene) };
-  const scene = new TitleScene({ sceneManager, createSeed: () => 0 });
+  const scene = new TitleScene({ sceneManager, seed: 0 });
   const heldJump = inputsWithJump('red');
 
   scene.update(heldJump);

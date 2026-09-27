@@ -29,7 +29,7 @@ async function main() {
   if (isDevMode) {
     sceneManager.setScene(new VersusScene({ startInFightPhase: true, seed: 0 }));
   } else {
-    sceneManager.setScene(new TitleScene({ sceneManager }));
+    sceneManager.setScene(new TitleScene({ sceneManager, seed: Date.now() }));
   }
 
   function renderFrame(timestamp) {

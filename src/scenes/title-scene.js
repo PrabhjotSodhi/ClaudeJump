@@ -1,4 +1,5 @@
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../engine/config.js';
+import { PLAYER_SPAWNS } from '../levels/versus-arena.js';
 import { drawText } from '../ui/text.js';
 import { VersusScene } from './versus-scene.js';
 
@@ -13,19 +14,21 @@ const SELECTION_MARKER_X = OPTIONS_LEFT_X - 10;
 const SELECTION_MARKER_HEIGHT = 9;
 const CONTROLS_TOP_Y = 130;
 const CONTROLS_ROW_HEIGHT = 10;
-const RED_COLOR = '#dc2828';
-const BLUE_COLOR = '#2846dc';
+// Above the tallest wave crest the water shader draws, so no water shows on the title screen.
+const NO_WATER_LINE_Y = SCREEN_HEIGHT + 2;
+const RED_COLOR = PLAYER_SPAWNS.find((spawn) => spawn.id === 'red').color;
+const BLUE_COLOR = PLAYER_SPAWNS.find((spawn) => spawn.id === 'blue').color;
 
 // Survival goes here once it exists. The menu grows by one entry, nothing else changes.
 export const MENU_OPTIONS = [{ id: 'versus', label: 'Versus' }];
 
 export class TitleScene {
-  constructor({ sceneManager, createSeed = () => Date.now(), options = MENU_OPTIONS } = {}) {
+  constructor({ sceneManager, seed = Date.now(), options = MENU_OPTIONS } = {}) {
     this.sceneManager = sceneManager;
-    this.createSeed = createSeed;
+    this.seed = seed;
     this.options = options;
     this.selectedIndex = 0;
-    this.waterLineY = SCREEN_HEIGHT;
+    this.waterLineY = NO_WATER_LINE_Y;
     this.backgroundDrawn = false;
     this.previousDown = {};
     this.previousJump = {};
@@ -48,7 +51,7 @@ export class TitleScene {
 
   confirmSelection() {
     const option = this.options[this.selectedIndex];
-    if (option.id === 'versus') this.sceneManager.setScene(new VersusScene({ seed: this.createSeed() }));
+    if (option.id === 'versus') this.sceneManager.setScene(new VersusScene({ seed: this.seed }));
   }
 
   render(renderer) {
