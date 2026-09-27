@@ -37,6 +37,7 @@ export function createKeyboardInput(playerKeyMappings) {
           left: isDown(mapping.keys.left),
           right: isDown(mapping.keys.right),
           jump: isDown(mapping.keys.jump),
+          down: isDown(mapping.keys.down),
           card: isDown(mapping.keys.card),
         };
       }

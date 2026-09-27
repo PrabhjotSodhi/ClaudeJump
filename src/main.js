@@ -4,6 +4,7 @@ import { createKeyboardInput } from './engine/input.js';
 import { Renderer } from './engine/renderer.js';
 import { SceneManager } from './engine/scene-manager.js';
 import { createWindow } from './engine/window.js';
+import { TitleScene } from './scenes/title-scene.js';
 import { VersusScene } from './scenes/versus-scene.js';
 
 async function loadText(path) {
@@ -25,7 +26,11 @@ async function main() {
   const renderer = new Renderer();
   const input = createKeyboardInput(keyMappings);
   const sceneManager = new SceneManager();
-  sceneManager.setScene(new VersusScene({ startInFightPhase: isDevMode, seed: isDevMode ? 0 : Date.now() }));
+  if (isDevMode) {
+    sceneManager.setScene(new VersusScene({ startInFightPhase: true, seed: 0 }));
+  } else {
+    sceneManager.setScene(new TitleScene({ sceneManager, seed: Date.now() }));
+  }
 
   function renderFrame(timestamp) {
     sceneManager.render(renderer);
