@@ -14,7 +14,7 @@ const CARD_WIDTH = 168;
 const CARD_HEIGHT = 200;
 const CARD_OFFSET_X = 148;
 const CARD_LABEL_Y = CARD_TOP_Y + 16;
-const PORTRAIT_SCALE = 8;
+const PORTRAIT_SCALE = 3;
 const PORTRAIT_TOP_Y = CARD_TOP_Y + 44;
 // The status sits in the last two text rows above the card's bottom edge, so both a wrapped
 // two-line status and the single-line READY! stay inside the card with room to spare.

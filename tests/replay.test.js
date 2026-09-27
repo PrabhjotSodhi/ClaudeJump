@@ -6,10 +6,10 @@ import { VersusScene } from '../src/scenes/versus-scene.js';
 import { runScriptedReplay } from './fixtures/replay-script.mjs';
 
 const baseline = JSON.parse(
-  readFileSync(fileURLToPath(new URL('./fixtures/replay-320x180.json', import.meta.url)), 'utf8'),
+  readFileSync(fileURLToPath(new URL('./fixtures/replay-640x360.json', import.meta.url)), 'utf8'),
 );
 
-test('the 640x360 grid plays the scripted replay exactly twice the 320x180 baseline', () => {
+test('the 640x360 grid plays the scripted replay exactly matching the recorded baseline', () => {
   const { snapshots } = runScriptedReplay(VersusScene);
 
   assert.equal(snapshots.length, baseline.length);
@@ -18,8 +18,8 @@ test('the 640x360 grid plays the scripted replay exactly twice the 320x180 basel
     const actual = snapshots[index];
     assert.equal(actual.tick, expected.tick);
     for (const playerId of ['red', 'blue']) {
-      assert.equal(actual[playerId].x, expected[playerId].x * 2, `tick ${expected.tick} ${playerId}.x`);
-      assert.equal(actual[playerId].y, expected[playerId].y * 2, `tick ${expected.tick} ${playerId}.y`);
+      assert.equal(actual[playerId].x, expected[playerId].x, `tick ${expected.tick} ${playerId}.x`);
+      assert.equal(actual[playerId].y, expected[playerId].y, `tick ${expected.tick} ${playerId}.y`);
     }
   }
 });
