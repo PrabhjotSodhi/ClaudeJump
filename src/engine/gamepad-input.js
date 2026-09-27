@@ -3,6 +3,7 @@ const STICK_DEAD_ZONE = 0.35;
 
 const BUTTON_JUMP = 0; // A
 const BUTTON_CARD = 1; // B
+const BUTTON_PAUSE = 9; // Start
 const BUTTON_DPAD_DOWN = 13;
 const BUTTON_DPAD_LEFT = 14;
 const BUTTON_DPAD_RIGHT = 15;
@@ -16,7 +17,7 @@ function isButtonPressed(gamepad, buttonIndex) {
 
 export function mapGamepadToInput(gamepad) {
   if (!gamepad) {
-    return { left: false, right: false, jump: false, down: false, card: false };
+    return { left: false, right: false, jump: false, down: false, card: false, pause: false };
   }
 
   const stickX = gamepad.axes[AXIS_STICK_X] ?? 0;
@@ -28,6 +29,7 @@ export function mapGamepadToInput(gamepad) {
     jump: isButtonPressed(gamepad, BUTTON_JUMP),
     down: stickY > STICK_DEAD_ZONE || isButtonPressed(gamepad, BUTTON_DPAD_DOWN),
     card: isButtonPressed(gamepad, BUTTON_CARD),
+    pause: isButtonPressed(gamepad, BUTTON_PAUSE),
   };
 }
 
