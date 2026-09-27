@@ -46,3 +46,20 @@ export function createKeyboardInput(playerKeyMappings) {
     },
   };
 }
+
+// A control counts as pressed if either source pressed it.
+export function combineInputs(inputByPlayerIdA, inputByPlayerIdB) {
+  const inputByPlayerId = {};
+  for (const playerId in inputByPlayerIdA) {
+    const inputA = inputByPlayerIdA[playerId];
+    const inputB = inputByPlayerIdB[playerId] ?? {};
+    inputByPlayerId[playerId] = {
+      left: inputA.left || !!inputB.left,
+      right: inputA.right || !!inputB.right,
+      jump: inputA.jump || !!inputB.jump,
+      down: inputA.down || !!inputB.down,
+      card: inputA.card || !!inputB.card,
+    };
+  }
+  return inputByPlayerId;
+}

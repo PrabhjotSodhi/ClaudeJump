@@ -1,6 +1,7 @@
 import { TICK_RATE } from './engine/config.js';
 import { createGameLoop } from './engine/game-loop.js';
-import { createKeyboardInput } from './engine/input.js';
+import { createGamepadInput } from './engine/gamepad-input.js';
+import { combineInputs, createKeyboardInput } from './engine/input.js';
 import { Renderer } from './engine/renderer.js';
 import { SceneManager } from './engine/scene-manager.js';
 import { createWindow } from './engine/window.js';
@@ -24,7 +25,8 @@ async function main() {
   const canvas = document.getElementById('screen');
   const gameWindow = createWindow(canvas, vertexShaderSource, fragmentShaderSource);
   const renderer = new Renderer();
-  const input = createKeyboardInput(keyMappings);
+  const keyboardInput = createKeyboardInput(keyMappings);
+  const gamepadInput = createGamepadInput(keyMappings.map((mapping) => mapping.id));
   const sceneManager = new SceneManager();
   if (isDevMode) {
     sceneManager.setScene(new VersusScene({ startInFightPhase: true, seed: 0 }));
@@ -47,7 +49,7 @@ async function main() {
   const gameLoop = createGameLoop({
     tickRate: TICK_RATE,
     update() {
-      sceneManager.update(input.sample());
+      sceneManager.update(combineInputs(keyboardInput.sample(), gamepadInput.sample()));
     },
     render: renderFrame,
   });
