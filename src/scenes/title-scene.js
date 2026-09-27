@@ -1,7 +1,7 @@
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../engine/config.js';
 import { PLAYER_SPAWNS } from '../levels/versus-arena.js';
 import { drawText } from '../ui/text.js';
-import { VersusScene } from './versus-scene.js';
+import { PlayerSelectScene } from './player-select-scene.js';
 
 const BACKGROUND_COLOR = '#141428';
 const TITLE_Y = 30;
@@ -51,7 +51,8 @@ export class TitleScene {
 
   confirmSelection() {
     const option = this.options[this.selectedIndex];
-    if (option.id === 'versus') this.sceneManager.setScene(new VersusScene({ seed: this.seed }));
+    if (option.id === 'versus')
+      this.sceneManager.setScene(new PlayerSelectScene({ sceneManager: this.sceneManager, seed: this.seed }));
   }
 
   render(renderer) {
