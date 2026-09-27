@@ -26,6 +26,10 @@ function pausedScene(overrides = {}) {
   return { scene, matchScene, sceneManager, scenes };
 }
 
+function findPlayer(matchScene, playerId) {
+  return matchScene.players.find((player) => player.id === playerId);
+}
+
 test('a fresh pause press stops the match from ticking', () => {
   const { scene, matchScene } = pausedScene();
 
@@ -152,6 +156,26 @@ test('losing focus pauses a running match', () => {
 
   assert.equal(scene.paused, true);
   assert.equal(matchScene.tickCount, tickCountAfterPausing);
+});
+
+test('confirming Resume with jump held does not make the player jump', () => {
+  const { scene, matchScene } = pausedScene();
+  matchScene.update(neutralInputs()); // let the grounded player settle before pausing
+  const groundedY = findPlayer(matchScene, 'red').y;
+
+  scene.update(inputsWith('red', { pause: true }));
+  const heldJump = inputsWith('red', { jump: true });
+  scene.update(heldJump); // confirms Resume while jump is still held
+
+  scene.update(heldJump);
+  scene.update(heldJump);
+  scene.update(heldJump);
+
+  assert.equal(
+    findPlayer(matchScene, 'red').y,
+    groundedY,
+    'a jump held through Resume must not launch the player once the match ticks again',
+  );
 });
 
 test('losing focus while already paused does not reset the selection', () => {

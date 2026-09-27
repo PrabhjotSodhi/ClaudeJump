@@ -6,6 +6,11 @@ export const PAUSE_MENU_OPTIONS = [
   { id: 'title', label: 'Return to title' },
 ];
 
+// Controls masked out of the match's input for a player until they release it, so confirming
+// Resume (or toggling pause) with one of these still held does not act on the match the instant
+// it resumes: a held jump would launch the player, a held card would spend it, and so on.
+const CONTROLS_MASKED_ON_RESUME = ['jump', 'down', 'card'];
+
 // Wraps a match scene so pausing never calls its update(), which keeps the match's own game
 // logic unaware that wall-clock time passed. The wrapper reads input to navigate the pause menu,
 // but nothing here changes match state directly except handing control back to it on resume.
@@ -29,7 +34,7 @@ export class PausableMatchScene {
 
     if (this.paused) {
       if (pausePressed) {
-        this.resume();
+        this.resume(inputByPlayerId);
         return;
       }
       this.updateMenu(inputByPlayerId);
@@ -41,7 +46,7 @@ export class PausableMatchScene {
       return;
     }
 
-    this.matchScene.update(inputByPlayerId);
+    this.matchScene.update(this.maskHeldOnResume(inputByPlayerId));
   }
 
   updateMenu(inputByPlayerId) {
@@ -82,14 +87,45 @@ export class PausableMatchScene {
     if (!this.paused) this.openMenu(inputByPlayerId);
   }
 
-  resume() {
+  // Records which of the masked controls each player is holding right now, so the match ignores
+  // exactly those controls for exactly that player until they let go and press again.
+  resume(inputByPlayerId = {}) {
     this.paused = false;
+    this.heldOnResumeByPlayerId = {};
+    for (const playerId in inputByPlayerId) {
+      const input = inputByPlayerId[playerId];
+      const held = {};
+      for (const control of CONTROLS_MASKED_ON_RESUME) held[control] = !!input[control];
+      this.heldOnResumeByPlayerId[playerId] = held;
+    }
+  }
+
+  maskHeldOnResume(inputByPlayerId) {
+    if (!this.heldOnResumeByPlayerId) return inputByPlayerId;
+
+    const maskedInput = {};
+    for (const playerId in inputByPlayerId) {
+      const input = inputByPlayerId[playerId];
+      const held = this.heldOnResumeByPlayerId[playerId];
+      if (!held) {
+        maskedInput[playerId] = input;
+        continue;
+      }
+      const maskedForPlayer = { ...input };
+      for (const control of CONTROLS_MASKED_ON_RESUME) {
+        if (!held[control]) continue;
+        if (input[control]) maskedForPlayer[control] = false;
+        else held[control] = false;
+      }
+      maskedInput[playerId] = maskedForPlayer;
+    }
+    return maskedInput;
   }
 
   confirmSelection(inputByPlayerId) {
     const option = PAUSE_MENU_OPTIONS[this.selectedIndex];
     if (option.id === 'resume') {
-      this.resume();
+      this.resume(inputByPlayerId);
     } else if (option.id === 'title') {
       const seed = Math.floor(this.matchScene.random.next() * 0xffffffff);
       this.sceneManager.setScene(
