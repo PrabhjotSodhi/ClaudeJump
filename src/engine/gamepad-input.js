@@ -31,19 +31,22 @@ export function mapGamepadToInput(gamepad) {
   };
 }
 
-// Assigns gamepads to players by connection order: first connected pad to
-// the first player id, second to the second, and so on.
+// Assigns gamepads to players by browser slot: the pad at gamepads[0] to the
+// first player id, gamepads[1] to the second, and so on. The browser refills
+// the lowest free slot on reconnect, so a replugged pad returns to the same
+// player instead of shifting another player's pad over.
+export function mapGamepadsToInputs(gamepads, playerIds) {
+  const inputByPlayerId = {};
+  playerIds.forEach((playerId, index) => {
+    inputByPlayerId[playerId] = mapGamepadToInput(gamepads[index] ?? null);
+  });
+  return inputByPlayerId;
+}
+
 export function createGamepadInput(playerIds) {
   return {
     sample() {
-      const gamepads = navigator.getGamepads();
-      const connectedGamepads = Array.from(gamepads).filter((gamepad) => gamepad !== null);
-
-      const inputByPlayerId = {};
-      playerIds.forEach((playerId, index) => {
-        inputByPlayerId[playerId] = mapGamepadToInput(connectedGamepads[index]);
-      });
-      return inputByPlayerId;
+      return mapGamepadsToInputs(navigator.getGamepads(), playerIds);
     },
   };
 }

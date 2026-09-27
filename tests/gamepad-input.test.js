@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { mapGamepadToInput } from '../src/engine/gamepad-input.js';
+import { mapGamepadToInput, mapGamepadsToInputs } from '../src/engine/gamepad-input.js';
 
 function fakeGamepad({ buttonsPressed = [], axes = [0, 0] } = {}) {
   const buttons = [];
@@ -55,4 +55,14 @@ test('button A jumps and button B plays the card', () => {
 
   assert.equal(input.jump, true);
   assert.equal(input.card, true);
+});
+
+test('mapGamepadsToInputs assigns by browser slot, not by connection order', () => {
+  const bluePad = fakeGamepad({ buttonsPressed: [0] });
+  const gamepads = [null, bluePad]; // red's pad was unplugged; blue's pad stays at slot 1
+
+  const inputs = mapGamepadsToInputs(gamepads, ['red', 'blue']);
+
+  assert.equal(inputs.red.jump, false);
+  assert.equal(inputs.blue.jump, true);
 });
