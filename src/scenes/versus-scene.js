@@ -173,6 +173,7 @@ export class VersusScene {
         if (player.playedCardName === 'bouncePad') this.spawnBouncePad(player);
         if (player.playedCardName === 'fire') this.igniteFire(player);
         if (player.playedCardName === 'ice') this.freezeIce(player);
+        if (player.playedCardName === 'dash') this.clearBumpingPairsFor(player.id);
       }
       if (!player.inWater && player.y + player.height >= this.waterLineY) {
         player.startSinking();
@@ -181,6 +182,14 @@ export class VersusScene {
       this.wrapPlayerAroundScreen(player);
     }
     this.resolvePlayerCollisions();
+  }
+
+  // Starting a dash counts as a fresh contact, so a dash into an opponent already being pushed
+  // against still lands its knockback once, instead of only continuing the ongoing push.
+  clearBumpingPairsFor(playerId) {
+    for (const pairId of this.bumpingPairIds) {
+      if (pairId.split('-').includes(playerId)) this.bumpingPairIds.delete(pairId);
+    }
   }
 
   spawnRocket(player) {
