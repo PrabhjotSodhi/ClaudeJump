@@ -1,14 +1,12 @@
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../engine/config.js';
 import { Player } from '../entities/player.js';
 import { PLAYER_SPAWNS } from '../levels/versus-arena.js';
+import { MENU_BACKGROUND_COLOR, NO_WATER_LINE_Y } from '../ui/menu-screen.js';
 import { drawText } from '../ui/text.js';
 import { VersusScene } from './versus-scene.js';
 
-const BACKGROUND_COLOR = '#141428';
 const TITLE_Y = 30;
 const TITLE_SCALE = 3;
-// Above the tallest wave crest the water shader draws, so no water shows on this screen.
-const NO_WATER_LINE_Y = SCREEN_HEIGHT + 2;
 
 const CARD_TOP_Y = 55;
 const CARD_WIDTH = 84;
@@ -17,14 +15,18 @@ const CARD_OFFSET_X = 74;
 const CARD_LABEL_Y = CARD_TOP_Y + 8;
 const PORTRAIT_SCALE = 4;
 const PORTRAIT_TOP_Y = CARD_TOP_Y + 22;
-const STATUS_TEXT_Y = CARD_TOP_Y + CARD_HEIGHT - 16;
+// The status sits in the last two text rows above the card's bottom edge, so both a wrapped
+// two-line status and the single-line READY! stay inside the card with room to spare.
+const STATUS_TEXT_TOP_Y = CARD_TOP_Y + CARD_HEIGHT - 23;
+const STATUS_LINE_HEIGHT = 10;
 
 const READY_COLOR = '#ffdc28';
 
+// Each status is split across lines short enough to fit inside CARD_WIDTH with margin to spare.
 const STATUS_LABEL = {
-  unjoined: 'Press jump to join',
-  joined: 'Press jump when ready',
-  ready: 'READY!',
+  unjoined: ['Press jump', 'to join'],
+  joined: ['Press jump', 'when ready'],
+  ready: ['READY!'],
 };
 
 export class PlayerSelectScene {
@@ -77,7 +79,7 @@ export class PlayerSelectScene {
 }
 
 function drawPlayerSelectBackground(context) {
-  context.fillStyle = BACKGROUND_COLOR;
+  context.fillStyle = MENU_BACKGROUND_COLOR;
   context.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 }
 
@@ -97,9 +99,14 @@ function drawPlayerCard(context, spawn, state) {
 
   if (state !== 'unjoined') drawPlayerPortrait(context, spawn, centerX, PORTRAIT_TOP_Y);
 
-  drawText(context, STATUS_LABEL[state], centerX, STATUS_TEXT_Y, {
-    align: 'center',
-    color: state === 'ready' ? READY_COLOR : spawn.color,
+  drawStatus(context, STATUS_LABEL[state], centerX, state === 'ready' ? READY_COLOR : spawn.color);
+}
+
+// Centers a single line in the two-line status slot, so READY! sits level with a wrapped status.
+function drawStatus(context, lines, centerX, color) {
+  const topY = lines.length === 1 ? STATUS_TEXT_TOP_Y + STATUS_LINE_HEIGHT / 2 : STATUS_TEXT_TOP_Y;
+  lines.forEach((line, index) => {
+    drawText(context, line, centerX, topY + index * STATUS_LINE_HEIGHT, { align: 'center', color });
   });
 }
 

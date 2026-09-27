@@ -1,9 +1,9 @@
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../engine/config.js';
 import { PLAYER_SPAWNS } from '../levels/versus-arena.js';
+import { MENU_BACKGROUND_COLOR, NO_WATER_LINE_Y } from '../ui/menu-screen.js';
 import { drawText } from '../ui/text.js';
 import { PlayerSelectScene } from './player-select-scene.js';
 
-const BACKGROUND_COLOR = '#141428';
 const TITLE_Y = 30;
 const TITLE_SCALE = 3;
 const OPTIONS_TOP_Y = 80;
@@ -14,8 +14,6 @@ const SELECTION_MARKER_X = OPTIONS_LEFT_X - 10;
 const SELECTION_MARKER_HEIGHT = 9;
 const CONTROLS_TOP_Y = 130;
 const CONTROLS_ROW_HEIGHT = 10;
-// Above the tallest wave crest the water shader draws, so no water shows on the title screen.
-const NO_WATER_LINE_Y = SCREEN_HEIGHT + 2;
 const RED_COLOR = PLAYER_SPAWNS.find((spawn) => spawn.id === 'red').color;
 const BLUE_COLOR = PLAYER_SPAWNS.find((spawn) => spawn.id === 'blue').color;
 
@@ -68,7 +66,7 @@ export class TitleScene {
 }
 
 function drawTitleBackground(context) {
-  context.fillStyle = BACKGROUND_COLOR;
+  context.fillStyle = MENU_BACKGROUND_COLOR;
   context.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 }
 
