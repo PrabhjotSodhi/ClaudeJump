@@ -5,7 +5,7 @@ import { PLAYER_HEIGHT, PLAYER_WIDTH } from '../entities/player.js';
 // screen's refresh rate. Never read by game logic, and never changes it: it only reacts to
 // the player-wrapped event.
 const FADE_TICKS = 18; // about 0.3 seconds at 60 ticks per second
-// A hollow ring, clearly bigger than the 16x24 player, so it reads as a puff around them
+// A hollow ring, clearly bigger than the 24x28 player, so it reads as a puff around them
 // instead of a block sitting on top of them.
 const PUFF_WIDTH = PLAYER_WIDTH + 16;
 const PUFF_HEIGHT = PLAYER_HEIGHT + 16;

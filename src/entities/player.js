@@ -1,8 +1,8 @@
 import { SCREEN_WIDTH } from '../engine/config.js';
 import { PhysicsEntity } from '../engine/physics-entity.js';
 
-export const PLAYER_WIDTH = 16;
-export const PLAYER_HEIGHT = 24;
+export const PLAYER_WIDTH = 24;
+export const PLAYER_HEIGHT = 28;
 
 const GRAVITY = 0.6;
 const MAX_FALL_SPEED = 12;
@@ -161,10 +161,10 @@ export class Player extends PhysicsEntity {
     const drawX = Math.round(x);
     const drawY = Math.round(this.y);
     context.fillStyle = SKIN_COLOR;
-    context.fillRect(drawX + 2, drawY, 12, 12);
+    context.fillRect(drawX + 4, drawY, 16, 14);
     context.fillStyle = this.color;
-    context.fillRect(drawX, drawY + 12, this.width, this.height - 12);
+    context.fillRect(drawX, drawY + 14, this.width, this.height - 14);
     context.fillStyle = EYE_COLOR;
-    context.fillRect(drawX + (this.facing > 0 ? 10 : 4), drawY + 4, 2, 2);
+    context.fillRect(drawX + (this.facing > 0 ? 16 : 6), drawY + 5, 2, 2);
   }
 }

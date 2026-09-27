@@ -112,10 +112,10 @@ test('two players running into each other end up side by side, never overlapping
   const red = findPlayer(scene, 'red');
   const blue = findPlayer(scene, 'blue');
   red.x = 264;
-  red.y = 120;
+  red.y = 116;
   red.onGround = true;
   blue.x = 356;
-  blue.y = 120;
+  blue.y = 116;
   blue.onGround = true;
 
   for (let tick = 0; tick < 60; tick++) {
@@ -133,10 +133,10 @@ test('a player running into a standing player pushes them', () => {
   const red = findPlayer(scene, 'red');
   const blue = findPlayer(scene, 'blue');
   red.x = 264;
-  red.y = 120;
+  red.y = 116;
   red.onGround = true;
   blue.x = 340;
-  blue.y = 120;
+  blue.y = 116;
   blue.onGround = true;
   const blueStartX = blue.x;
 
@@ -155,10 +155,10 @@ test('a player jumping over another is not pushed sideways', () => {
   const red = findPlayer(scene, 'red');
   const blue = findPlayer(scene, 'blue');
   red.x = 264;
-  red.y = 120;
+  red.y = 116;
   red.onGround = true;
   blue.x = 300;
-  blue.y = 120;
+  blue.y = 116;
   blue.onGround = true;
   const blueStartX = blue.x;
 
@@ -182,10 +182,10 @@ test('players-bumped fires once per contact, not every tick', () => {
   const red = findPlayer(scene, 'red');
   const blue = findPlayer(scene, 'blue');
   red.x = 264;
-  red.y = 120;
+  red.y = 116;
   red.onGround = true;
   blue.x = 356;
-  blue.y = 120;
+  blue.y = 116;
   blue.onGround = true;
 
   const bumpEvents = [];
@@ -206,10 +206,10 @@ test('two players held into each other settle at a gap of zero, not a buzz', () 
   const red = findPlayer(scene, 'red');
   const blue = findPlayer(scene, 'blue');
   red.x = 264;
-  red.y = 120;
+  red.y = 116;
   red.onGround = true;
   blue.x = 356;
-  blue.y = 120;
+  blue.y = 116;
   blue.onGround = true;
 
   const inputs = { red: { left: false, right: true, jump: false }, blue: { left: true, right: false, jump: false } };
@@ -234,10 +234,10 @@ test('a stomp bounces the stomper up and knocks the other player sideways, away 
   const red = findPlayer(scene, 'red');
   const blue = findPlayer(scene, 'blue');
   blue.x = 300;
-  blue.y = 120;
+  blue.y = 116;
   blue.onGround = true;
   red.x = 292; // left of blue's center, so a stomp should knock blue further right
-  red.y = 90;
+  red.y = 82;
   red.velocityY = 4;
   red.onGround = false;
   red.airJumpAvailable = false; // used up already, so a refresh from the stomp is observable
@@ -264,10 +264,10 @@ test('holding jump during a stomp bounces higher than not holding it', () => {
     const red = findPlayer(scene, 'red');
     const blue = findPlayer(scene, 'blue');
     blue.x = 300;
-    blue.y = 120;
+    blue.y = 116;
     blue.onGround = true;
     red.x = 300;
-    red.y = 90;
+    red.y = 82;
     red.velocityY = 4;
     red.onGround = false;
     scene.update({ red: noInput(), blue: noInput() }); // release the jump key held from spawn
@@ -296,7 +296,7 @@ test('a fast fall still lands a stomp at every drop height from 60 to 200 px', (
     const red = findPlayer(scene, 'red');
     const blue = findPlayer(scene, 'blue');
     blue.x = 300;
-    blue.y = 120;
+    blue.y = 116;
     blue.onGround = true;
     red.x = 300;
     red.y = blue.y - dropHeight;
@@ -323,9 +323,9 @@ test('a player moving past the right edge reappears on the left with the same ve
   const red = findPlayer(scene, 'red');
   const blue = findPlayer(scene, 'blue');
   red.x = SCREEN_WIDTH - 60;
-  red.y = 120;
+  red.y = 116;
   blue.x = 300; // out of the way, on screen
-  blue.y = 120; // standing on the middle platform, not mid-air where it would fall in and end the round
+  blue.y = 116; // standing on the middle platform, not mid-air where it would fall in and end the round
   blue.onGround = true;
 
   const wrapEvents = [];
@@ -338,14 +338,14 @@ test('a player moving past the right edge reappears on the left with the same ve
     // Pin height between ticks so unrelated gravity drift (there is no real platform this far out)
     // cannot be mistaken for the wrap itself changing y; the wrap only ever touches x.
     red.velocityY = 0;
-    red.y = 120;
+    red.y = 116;
   }
 
   assert.equal(wrapEvents.length, 1);
   assert.equal(wrapEvents[0].playerId, 'red');
   assert.equal(wrapEvents[0].x, red.x);
   assert.ok(red.x >= 0 && red.x < 20, 'red reappears near the left edge');
-  assert.ok(Math.abs(wrapEvents[0].y - 120) < 2, 'height is unaffected by the wrap');
+  assert.ok(Math.abs(wrapEvents[0].y - 116) < 2, 'height is unaffected by the wrap');
   assert.equal(red.velocityX, velocityXBeforeWrap, 'speed is unaffected by the wrap');
 });
 
@@ -363,7 +363,7 @@ test('a running jump from a side platform lands on the middle platform', () => {
   const red = findPlayer(scene, 'red');
   assert.equal(red.onGround, true);
   assert.equal(red.inWater, false);
-  assert.equal(red.y, 120); // standing on the middle platform (y 144, player height 24)
+  assert.equal(red.y, 116); // standing on the middle platform (y 144, player height 28)
   assert.ok(red.x + red.width > 256 && red.x < 384, 'red should be within the middle platform bounds');
 });
 
@@ -406,11 +406,11 @@ test('the sea rises only after the warning ends, and a player standing below it 
   scene.waterLineY = 180;
   const red = findPlayer(scene, 'red');
   red.x = 264;
-  red.y = 120; // standing on the middle platform, top y 144
+  red.y = 116; // standing on the middle platform, top y 144
   red.onGround = true;
   const blue = findPlayer(scene, 'blue');
   blue.x = 120;
-  blue.y = 200; // standing on the side platform, top y 224
+  blue.y = 196; // standing on the side platform, top y 224
   blue.onGround = true;
 
   scene.update(neutralInputs());
@@ -445,11 +445,11 @@ test('a dash into the opponent knocks them away', () => {
   const red = findPlayer(scene, 'red');
   const blue = findPlayer(scene, 'blue');
   red.x = 264;
-  red.y = 120;
+  red.y = 116;
   red.onGround = true;
   red.facing = 1;
   blue.x = 300;
-  blue.y = 120;
+  blue.y = 116;
   blue.onGround = true;
   const blueStartX = blue.x;
   red.heldCardName = 'dash';
@@ -606,7 +606,7 @@ test('walking into the side of a bounce pad does nothing', () => {
 
   const red = findPlayer(scene, 'red');
   red.x = 260; // on the middle platform, approaching the pad from the side
-  red.y = 120;
+  red.y = 116;
   red.velocityY = 0;
   red.onGround = true;
 
@@ -646,7 +646,7 @@ test('a player standing where a bounce pad appears is launched at once', () => {
   // Placed on the same tick the card is played, so the two players are not already pushed
   // apart by the bump resolution a lasting overlap between them would otherwise trigger.
   blue.x = 300;
-  blue.y = 120; // standing on the middle platform
+  blue.y = 116; // standing on the middle platform
   blue.onGround = true;
   red.x = blue.x;
   red.y = blue.y;
@@ -732,7 +732,7 @@ test('the next crate lands 180 ticks after the previous one is taken', () => {
 
   const red = findPlayer(scene, 'red');
   red.x = 264;
-  red.y = 120; // standing on the middle platform, so it never falls in the sea while this runs
+  red.y = 116; // standing on the middle platform, so it never falls in the sea while this runs
   red.onGround = true;
   // Already holding a card so it cannot immediately take the next crate wherever it lands.
   findPlayer(scene, 'blue').heldCardName = 'rocket';
@@ -847,7 +847,7 @@ test('playing Fire Floor sets the platform under the opponent alight', () => {
   const red = findPlayer(scene, 'red');
   const blue = findPlayer(scene, 'blue');
   blue.x = 300;
-  blue.y = 120; // standing on the middle platform, top y 144
+  blue.y = 116; // standing on the middle platform, top y 144
   blue.onGround = true;
   red.heldCardName = 'fire';
   scene.update(neutralInputs()); // release the card key held from spawn
@@ -884,7 +884,7 @@ test('a player on a burning platform is popped every 30 ticks', () => {
 
   const blue = findPlayer(scene, 'blue');
   blue.x = 300;
-  blue.y = 120;
+  blue.y = 116;
   blue.onGround = true;
   const middlePlatform = findPlatformAt(scene, 256, 144);
   middlePlatform.igniteWithFire();
@@ -905,7 +905,7 @@ test('a pop pushes a standing player upward and away from the platform center', 
 
   const blue = findPlayer(scene, 'blue');
   blue.x = 300; // left of the middle platform's center (256 + 64 = 320)
-  blue.y = 120;
+  blue.y = 116;
   blue.onGround = true;
   const middlePlatform = findPlatformAt(scene, 256, 144);
   middlePlatform.igniteWithFire();
@@ -927,10 +927,10 @@ test('the player who played Fire Floor is popped too if they stand on the burnin
   const red = findPlayer(scene, 'red');
   const blue = findPlayer(scene, 'blue');
   red.x = 260;
-  red.y = 120;
+  red.y = 116;
   red.onGround = true;
   blue.x = 340;
-  blue.y = 120;
+  blue.y = 116;
   blue.onGround = true;
   red.heldCardName = 'fire';
   scene.update(neutralInputs());
@@ -997,7 +997,7 @@ test('playing Ice Floor freezes the platform under the opponent', () => {
   const red = findPlayer(scene, 'red');
   const blue = findPlayer(scene, 'blue');
   blue.x = 300;
-  blue.y = 120; // standing on the middle platform, top y 144
+  blue.y = 116; // standing on the middle platform, top y 144
   blue.onGround = true;
   red.heldCardName = 'ice';
   scene.update(neutralInputs()); // release the card key held from spawn
@@ -1052,7 +1052,7 @@ test('a player on ice takes clearly longer to stop than on metal', () => {
 
   const blue = findPlayer(scene, 'blue');
   blue.x = 300;
-  blue.y = 120;
+  blue.y = 116;
   blue.onGround = true;
   blue.velocityX = 3.6; // full running speed, coasting with no input
   const middlePlatform = findPlatformAt(scene, 256, 144);
@@ -1069,7 +1069,7 @@ test('a player on ice takes clearly longer to stop than on metal', () => {
   advance(metalScene, READY_TICKS);
   const metalBlue = findPlayer(metalScene, 'blue');
   metalBlue.x = 300;
-  metalBlue.y = 120;
+  metalBlue.y = 116;
   metalBlue.onGround = true;
   metalBlue.velocityX = 3.6;
 
@@ -1193,7 +1193,7 @@ test('stats are counted even when a match runs entirely through updates, with no
   const red = findPlayer(scene, 'red');
   const blue = findPlayer(scene, 'blue');
   blue.x = 300;
-  blue.y = 120;
+  blue.y = 116;
   blue.onGround = true;
   red.x = 300;
   red.y = 60;
