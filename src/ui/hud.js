@@ -2,13 +2,13 @@ import { SCREEN_HEIGHT, SCREEN_WIDTH, TICK_RATE } from '../engine/config.js';
 import { drawText } from './text.js';
 
 const WARNING_MARKER_FLASH_TICKS = 20;
-const WARNING_MARKER_SIZE = 6;
-const WARNING_MARKER_GAP = 16;
+const WARNING_MARKER_SIZE = 12;
+const WARNING_MARKER_GAP = 32;
 const WARNING_MARKER_COLOR = '#ffdc28';
 const BADGE_COLOR = '#ffdc28';
-const RESULTS_TOP_Y = 62;
-const RESULTS_ROW_HEIGHT = 9;
-const RESULTS_COLUMN_OFFSET_X = 74;
+const RESULTS_TOP_Y = 124;
+const RESULTS_ROW_HEIGHT = 18;
+const RESULTS_COLUMN_OFFSET_X = 148;
 
 function capitalize(id) {
   return id[0].toUpperCase() + id.slice(1);
@@ -78,15 +78,15 @@ function drawMatchResults(context, scene) {
 }
 
 export function drawHud(context, scene) {
-  drawText(context, `Red Wins: ${scene.wins.red}`, 4, 4);
-  drawText(context, `Blue Wins: ${scene.wins.blue}`, SCREEN_WIDTH - 4, 4, { align: 'right' });
+  drawText(context, `Red Wins: ${scene.wins.red}`, 8, 8);
+  drawText(context, `Blue Wins: ${scene.wins.blue}`, SCREEN_WIDTH - 8, 8, { align: 'right' });
 
   if (scene.phase === 'fight')
-    drawText(context, formatCountdown(scene.suddenDeathCountdownTicks), SCREEN_WIDTH / 2, 4, { align: 'center' });
+    drawText(context, formatCountdown(scene.suddenDeathCountdownTicks), SCREEN_WIDTH / 2, 8, { align: 'center' });
 
   const [title, subtitle] = phaseMessages(scene);
-  if (title) drawText(context, title, SCREEN_WIDTH / 2, 30, { scale: 2, align: 'center' });
-  if (subtitle) drawText(context, subtitle, SCREEN_WIDTH / 2, 48, { align: 'center' });
+  if (title) drawText(context, title, SCREEN_WIDTH / 2, 60, { scale: 4, align: 'center' });
+  if (subtitle) drawText(context, subtitle, SCREEN_WIDTH / 2, 96, { align: 'center' });
 
   if (scene.phase === 'match' && scene.ticksRemaining <= 0) drawMatchResults(context, scene);
 

@@ -43,9 +43,9 @@ const GLYPHS = {
 };
 const SPACE_WIDTH = 3;
 const GLYPH_GAP = 1;
-export const TEXT_GLYPH_HEIGHT = 5;
+export const TEXT_GLYPH_HEIGHT = 10;
 // drawText outlines each glyph by one pixel on every side, including above and below.
-export const TEXT_OUTLINE_MARGIN = 1;
+export const TEXT_OUTLINE_MARGIN = 2;
 const glyphCanvasCache = new Map();
 
 function glyphCanvas(character, color) {
@@ -88,7 +88,7 @@ export function drawText(
   text,
   x,
   y,
-  { scale = 1, align = 'left', color = '#fff', outlineColor = '#141428' } = {},
+  { scale = 2, align = 'left', color = '#fff', outlineColor = '#141428' } = {},
 ) {
   text = text.toUpperCase();
   context.imageSmoothingEnabled = false;
@@ -98,14 +98,14 @@ export function drawText(
 
   if (outlineColor) {
     for (const [offsetX, offsetY] of [
-      [-1, 0],
-      [1, 0],
-      [0, -1],
-      [0, 1],
-      [-1, -1],
-      [1, -1],
-      [-1, 1],
-      [1, 1],
+      [-2, 0],
+      [2, 0],
+      [0, -2],
+      [0, 2],
+      [-2, -2],
+      [2, -2],
+      [-2, 2],
+      [2, 2],
     ]) {
       drawRun(context, text, x + offsetX, y + offsetY, scale, outlineColor);
     }

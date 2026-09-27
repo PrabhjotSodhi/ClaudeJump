@@ -65,6 +65,8 @@ export function createWindow(canvas, vertexShaderSource, fragmentShaderSource) {
   const timeUniformLocation = webglContext.getUniformLocation(program, 'u_time');
 
   addEventListener('resize', () => resizeToFitWindow(canvas, webglContext));
+  // Entering or leaving fullscreen usually fires 'resize' too, but this covers browsers where it doesn't.
+  document.addEventListener('fullscreenchange', () => resizeToFitWindow(canvas, webglContext));
   resizeToFitWindow(canvas, webglContext);
 
   function uploadLayer(layerName, layerCanvas) {

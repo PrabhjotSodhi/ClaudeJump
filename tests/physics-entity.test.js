@@ -4,7 +4,7 @@ import { PhysicsEntity } from '../src/engine/physics-entity.js';
 import { Player } from '../src/entities/player.js';
 
 function makeEntity() {
-  return new PhysicsEntity({ x: 100, y: 100, width: 8, height: 12 });
+  return new PhysicsEntity({ x: 200, y: 200, width: 16, height: 24 });
 }
 
 test('knockback applied while falling adds to the fall speed instead of setting it', () => {
@@ -12,14 +12,14 @@ test('knockback applied while falling adds to the fall speed instead of setting 
   entity.applyGravity(0.3, 6);
   const fallSpeedBeforeKnockback = entity.velocityY;
 
-  entity.applyKnockback(0, -5);
+  entity.applyKnockback(0, -10);
 
-  assert.equal(entity.velocityY, fallSpeedBeforeKnockback - 5);
+  assert.equal(entity.velocityY, fallSpeedBeforeKnockback - 10);
 });
 
 test('horizontal knockback decays to zero over time', () => {
   const entity = makeEntity();
-  entity.applyKnockback(4, 0);
+  entity.applyKnockback(8, 0);
   assert.ok(entity.knockbackVelocityX > 0);
 
   for (let tick = 0; tick < 200; tick++) entity.moveAndCollide([]);
@@ -42,15 +42,15 @@ function knockbackDistance(onGround, knockbackVelocityX) {
 }
 
 test('air knockback carries farther than the same ground knockback', () => {
-  const groundDistance = knockbackDistance(true, 6);
-  const airDistance = knockbackDistance(false, 6);
+  const groundDistance = knockbackDistance(true, 12);
+  const airDistance = knockbackDistance(false, 12);
   assert.ok(airDistance > groundDistance);
-  assert.ok(groundDistance < 40, `expected under 40px on the ground, got ${groundDistance}px`);
+  assert.ok(groundDistance < 80, `expected under 80px on the ground, got ${groundDistance}px`);
 });
 
-test('a horizontal knockback of 6 in the air carries the player between 60 and 90 px', () => {
-  const distance = knockbackDistance(false, 6);
-  assert.ok(distance >= 60 && distance <= 90, `expected 60-90px, got ${distance}px`);
+test('a horizontal knockback of 12 in the air carries the player between 120 and 180 px', () => {
+  const distance = knockbackDistance(false, 12);
+  assert.ok(distance >= 120 && distance <= 180, `expected 120-180px, got ${distance}px`);
 });
 
 function groundedKnockbackDistance(standingPlatform, knockbackVelocityX) {
@@ -71,8 +71,8 @@ function groundedKnockbackDistance(standingPlatform, knockbackVelocityX) {
 }
 
 test('the same grounded knockback carries a player clearly farther on ice than on metal', () => {
-  const metalDistance = groundedKnockbackDistance(null, 6);
-  const iceDistance = groundedKnockbackDistance({ isIcy: true }, 6);
+  const metalDistance = groundedKnockbackDistance(null, 12);
+  const iceDistance = groundedKnockbackDistance({ isIcy: true }, 12);
   assert.ok(
     iceDistance > metalDistance * 1.5,
     `expected ice (${iceDistance}px) to carry much farther than metal (${metalDistance}px)`,
@@ -81,8 +81,8 @@ test('the same grounded knockback carries a player clearly farther on ice than o
 
 test('hitting a wall stops horizontal knockback', () => {
   const entity = makeEntity();
-  const wall = { x: 108, y: 90, width: 8, height: 40 };
-  entity.applyKnockback(4, 0);
+  const wall = { x: 216, y: 180, width: 16, height: 80 };
+  entity.applyKnockback(8, 0);
 
   entity.moveAndCollide([wall]);
 
@@ -90,10 +90,10 @@ test('hitting a wall stops horizontal knockback', () => {
 });
 
 test('a player holding a direction still changes course during knockback', () => {
-  const holdLeftPlayer = new Player({ id: 'red', color: '#ff0000', spawnX: 100, spawnY: 100, facing: 1 });
-  const idlePlayer = new Player({ id: 'blue', color: '#0000ff', spawnX: 100, spawnY: 100, facing: 1 });
-  holdLeftPlayer.applyKnockback(5, 0);
-  idlePlayer.applyKnockback(5, 0);
+  const holdLeftPlayer = new Player({ id: 'red', color: '#ff0000', spawnX: 200, spawnY: 200, facing: 1 });
+  const idlePlayer = new Player({ id: 'blue', color: '#0000ff', spawnX: 200, spawnY: 200, facing: 1 });
+  holdLeftPlayer.applyKnockback(10, 0);
+  idlePlayer.applyKnockback(10, 0);
 
   const holdLeft = { left: true, right: false, jump: false };
   const noInput = { left: false, right: false, jump: false };
@@ -117,7 +117,7 @@ test('a player holding a direction still changes course during knockback', () =>
 });
 
 test('a dizzy player ignores input for exactly 20 ticks', () => {
-  const player = new Player({ id: 'blue', color: '#0000ff', spawnX: 100, spawnY: 100, facing: 1 });
+  const player = new Player({ id: 'blue', color: '#0000ff', spawnX: 200, spawnY: 200, facing: 1 });
   player.onGround = true;
   player.update({ left: false, right: false, jump: false }, []); // release the jump key held from spawn
 
@@ -136,15 +136,15 @@ test('a dizzy player ignores input for exactly 20 ticks', () => {
 });
 
 test('a player can jump, then jump again in the air, but not a third time', () => {
-  const player = new Player({ id: 'red', color: '#ff0000', spawnX: 100, spawnY: 100, facing: 1 });
+  const player = new Player({ id: 'red', color: '#ff0000', spawnX: 200, spawnY: 200, facing: 1 });
   player.onGround = true;
   player.update({ left: false, right: false, jump: false }, []); // release the jump key held from spawn
 
   // A fresh jump snaps velocityY sharply upward; falling residue from an earlier jump's release never does.
   function pressJumpWhileFalling() {
-    while (player.velocityY <= 0.5) player.update({ left: false, right: false, jump: false }, []);
+    while (player.velocityY <= 1) player.update({ left: false, right: false, jump: false }, []);
     player.update({ left: false, right: false, jump: true }, []);
-    const jumped = player.velocityY < -3;
+    const jumped = player.velocityY < -6;
     player.update({ left: false, right: false, jump: false }, []);
     return jumped;
   }
@@ -155,7 +155,7 @@ test('a player can jump, then jump again in the air, but not a third time', () =
 });
 
 test('landing refreshes the air jump', () => {
-  const player = new Player({ id: 'red', color: '#ff0000', spawnX: 100, spawnY: 100, facing: 1 });
+  const player = new Player({ id: 'red', color: '#ff0000', spawnX: 200, spawnY: 200, facing: 1 });
   player.onGround = true;
   player.update({ left: false, right: false, jump: false }, []); // release the jump key held from spawn
 

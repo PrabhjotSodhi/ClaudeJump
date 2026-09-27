@@ -1,11 +1,11 @@
-import { TICK_RATE } from './engine/config.js';
+import { SCREEN_HEIGHT, SCREEN_WIDTH, TICK_RATE } from './engine/config.js';
 import { createGameLoop } from './engine/game-loop.js';
 import { createGamepadInput } from './engine/gamepad-input.js';
 import { combineInputs, createKeyboardInput } from './engine/input.js';
 import { Renderer } from './engine/renderer.js';
 import { SceneManager } from './engine/scene-manager.js';
 import { createWindow } from './engine/window.js';
-import { TitleScene } from './scenes/title-scene.js';
+import { FULLSCREEN_BUTTON, TitleScene } from './scenes/title-scene.js';
 import { VersusScene } from './scenes/versus-scene.js';
 
 async function loadText(path) {
@@ -63,6 +63,36 @@ async function main() {
       if (document.hidden) pauseForFocusLoss();
     });
   }
+
+  function toggleFullscreen() {
+    // Can throw or reject if the browser denies the request (no user gesture, disabled by
+    // policy, etc.); there is nothing more to do about it than leave the game windowed.
+    try {
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+      else canvas.requestFullscreen().catch(() => {});
+    } catch {
+      // ignored
+    }
+  }
+
+  addEventListener('keydown', (event) => {
+    if (event.code === 'KeyF') toggleFullscreen();
+  });
+
+  // The title screen draws its own fullscreen button; this just hit-tests a click against it.
+  canvas.addEventListener('click', (event) => {
+    if (!(sceneManager.currentScene instanceof TitleScene)) return;
+    const bounds = canvas.getBoundingClientRect();
+    const clickX = ((event.clientX - bounds.left) / bounds.width) * SCREEN_WIDTH;
+    const clickY = ((event.clientY - bounds.top) / bounds.height) * SCREEN_HEIGHT;
+    const button = FULLSCREEN_BUTTON;
+    const withinButton =
+      clickX >= button.x &&
+      clickX <= button.x + button.width &&
+      clickY >= button.y &&
+      clickY <= button.y + button.height;
+    if (withinButton) toggleFullscreen();
+  });
 
   // Exposed for devtools and automated checks.
   window.claudeJump = { sceneManager };

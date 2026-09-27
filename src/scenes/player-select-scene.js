@@ -6,20 +6,20 @@ import { drawText } from '../ui/text.js';
 import { PausableMatchScene } from './pausable-match-scene.js';
 import { VersusScene } from './versus-scene.js';
 
-const TITLE_Y = 30;
-const TITLE_SCALE = 3;
+const TITLE_Y = 60;
+const TITLE_SCALE = 6;
 
-const CARD_TOP_Y = 55;
-const CARD_WIDTH = 84;
-const CARD_HEIGHT = 100;
-const CARD_OFFSET_X = 74;
-const CARD_LABEL_Y = CARD_TOP_Y + 8;
-const PORTRAIT_SCALE = 4;
-const PORTRAIT_TOP_Y = CARD_TOP_Y + 22;
+const CARD_TOP_Y = 110;
+const CARD_WIDTH = 168;
+const CARD_HEIGHT = 200;
+const CARD_OFFSET_X = 148;
+const CARD_LABEL_Y = CARD_TOP_Y + 16;
+const PORTRAIT_SCALE = 8;
+const PORTRAIT_TOP_Y = CARD_TOP_Y + 44;
 // The status sits in the last two text rows above the card's bottom edge, so both a wrapped
 // two-line status and the single-line READY! stay inside the card with room to spare.
-const STATUS_TEXT_TOP_Y = CARD_TOP_Y + CARD_HEIGHT - 23;
-const STATUS_LINE_HEIGHT = 10;
+const STATUS_TEXT_TOP_Y = CARD_TOP_Y + CARD_HEIGHT - 46;
+const STATUS_LINE_HEIGHT = 20;
 
 const READY_COLOR = '#ffdc28';
 
@@ -92,8 +92,8 @@ function drawPlayerCard(context, spawn, state) {
   const cardX = Math.round(centerX - CARD_WIDTH / 2);
 
   context.strokeStyle = spawn.color;
-  context.lineWidth = 1;
-  context.strokeRect(cardX + 0.5, CARD_TOP_Y + 0.5, CARD_WIDTH - 1, CARD_HEIGHT - 1);
+  context.lineWidth = 2;
+  context.strokeRect(cardX + 1, CARD_TOP_Y + 1, CARD_WIDTH - 2, CARD_HEIGHT - 2);
 
   drawText(context, `${spawn.id[0].toUpperCase()}${spawn.id.slice(1)}`, centerX, CARD_LABEL_Y, {
     align: 'center',
