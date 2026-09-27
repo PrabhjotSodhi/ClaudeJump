@@ -39,6 +39,7 @@ export function createKeyboardInput(playerKeyMappings) {
           jump: isDown(mapping.keys.jump),
           down: isDown(mapping.keys.down),
           card: isDown(mapping.keys.card),
+          pause: isDown(mapping.keys.pause),
         };
       }
       tappedCodes.clear();
@@ -59,6 +60,7 @@ export function combineInputs(inputByPlayerIdA, inputByPlayerIdB) {
       jump: inputA.jump || !!inputB.jump,
       down: inputA.down || !!inputB.down,
       card: inputA.card || !!inputB.card,
+      pause: inputA.pause || !!inputB.pause,
     };
   }
   return inputByPlayerId;

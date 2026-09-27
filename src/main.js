@@ -55,6 +55,15 @@ async function main() {
   });
   gameLoop.start();
 
+  if (!isDevMode) {
+    // Dev mode steps ticks by hand even in a hidden tab, so it must never auto-pause.
+    const pauseForFocusLoss = () => sceneManager.currentScene?.pauseForFocusLoss?.();
+    addEventListener('blur', pauseForFocusLoss);
+    addEventListener('visibilitychange', () => {
+      if (document.hidden) pauseForFocusLoss();
+    });
+  }
+
   // Exposed for devtools and automated checks.
   window.claudeJump = { sceneManager };
 

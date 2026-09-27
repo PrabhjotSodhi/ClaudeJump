@@ -3,6 +3,7 @@ import { Player } from '../entities/player.js';
 import { PLAYER_SPAWNS } from '../levels/versus-arena.js';
 import { MENU_BACKGROUND_COLOR, NO_WATER_LINE_Y } from '../ui/menu-screen.js';
 import { drawText } from '../ui/text.js';
+import { PausableMatchScene } from './pausable-match-scene.js';
 import { VersusScene } from './versus-scene.js';
 
 const TITLE_Y = 30;
@@ -56,7 +57,9 @@ export class PlayerSelectScene {
     }
 
     if (Object.values(this.stateByPlayerId).every((state) => state === 'ready')) {
-      this.sceneManager.setScene(new VersusScene({ seed: this.seed }));
+      this.sceneManager.setScene(
+        new PausableMatchScene({ sceneManager: this.sceneManager, matchScene: new VersusScene({ seed: this.seed }) }),
+      );
     }
   }
 

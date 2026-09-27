@@ -21,7 +21,10 @@ const BLUE_COLOR = PLAYER_SPAWNS.find((spawn) => spawn.id === 'blue').color;
 export const MENU_OPTIONS = [{ id: 'versus', label: 'Versus' }];
 
 export class TitleScene {
-  constructor({ sceneManager, seed = Date.now(), options = MENU_OPTIONS } = {}) {
+  // initialInput seeds the held-key baseline from whatever opened this scene, so a jump or down
+  // press still held over from that moment (such as confirming "Return to title" from the pause
+  // menu) does not immediately count as a fresh press here.
+  constructor({ sceneManager, seed = Date.now(), options = MENU_OPTIONS, initialInput = {} } = {}) {
     this.sceneManager = sceneManager;
     this.seed = seed;
     this.options = options;
@@ -30,6 +33,10 @@ export class TitleScene {
     this.backgroundDrawn = false;
     this.previousDown = {};
     this.previousJump = {};
+    for (const playerId in initialInput) {
+      this.previousDown[playerId] = !!initialInput[playerId].down;
+      this.previousJump[playerId] = !!initialInput[playerId].jump;
+    }
   }
 
   update(inputByPlayerId) {

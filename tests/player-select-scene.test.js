@@ -87,5 +87,6 @@ test('the match does not start until both players are ready', () => {
   assert.equal(scene.stateByPlayerId.blue, 'ready');
 
   assert.equal(scenes.length, 1, 'the match starts once every player is ready');
-  assert.equal(scenes[0].constructor.name, 'VersusScene');
+  assert.equal(scenes[0].constructor.name, 'PausableMatchScene');
+  assert.equal(scenes[0].matchScene.constructor.name, 'VersusScene');
 });
