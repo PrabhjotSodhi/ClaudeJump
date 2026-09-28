@@ -1,0 +1,81 @@
+{
+  "colors": {
+    "l": "#c8c0b8",
+    "m": "#a09088",
+    "d": "#585050"
+  },
+  "frames": {
+    "top": [
+      "llllllllllllllll",
+      "llllllllllllllll",
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm"
+    ],
+    "top-rivets": [
+      "llllllllllllllll",
+      "llllllllllllllll",
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm",
+      "mmmldmmmmmmldmmm",
+      "mmmddmmmmmmddmmm",
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm"
+    ],
+    "bottom": [
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm",
+      "dddddddddddddddd",
+      "dddddddddddddddd"
+    ],
+    "bottom-crack": [
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmdmmmmmm",
+      "mmmmmmmmmdmmmmmm",
+      "mmmmmmmmdmmmmmmm",
+      "mmmmmmmmdmmmmmmm",
+      "mmmmmmmdmmmmmmmm",
+      "mmmmmmmdmmmmmmmm",
+      "mmmmmmdmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm",
+      "mmmmmmmmmmmmmmmm",
+      "dddddddddddddddd",
+      "dddddddddddddddd"
+    ]
+  }
+}
