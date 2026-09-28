@@ -4,3 +4,5 @@ export const TICK_RATE = 60;
 export const TILE_SIZE = 16;
 export const LEVEL_COLUMNS = 40;
 export const LEVEL_ROWS = 23;
+export const SEA_COLUMN_COUNT = 80;
+export const SEA_COLUMN_WIDTH = SCREEN_WIDTH / SEA_COLUMN_COUNT;
