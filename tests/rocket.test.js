@@ -6,17 +6,15 @@ function opponent({ x, y }) {
   return { id: 'blue', x, y, width: 8, height: 12, inWater: false };
 }
 
-test('a rocket steers gently toward the opponent instead of snapping to face them', () => {
+test('a rocket keeps a straight line even with an opponent above it', () => {
   const rocket = new Rocket({ x: 100, y: 100, facing: 1, shooterId: 'red' });
   const target = opponent({ x: 100, y: 40 });
 
-  rocket.update([target], []);
+  for (let tick = 0; tick < 20; tick++) rocket.update([target], []);
 
-  assert.ok(rocket.velocityY < 0, 'the rocket starts turning toward a target above it');
-  assert.ok(
-    Math.abs(rocket.velocityY) < 0.2,
-    'a single tick only nudges its course, it does not snap to face the target',
-  );
+  assert.equal(rocket.y, 100, 'the rocket never leaves its height');
+  assert.equal(rocket.velocityY, 0);
+  assert.ok(rocket.x > 100, 'the rocket keeps flying the way it was fired');
 });
 
 test('a rocket explodes when it touches a platform', () => {

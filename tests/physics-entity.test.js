@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { PhysicsEntity } from '../src/engine/physics-entity.js';
+import { PICKUP_USES } from '../src/cards/card-definitions.js';
 import { Player, SHOVE_ACTIVE_TICKS } from '../src/entities/player.js';
 
 function makeEntity() {
@@ -51,32 +52,6 @@ test('air knockback carries farther than the same ground knockback', () => {
 test('a horizontal knockback of 12 in the air carries the player between 120 and 180 px', () => {
   const distance = knockbackDistance(false, 12);
   assert.ok(distance >= 120 && distance <= 180, `expected 120-180px, got ${distance}px`);
-});
-
-function groundedKnockbackDistance(standingPlatform, knockbackVelocityX) {
-  const entity = makeEntity();
-  entity.onGround = true;
-  entity.applyKnockback(knockbackVelocityX, 0);
-  const startX = entity.x;
-
-  for (let tick = 0; tick < 200; tick++) {
-    // moveAndCollide clears onGround and standingPlatform each tick when there are no platforms
-    // to land on, so both are re-forced to simulate resting on the same spot throughout.
-    entity.onGround = true;
-    entity.standingPlatform = standingPlatform;
-    entity.moveAndCollide([]);
-  }
-
-  return entity.x - startX;
-}
-
-test('the same grounded knockback carries a player clearly farther on ice than on metal', () => {
-  const metalDistance = groundedKnockbackDistance(null, 12);
-  const iceDistance = groundedKnockbackDistance({ isIcy: true }, 12);
-  assert.ok(
-    iceDistance > metalDistance * 1.5,
-    `expected ice (${iceDistance}px) to carry much farther than metal (${metalDistance}px)`,
-  );
 });
 
 test('hitting a wall stops horizontal knockback', () => {
@@ -222,11 +197,33 @@ test('a held pickup is played by the action button instead of starting a shove',
   const player = new Player({ id: 'red', color: '#ff0000', spawnX: 200, spawnY: 200, facing: 1 });
   player.onGround = true;
   player.update(actionInput(false), []); // release the action key held from spawn
-  player.heldCardName = 'rocket';
+  player.receiveCard('rocket');
 
   player.update(actionInput(true), []);
 
   assert.equal(player.playedCardName, 'rocket', 'the held pickup is played');
-  assert.equal(player.heldCardName, null);
   assert.equal(player.isShoveActive, false, 'the button plays the pickup instead of shoving');
+});
+
+test('a pickup gives 3 uses, each press spends one, and at 0 the button shoves again', () => {
+  const player = new Player({ id: 'red', color: '#ff0000', spawnX: 200, spawnY: 200, facing: 1 });
+  player.onGround = true;
+  player.update(actionInput(false), []); // release the action key held from spawn
+  player.receiveCard('rocket');
+  assert.equal(PICKUP_USES, 3);
+  assert.equal(player.heldCardUsesRemaining, 3, 'a fresh pickup has 3 uses');
+
+  for (const usesLeft of [2, 1, 0]) {
+    player.update(actionInput(true), []);
+    assert.equal(player.playedCardName, 'rocket');
+    assert.equal(player.heldCardUsesRemaining, usesLeft);
+    assert.equal(player.isShoveActive, false, 'a press with a pickup never shoves');
+    player.update(actionInput(false), []);
+  }
+  assert.equal(player.heldCardName, null, 'the pickup is gone at 0 uses');
+
+  player.update(actionInput(true), []);
+
+  assert.equal(player.playedCardName, null);
+  assert.equal(player.isShoveActive, true, 'the button shoves again once the pickup is spent');
 });

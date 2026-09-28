@@ -35,9 +35,6 @@ const SHOVE_KNOCKBACK_VELOCITY_Y = -4;
 const BLAST_RADIUS = 48;
 const BLAST_KNOCKBACK_VELOCITY_X = 8;
 const BLAST_KNOCKBACK_VELOCITY_Y = -4;
-// How hard a fire pop launches a player standing on the burning platform.
-const FIRE_POP_KNOCKBACK_VELOCITY_X = 5;
-const FIRE_POP_KNOCKBACK_VELOCITY_Y = -7;
 
 const SUDDEN_DEATH_ROUND_TICKS = 1800; // 30 seconds; the round timer and the warning start point
 const SUDDEN_DEATH_WARNING_TICKS = 120; // 2 seconds of flashing markers before the sea rises
@@ -101,7 +98,6 @@ export class VersusScene {
     this.entityGroups.clear('players');
     this.entityGroups.clear('rockets');
     for (const spawn of PLAYER_SPAWNS) this.entityGroups.add('players', new Player(spawn));
-    for (const platform of this.entityGroups.get('platforms')) platform.clearEffect();
     this.ticksUntilCrateSpawn = CRATE_SPAWN_DELAY_TICKS;
     if (this.skipNextReadyPhase) {
       this.phase = 'fight';
@@ -136,7 +132,6 @@ export class VersusScene {
         this.updatePlayers(inputByPlayerId);
         this.updateRockets();
         this.updateBouncePads();
-        this.updatePlatforms();
         this.updateCrates();
         this.checkRoundEnd();
         break;
@@ -177,8 +172,6 @@ export class VersusScene {
         this.events.emit('card-played', { playerId: player.id, cardName: player.playedCardName });
         if (player.playedCardName === 'rocket') this.spawnRocket(player);
         if (player.playedCardName === 'bouncePad') this.spawnBouncePad(player);
-        if (player.playedCardName === 'fire') this.igniteFire(player);
-        if (player.playedCardName === 'ice') this.freezeIce(player);
         if (player.playedCardName === 'dash') this.clearBumpingPairsFor(player.id);
       }
       if (player.shoveJustStarted) this.shoveHitIdsByShoverId.set(player.id, new Set());
@@ -284,58 +277,6 @@ export class VersusScene {
     const feetY = player.y + player.height;
     if (previousFeetY > bouncePad.y || feetY <= bouncePad.y) return false;
     return player.x + player.width > bouncePad.x && player.x < bouncePad.x + bouncePad.width;
-  }
-
-  // Sets alight whichever platform sits under the opponent, standing on it or falling above it.
-  // Spends the card even when nothing is below them to catch fire.
-  igniteFire(player) {
-    const opponent = this.players.find((otherPlayer) => otherPlayer.id !== player.id);
-    if (!opponent) return;
-    const platform = this.findPlatformBelow(opponent);
-    if (platform) platform.igniteWithFire();
-  }
-
-  // Freezes whichever platform sits under the opponent, standing on it or falling above it.
-  // Spends the card even when nothing is below them to freeze.
-  freezeIce(player) {
-    const opponent = this.players.find((otherPlayer) => otherPlayer.id !== player.id);
-    if (!opponent) return;
-    const platform = this.findPlatformBelow(opponent);
-    if (platform) platform.freezeWithIce();
-  }
-
-  findPlatformBelow(player) {
-    const candidates = this.entityGroups
-      .get('platforms')
-      .filter(
-        (platform) =>
-          player.x + player.width > platform.x && player.x < platform.x + platform.width && platform.y >= player.y,
-      );
-    if (candidates.length === 0) return null;
-    return candidates.reduce((closest, candidate) => (candidate.y < closest.y ? candidate : closest));
-  }
-
-  updatePlatforms() {
-    for (const platform of this.entityGroups.get('platforms')) {
-      if (platform.update()) this.popPlatform(platform);
-    }
-  }
-
-  popPlatform(platform) {
-    const platformCenterX = platform.x + platform.width / 2;
-    for (const player of this.players) {
-      if (player.inWater || !this.isStandingOnPlatform(player, platform)) continue;
-      const knockbackDirection = player.x + player.width / 2 >= platformCenterX ? 1 : -1;
-      player.applyKnockback(knockbackDirection * FIRE_POP_KNOCKBACK_VELOCITY_X, FIRE_POP_KNOCKBACK_VELOCITY_Y);
-    }
-    this.events.emit('platform-popped', { x: platformCenterX, y: platform.y });
-  }
-
-  isStandingOnPlatform(player, platform) {
-    const feetY = player.y + player.height;
-    return (
-      player.x + player.width > platform.x && player.x < platform.x + platform.width && Math.abs(feetY - platform.y) < 2
-    );
   }
 
   updateCrates() {

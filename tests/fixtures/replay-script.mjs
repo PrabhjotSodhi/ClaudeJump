@@ -1,5 +1,5 @@
 // The exact scripted input sequence the 320x180 and 640x360 replay fixtures are built from.
-// Moves, jumps, bumps, stomps and plays cards. Cards are handed out by setting heldCardName
+// Moves, jumps, bumps, stomps and plays cards. Cards are handed out by calling receiveCard
 // directly at fixed ticks (see CARD_GRANTS below) rather than through crates, so the sequence
 // never depends on where a crate's seeded landing spot falls.
 export const REPLAY_SEED = 12345;
@@ -12,7 +12,7 @@ const CARD_GRANTS = [
   { tick: 100, playerId: 'red', cardName: 'dash' },
   { tick: 150, playerId: 'blue', cardName: 'rocket' },
   { tick: 900, playerId: 'red', cardName: 'bouncePad' },
-  { tick: 1300, playerId: 'blue', cardName: 'fire' },
+  { tick: 1300, playerId: 'blue', cardName: 'rocket' },
 ];
 
 function buildInput({ left = false, right = false, jump = false, down = false, action = false } = {}) {
@@ -76,7 +76,7 @@ function scriptForTick(tick) {
     if (tick % 31 === 0) blue.jump = true;
   }
 
-  // Play the fire card granted at tick 1300.
+  // Play the rocket card granted at tick 1300.
   if (tick === 1305) blue.action = true;
 
   if (tick >= 1300 && tick < REPLAY_TOTAL_TICKS) {
@@ -117,7 +117,7 @@ export function runScriptedReplay(VersusScene) {
     const grant = grantsByTick.get(tick);
     if (grant) {
       const player = scene.players.find((candidate) => candidate.id === grant.playerId);
-      if (player) player.heldCardName = grant.cardName;
+      if (player) player.receiveCard(grant.cardName);
     }
 
     scene.update(scriptForTick(tick));

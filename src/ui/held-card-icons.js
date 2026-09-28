@@ -4,6 +4,20 @@ import { drawFollowingWrap } from './screen-wrap.js';
 
 // Gap between the icon and the player's head, leaving room above the icon for the color tag.
 const ICON_GAP_ABOVE_HEAD = 6;
+// One small square per use left, in a row centered under the icon on a backing bar in the player's color.
+const PIP_SIZE = 2;
+const PIP_SPACING = 3;
+const PIP_GAP_BELOW_ICON = 3;
+
+function drawUsePips(context, usesRemaining, iconX, iconY, color) {
+  const rowWidth = usesRemaining * PIP_SPACING - (PIP_SPACING - PIP_SIZE);
+  const rowX = iconX + Math.floor((CARD_ICON_WIDTH - rowWidth) / 2);
+  const rowY = iconY + CARD_ICON_HEIGHT + PIP_GAP_BELOW_ICON;
+  context.fillStyle = color;
+  context.fillRect(rowX - 1, rowY - 1, rowWidth + 2, PIP_SIZE + 2);
+  context.fillStyle = '#fff';
+  for (let pip = 0; pip < usesRemaining; pip++) context.fillRect(rowX + pip * PIP_SPACING, rowY, PIP_SIZE, PIP_SIZE);
+}
 
 const flashTrackersByScene = new WeakMap();
 
@@ -35,8 +49,9 @@ export function drawHeldCardIcons(context, scene) {
     const x = Math.round(player.x + player.width / 2 - CARD_ICON_WIDTH / 2);
     const y = heldCardIconSlotY(player);
     const flashing = !player.heldCardName && Boolean(flashedCardName);
-    drawFollowingWrap(context, player, x, y, (context, x, y) =>
-      drawCardIcon(context, cardName, x, y, player.color, { flashing }),
-    );
+    drawFollowingWrap(context, player, x, y, (context, x, y) => {
+      drawCardIcon(context, cardName, x, y, player.color, { flashing });
+      if (!flashing) drawUsePips(context, player.heldCardUsesRemaining, x, y, player.color);
+    });
   }
 }

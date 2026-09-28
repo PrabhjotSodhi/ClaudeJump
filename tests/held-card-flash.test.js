@@ -30,8 +30,8 @@ test('a player who never played a card never flashes', () => {
 
 test('players flash independently of each other', () => {
   const tracker = new HeldCardFlashTracker();
-  tracker.notePlayed('red', 'fire', 10);
+  tracker.notePlayed('red', 'dash', 10);
 
   assert.equal(tracker.flashingCardName('blue', 10), null);
-  assert.equal(tracker.flashingCardName('red', 10), 'fire');
+  assert.equal(tracker.flashingCardName('red', 10), 'dash');
 });

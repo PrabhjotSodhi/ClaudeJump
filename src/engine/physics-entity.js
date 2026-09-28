@@ -12,7 +12,6 @@ export class PhysicsEntity extends Entity {
     this.knockbackVelocityX = 0;
     this.onGround = false;
     this.previousY = y;
-    this.standingPlatform = null;
   }
 
   applyGravity(gravity, maxFallSpeed) {
@@ -45,10 +44,7 @@ export class PhysicsEntity extends Entity {
       this.velocityX = 0;
       this.knockbackVelocityX = 0;
     }
-    // On ice, grounded knockback fades at the slow air rate instead of the fast ground rate, so a
-    // hit slides a player toward the edge rather than just shoving them.
-    const onIcyGround = this.onGround && this.standingPlatform?.isIcy;
-    const knockbackDecay = this.onGround && !onIcyGround ? GROUND_KNOCKBACK_DECAY : AIR_KNOCKBACK_DECAY;
+    const knockbackDecay = this.onGround ? GROUND_KNOCKBACK_DECAY : AIR_KNOCKBACK_DECAY;
     if (this.knockbackVelocityX > 0) this.knockbackVelocityX = Math.max(0, this.knockbackVelocityX - knockbackDecay);
     else if (this.knockbackVelocityX < 0)
       this.knockbackVelocityX = Math.min(0, this.knockbackVelocityX + knockbackDecay);
@@ -56,18 +52,15 @@ export class PhysicsEntity extends Entity {
     this.previousY = this.y;
     this.y += this.velocityY;
     this.onGround = false;
-    let landedPlatform = null;
     for (const platform of platforms) {
       if (!this.overlaps(platform)) continue;
       if (this.velocityY > 0) {
         this.y = platform.y - this.height;
         this.onGround = true;
-        landedPlatform = platform;
       } else if (this.velocityY < 0) {
         this.y = platform.y + platform.height;
       }
       this.velocityY = 0;
     }
-    this.standingPlatform = landedPlatform;
   }
 }
