@@ -1,7 +1,15 @@
 [
   {
     "id": "red",
-    "keys": { "left": "KeyA", "right": "KeyD", "jump": "KeyW", "down": "KeyS", "action": "KeyC", "pause": "Escape" }
+    "keys": {
+      "left": "KeyA",
+      "right": "KeyD",
+      "jump": "KeyW",
+      "up": "KeyW",
+      "down": "KeyS",
+      "action": "KeyS",
+      "pause": "Escape"
+    }
   },
   {
     "id": "blue",
@@ -9,8 +17,9 @@
       "left": "ArrowLeft",
       "right": "ArrowRight",
       "jump": "ArrowUp",
+      "up": "ArrowUp",
       "down": "ArrowDown",
-      "action": "Comma",
+      "action": "ArrowDown",
       "pause": "Escape"
     }
   }

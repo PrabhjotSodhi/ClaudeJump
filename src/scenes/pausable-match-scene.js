@@ -9,7 +9,7 @@ export const PAUSE_MENU_OPTIONS = [
 // Controls masked out of the match's input for a player until they release it, so confirming
 // Resume (or toggling pause) with one of these still held does not act on the match the instant
 // it resumes: a held jump would launch the player, a held action button would fire a shove, and so on.
-const CONTROLS_MASKED_ON_RESUME = ['jump', 'down', 'action'];
+const CONTROLS_MASKED_ON_RESUME = ['up', 'down', 'jump', 'action', 'confirm'];
 
 // Wraps a match scene so pausing never calls its update(), which keeps the match's own game
 // logic unaware that wall-clock time passed. The wrapper reads input to navigate the pause menu,
@@ -21,8 +21,7 @@ export class PausableMatchScene {
     this.paused = false;
     this.selectedIndex = 0;
     this.previousPauseByPlayerId = {};
-    this.previousDownByPlayerId = {};
-    this.previousJumpByPlayerId = {};
+    this.previousMenuControls = { up: {}, down: {}, confirm: {} };
   }
 
   get waterLineY() {
@@ -50,11 +49,14 @@ export class PausableMatchScene {
   }
 
   updateMenu(inputByPlayerId) {
-    const downPressed = this.consumeFreshPress(inputByPlayerId, 'down', this.previousDownByPlayerId);
-    const jumpPressed = this.consumeFreshPress(inputByPlayerId, 'jump', this.previousJumpByPlayerId);
+    const upPressed = this.consumeFreshPress(inputByPlayerId, 'up', this.previousMenuControls.up);
+    const downPressed = this.consumeFreshPress(inputByPlayerId, 'down', this.previousMenuControls.down);
+    const confirmPressed = this.consumeFreshPress(inputByPlayerId, 'confirm', this.previousMenuControls.confirm);
 
     if (downPressed) this.selectedIndex = (this.selectedIndex + 1) % PAUSE_MENU_OPTIONS.length;
-    if (jumpPressed) this.confirmSelection(inputByPlayerId);
+    if (upPressed)
+      this.selectedIndex = (this.selectedIndex + PAUSE_MENU_OPTIONS.length - 1) % PAUSE_MENU_OPTIONS.length;
+    if (confirmPressed) this.confirmSelection(inputByPlayerId);
   }
 
   // A control counts as freshly pressed the tick it goes from not held by any player to held by
@@ -69,16 +71,16 @@ export class PausableMatchScene {
     return pressed;
   }
 
-  // Seeds the menu's held-key baseline from whatever is held right now, so a down or jump press
+  // Seeds the menu's held-key baseline from whatever is held right now, so an up, down or confirm press
   // still held from the match does not immediately move the selection or confirm an option.
   openMenu(inputByPlayerId) {
     this.paused = true;
     this.selectedIndex = 0;
-    this.previousDownByPlayerId = {};
-    this.previousJumpByPlayerId = {};
-    for (const playerId in inputByPlayerId) {
-      this.previousDownByPlayerId[playerId] = !!inputByPlayerId[playerId].down;
-      this.previousJumpByPlayerId[playerId] = !!inputByPlayerId[playerId].jump;
+    for (const control in this.previousMenuControls) {
+      this.previousMenuControls[control] = {};
+      for (const playerId in inputByPlayerId) {
+        this.previousMenuControls[control][playerId] = !!inputByPlayerId[playerId][control];
+      }
     }
   }
 

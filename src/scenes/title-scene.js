@@ -33,9 +33,9 @@ export const FULLSCREEN_BUTTON = {
 export const MENU_OPTIONS = [{ id: 'versus', label: 'Versus' }];
 
 export class TitleScene {
-  // initialInput seeds the held-key baseline from whatever opened this scene, so a jump or down
-  // press still held over from that moment (such as confirming "Return to title" from the pause
-  // menu) does not immediately count as a fresh press here.
+  // initialInput seeds the held-key baseline from whatever opened this scene, so an up, down or
+  // confirm press still held over from that moment (such as confirming "Return to title" from the
+  // pause menu) does not immediately count as a fresh press here.
   constructor({ sceneManager, levels, seed = Date.now(), options = MENU_OPTIONS, initialInput = {} } = {}) {
     this.sceneManager = sceneManager;
     this.levels = levels;
@@ -44,27 +44,26 @@ export class TitleScene {
     this.selectedIndex = 0;
     this.waterLineY = NO_WATER_LINE_Y;
     this.backgroundDrawn = false;
-    this.previousDown = {};
-    this.previousJump = {};
+    this.previous = { up: {}, down: {}, confirm: {} };
     for (const playerId in initialInput) {
-      this.previousDown[playerId] = !!initialInput[playerId].down;
-      this.previousJump[playerId] = !!initialInput[playerId].jump;
+      for (const control in this.previous) this.previous[control][playerId] = !!initialInput[playerId][control];
     }
   }
 
   update(inputByPlayerId) {
-    let downPressed = false;
-    let jumpPressed = false;
+    const pressed = { up: false, down: false, confirm: false };
     for (const playerId in inputByPlayerId) {
       const input = inputByPlayerId[playerId];
-      if (input.down && !this.previousDown[playerId]) downPressed = true;
-      if (input.jump && !this.previousJump[playerId]) jumpPressed = true;
-      this.previousDown[playerId] = input.down;
-      this.previousJump[playerId] = input.jump;
+      for (const control in pressed) {
+        if (input[control] && !this.previous[control][playerId]) pressed[control] = true;
+        this.previous[control][playerId] = !!input[control];
+      }
     }
 
-    if (downPressed) this.selectedIndex = (this.selectedIndex + 1) % this.options.length;
-    if (jumpPressed) this.confirmSelection();
+    const optionCount = this.options.length;
+    if (pressed.down) this.selectedIndex = (this.selectedIndex + 1) % optionCount;
+    if (pressed.up) this.selectedIndex = (this.selectedIndex + optionCount - 1) % optionCount;
+    if (pressed.confirm) this.confirmSelection();
   }
 
   confirmSelection() {
@@ -136,12 +135,16 @@ function drawTitleUi(context, scene) {
     if (isSelected) drawSelectionMarker(context, y);
   });
 
-  drawText(context, 'Red: A D move  W jump  C shove', SCREEN_WIDTH / 2, CONTROLS_TOP_Y, {
+  drawText(context, 'Red: A D move  W jump  S shove', SCREEN_WIDTH / 2, CONTROLS_TOP_Y, {
     align: 'center',
     color: RED_COLOR,
   });
-  drawText(context, 'Blue: Arrows move  Up jump  Comma shove', SCREEN_WIDTH / 2, CONTROLS_TOP_Y + CONTROLS_ROW_HEIGHT, {
+  drawText(context, 'Blue: Arrows move  Up jump  Down shove', SCREEN_WIDTH / 2, CONTROLS_TOP_Y + CONTROLS_ROW_HEIGHT, {
     align: 'center',
     color: BLUE_COLOR,
+  });
+
+  drawText(context, 'Enter to select', SCREEN_WIDTH / 2, CONTROLS_TOP_Y + CONTROLS_ROW_HEIGHT * 2, {
+    align: 'center',
   });
 }

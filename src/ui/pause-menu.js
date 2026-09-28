@@ -7,6 +7,7 @@ const TITLE_SCALE = 4;
 const OPTIONS_TOP_Y = 184;
 const OPTION_ROW_HEIGHT = 28;
 const OPTIONS_LEFT_X = 290;
+const HINT_Y = 260;
 const SELECTED_OPTION_COLOR = '#ffdc28';
 const SELECTION_MARKER_X = OPTIONS_LEFT_X - 20;
 const SELECTION_MARKER_HEIGHT = 18;
@@ -37,4 +38,6 @@ export function drawPauseMenu(context, { options, selectedIndex }) {
     });
     if (isSelected) drawSelectionMarker(context, y);
   });
+
+  drawText(context, 'Enter to select', SCREEN_WIDTH / 2, HINT_Y, { align: 'center' });
 }

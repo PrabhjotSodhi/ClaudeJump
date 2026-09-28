@@ -4,23 +4,21 @@ import { TitleScene } from '../src/scenes/title-scene.js';
 import { harborLevel } from './fixtures/harbor-level.mjs';
 
 function noInput() {
-  return { left: false, right: false, jump: false, down: false, action: false };
+  return { left: false, right: false, jump: false, up: false, down: false, action: false, confirm: false };
 }
 
 function neutralInputs() {
   return { red: noInput(), blue: noInput() };
 }
 
-function inputsWithDown(playerId) {
+function inputsWith(playerId, overrides) {
   const inputs = neutralInputs();
-  inputs[playerId] = { ...noInput(), down: true };
+  inputs[playerId] = { ...noInput(), ...overrides };
   return inputs;
 }
 
-function inputsWithJump(playerId) {
-  const inputs = neutralInputs();
-  inputs[playerId] = { ...noInput(), jump: true };
-  return inputs;
+function inputsWithDown(playerId) {
+  return inputsWith(playerId, { down: true });
 }
 
 function threeOptions() {
@@ -68,27 +66,49 @@ test('holding down does not repeat every tick', () => {
   assert.equal(scene.selectedIndex, 1);
 });
 
-test('a fresh jump press confirms the selection and opens player select', () => {
+test('a fresh confirm press confirms the selection and opens player select', () => {
   let scene;
   const scenes = [];
   const sceneManager = { setScene: (nextScene) => scenes.push(nextScene) };
   scene = new TitleScene({ sceneManager, levels: [harborLevel], seed: 0 });
 
-  scene.update(inputsWithJump('red'));
+  scene.update(inputsWith('red', { confirm: true }));
 
   assert.equal(scenes.length, 1);
   assert.equal(scenes[0].constructor.name, 'PlayerSelectScene');
 });
 
-test('a held jump does not confirm more than once', () => {
+test('a held confirm does not confirm more than once', () => {
   const scenes = [];
   const sceneManager = { setScene: (nextScene) => scenes.push(nextScene) };
   const scene = new TitleScene({ sceneManager, levels: [harborLevel], seed: 0 });
-  const heldJump = inputsWithJump('red');
+  const heldConfirm = inputsWith('red', { confirm: true });
 
-  scene.update(heldJump);
-  scene.update(heldJump);
-  scene.update(heldJump);
+  scene.update(heldConfirm);
+  scene.update(heldConfirm);
+  scene.update(heldConfirm);
 
   assert.equal(scenes.length, 1);
+});
+
+test('up moves the selection to the previous option and wraps from the first to the last', () => {
+  const scene = new TitleScene({ options: threeOptions() });
+  scene.selectedIndex = 1;
+
+  scene.update(inputsWith('red', { up: true }));
+  assert.equal(scene.selectedIndex, 0);
+
+  scene.update(neutralInputs());
+  scene.update(inputsWith('blue', { up: true }));
+  assert.equal(scene.selectedIndex, 2);
+});
+
+test('jump does not select', () => {
+  const scenes = [];
+  const scene = new TitleScene({ sceneManager: { setScene: (nextScene) => scenes.push(nextScene) }, seed: 0 });
+
+  scene.update(inputsWith('red', { jump: true }));
+  scene.update(inputsWith('blue', { jump: true }));
+
+  assert.equal(scenes.length, 0);
 });

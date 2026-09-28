@@ -1,9 +1,13 @@
 // Gamepad state only. Game logic reads the sampled records, never the gamepad.
 const STICK_DEAD_ZONE = 0.35;
 
+// A jumps and confirms menus. B or the right trigger is the action. Stick or d-pad down only
+// moves menu selections, so a diagonal while running never shoves.
 const BUTTON_JUMP = 0; // A
 const BUTTON_ACTION = 1; // B
+const BUTTON_ACTION_TRIGGER = 7; // right trigger
 const BUTTON_PAUSE = 9; // Start
+const BUTTON_DPAD_UP = 12;
 const BUTTON_DPAD_DOWN = 13;
 const BUTTON_DPAD_LEFT = 14;
 const BUTTON_DPAD_RIGHT = 15;
@@ -17,7 +21,16 @@ function isButtonPressed(gamepad, buttonIndex) {
 
 export function mapGamepadToInput(gamepad) {
   if (!gamepad) {
-    return { left: false, right: false, jump: false, down: false, action: false, pause: false };
+    return {
+      left: false,
+      right: false,
+      jump: false,
+      up: false,
+      down: false,
+      action: false,
+      confirm: false,
+      pause: false,
+    };
   }
 
   const stickX = gamepad.axes[AXIS_STICK_X] ?? 0;
@@ -28,7 +41,9 @@ export function mapGamepadToInput(gamepad) {
     right: stickX > STICK_DEAD_ZONE || isButtonPressed(gamepad, BUTTON_DPAD_RIGHT),
     jump: isButtonPressed(gamepad, BUTTON_JUMP),
     down: stickY > STICK_DEAD_ZONE || isButtonPressed(gamepad, BUTTON_DPAD_DOWN),
-    action: isButtonPressed(gamepad, BUTTON_ACTION),
+    up: stickY < -STICK_DEAD_ZONE || isButtonPressed(gamepad, BUTTON_DPAD_UP),
+    action: isButtonPressed(gamepad, BUTTON_ACTION) || isButtonPressed(gamepad, BUTTON_ACTION_TRIGGER),
+    confirm: isButtonPressed(gamepad, BUTTON_JUMP),
     pause: isButtonPressed(gamepad, BUTTON_PAUSE),
   };
 }
