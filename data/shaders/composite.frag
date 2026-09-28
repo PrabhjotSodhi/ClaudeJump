@@ -12,6 +12,7 @@ uniform float u_waterLine;
 uniform float u_lightingEnabled;
 uniform float u_fogStrength;
 uniform vec2 u_fogScroll;
+uniform vec2 u_shakeOffset;
 
 varying vec2 v_uv;
 
@@ -84,7 +85,8 @@ vec3 litSceneColor(vec2 pixelPosition) {
 }
 
 void main() {
-  vec2 pixelPosition = floor(v_uv * u_resolution);
+  vec2 screenPixel = floor(v_uv * u_resolution);
+  vec2 pixelPosition = screenPixel - u_shakeOffset;
   float surfaceY = u_waterLine + floor(sin(pixelPosition.x * 0.15 + u_time * 4.8) * 3.0 + 0.5);
   float depth = pixelPosition.y - surfaceY;
   float waterBrightness = mix(1.0, NIGHT_WATER_BRIGHTNESS, u_lightingEnabled);
@@ -103,7 +105,7 @@ void main() {
     color = mix(color, underwaterGame.rgb * WATER_TOP_COLOR * 1.4, underwaterGame.a * 0.5);
   }
 
-  vec4 uiColor = samplePixel(u_uiLayer, pixelPosition);
+  vec4 uiColor = samplePixel(u_uiLayer, screenPixel);
   color = mix(color, uiColor.rgb, uiColor.a);
 
   if (u_lightingEnabled < 0.5) {

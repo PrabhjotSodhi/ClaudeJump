@@ -18,6 +18,8 @@ export class Renderer {
     this.uiContext = this.uiCanvas.getContext('2d');
     this.lightContext = this.lightCanvas.getContext('2d');
     this.backgroundChanged = false;
+    // Whole pixels the shader moves the background and game layers by. The UI layer never moves.
+    this.shakeOffset = { x: 0, y: 0 };
   }
 
   updateBackground(draw) {

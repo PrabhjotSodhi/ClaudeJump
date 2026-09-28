@@ -521,7 +521,7 @@ test('a dash into an opponent already being pushed against still lands the dash 
     'a dash into a touching opponent knocks as hard as a dash from range',
   );
 
-  for (let tick = 0; tick < 15; tick++) {
+  for (let tick = 0; tick < 19; tick++) {
     scene.update({ red: noInput(), blue: noInput() });
   }
 
@@ -1280,4 +1280,70 @@ test('landing on a rooftops fixed bounce pad launches the player', () => {
   scene.update(neutralInputs());
 
   assert.ok(red.velocityY < 0, 'the pad launches the player upward');
+});
+
+function setUpStomp(scene) {
+  const red = findPlayer(scene, 'red');
+  const blue = findPlayer(scene, 'blue');
+  blue.x = 300;
+  blue.y = 116;
+  blue.onGround = true;
+  red.x = 292;
+  red.y = 82;
+  red.velocityY = 4;
+  red.onGround = false;
+  return { red, blue };
+}
+
+test('a stomp freezes game logic for exactly the stomp pause ticks', () => {
+  const scene = new VersusScene({ level: harborLevel });
+  advance(scene, READY_TICKS);
+  const { red } = setUpStomp(scene);
+
+  const stompEvents = [];
+  scene.events.on('player-stomped', (event) => stompEvents.push(event));
+  while (stompEvents.length === 0) scene.update(neutralInputs());
+  assert.equal(scene.hitPauseTicksRemaining, 5);
+  const frozenFightTicks = scene.fightTicks;
+  const frozenY = red.y;
+  const frozenTickCount = scene.tickCount;
+
+  advance(scene, 5);
+  assert.equal(red.y, frozenY, 'players do not move during the pause');
+  assert.equal(scene.fightTicks, frozenFightTicks, 'the round timer stands still');
+  assert.equal(scene.tickCount, frozenTickCount + 5, 'display timing keeps ticking');
+  assert.equal(scene.hitPauseTicksRemaining, 0);
+
+  scene.update(neutralInputs());
+  assert.notEqual(red.y, frozenY, 'players move again on the tick after');
+});
+
+test('overlapping hits take the longer pause instead of adding up', () => {
+  const scene = new VersusScene({ level: harborLevel });
+  advance(scene, READY_TICKS);
+  scene.requestHitPause(6);
+  scene.requestHitPause(3);
+  assert.equal(scene.hitPauseTicksRemaining, 6);
+  scene.requestHitPause(6);
+  assert.equal(scene.hitPauseTicksRemaining, 6);
+});
+
+test('a rocket blast shakes the picture by whole pixels, then the shake settles', () => {
+  const scene = new VersusScene({ level: harborLevel });
+  advance(scene, READY_TICKS);
+  const fallenPlayer = findPlayer(scene, 'red');
+  scene.events.emit('rocket-exploded', { x: 0, y: 0 });
+  assert.ok(scene.screenShake.offset.x !== 0 || scene.screenShake.offset.y !== 0);
+  for (const value of Object.values(scene.screenShake.offset)) assert.ok(Number.isInteger(value));
+  advance(scene, 12);
+  assert.deepEqual(scene.screenShake.offset, { x: 0, y: 0 });
+  assert.equal(fallenPlayer.inWater, false);
+});
+
+test('falling in the sea shakes the picture', () => {
+  const scene = new VersusScene({ level: harborLevel });
+  advance(scene, READY_TICKS);
+  findPlayer(scene, 'red').y = 600;
+  scene.update(neutralInputs());
+  assert.ok(scene.screenShake.ticksRemaining > 0);
 });

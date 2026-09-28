@@ -84,6 +84,7 @@ async function main() {
   }
 
   function renderFrame(timestamp) {
+    renderer.shakeOffset = { x: 0, y: 0 };
     sceneManager.render(renderer);
     gameWindow.render({
       backgroundCanvas: renderer.backgroundChanged ? renderer.backgroundCanvas : null,
@@ -91,6 +92,7 @@ async function main() {
       uiCanvas: renderer.uiCanvas,
       lightCanvas: sceneManager.currentScene.lighting ? renderer.lightCanvas : null,
       fogStrength: sceneManager.currentScene.lighting?.fogStrength,
+      shakeOffset: renderer.shakeOffset,
       waterLineY: sceneManager.currentScene.waterLineY,
       timeSeconds: timestamp / 1000,
     });

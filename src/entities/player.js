@@ -25,6 +25,13 @@ const SHOVE_COOLDOWN_TICKS = 30;
 export const SHOVE_HIT_ZONE_WIDTH = 16;
 export const SHOVE_HIT_ZONE_HEIGHT = 20;
 
+// Display only: how long, and by how many pixels, a player stretches after a jump and squashes
+// after a landing. The hitbox never changes.
+const STRETCH_TICKS = 6;
+const STRETCH_PIXELS = 4;
+const SQUASH_TICKS = 6;
+const SQUASH_PIXELS = 4;
+
 const SKIN_COLOR = '#f0c8a0';
 const EYE_COLOR = '#1e1e28';
 
@@ -55,6 +62,19 @@ export class Player extends PhysicsEntity {
     this.shoveActiveTicksRemaining = 0;
     this.shoveCooldownTicksRemaining = 0;
     this.shoveJustStarted = false;
+    this.ticksSinceJump = STRETCH_TICKS;
+    this.ticksSinceLanding = SQUASH_TICKS;
+  }
+
+  // Extra width and height to draw with, in whole pixels. The more recent of a jump and a landing wins.
+  get squash() {
+    const stretching = this.ticksSinceJump < STRETCH_TICKS;
+    const squashing = this.ticksSinceLanding < SQUASH_TICKS;
+    if (squashing && (!stretching || this.ticksSinceLanding <= this.ticksSinceJump)) {
+      return { width: SQUASH_PIXELS, height: -SQUASH_PIXELS };
+    }
+    if (stretching) return { width: -STRETCH_PIXELS, height: STRETCH_PIXELS };
+    return { width: 0, height: 0 };
   }
 
   get isShoveActive() {
@@ -140,6 +160,9 @@ export class Player extends PhysicsEntity {
   update(input, platforms) {
     this.playedCardName = null;
     this.shoveJustStarted = false;
+    this.ticksSinceJump = Math.min(this.ticksSinceJump + 1, STRETCH_TICKS);
+    this.ticksSinceLanding = Math.min(this.ticksSinceLanding + 1, SQUASH_TICKS);
+    const wasOnGround = this.onGround;
     if (this.inWater) {
       this.y += SINK_SPEED;
       return;
@@ -181,10 +204,12 @@ export class Player extends PhysicsEntity {
     if (this.jumpBufferTicksRemaining > 0) {
       if (this.coyoteTicksRemaining > 0) {
         this.velocityY = JUMP_VELOCITY;
+        this.ticksSinceJump = 0;
         this.jumpBufferTicksRemaining = 0;
         this.coyoteTicksRemaining = 0;
       } else if (this.airJumpAvailable) {
         this.velocityY = JUMP_VELOCITY * AIR_JUMP_MULTIPLIER;
+        this.ticksSinceJump = 0;
         this.jumpBufferTicksRemaining = 0;
         this.airJumpAvailable = false;
       }
@@ -193,6 +218,7 @@ export class Player extends PhysicsEntity {
 
     this.applyGravity(GRAVITY, MAX_FALL_SPEED);
     this.moveAndCollide(platforms);
+    if (this.onGround && !wasOnGround) this.ticksSinceLanding = 0;
   }
 
   // Drawn a second time offset by a screen width while crossing an edge, so wrapping never shows a gap.
@@ -210,11 +236,18 @@ export class Player extends PhysicsEntity {
       context.fillStyle = this.color;
       context.fillRect(Math.round(drawX + (hitZone.x - this.x)), Math.round(hitZone.y), hitZone.width, hitZone.height);
     }
+    const squash = this.inWater ? { width: 0, height: 0 } : this.squash;
+    const bodyX = drawX - squash.width / 2;
+    const bodyY = drawY - squash.height;
+    const bodyWidth = this.width + squash.width;
+    const bodyHeight = this.height + squash.height;
+    const headX = bodyX + 4;
+    const headWidth = bodyWidth - 8;
     context.fillStyle = SKIN_COLOR;
-    context.fillRect(drawX + 4, drawY, 16, 14);
+    context.fillRect(headX, bodyY, headWidth, 14);
     context.fillStyle = this.color;
-    context.fillRect(drawX, drawY + 14, this.width, this.height - 14);
+    context.fillRect(bodyX, bodyY + 14, bodyWidth, bodyHeight - 14);
     context.fillStyle = EYE_COLOR;
-    context.fillRect(drawX + (this.facing > 0 ? 16 : 6), drawY + 5, 2, 2);
+    context.fillRect(headX + (this.facing > 0 ? headWidth - 4 : 2), bodyY + 5, 2, 2);
   }
 }

@@ -15,7 +15,15 @@ import { drawHeldCardIcons } from '../ui/held-card-icons.js';
 import { drawHud } from '../ui/hud.js';
 import { MatchStats } from '../ui/match-stats.js';
 import { drawPlayerTags } from '../ui/player-tags.js';
+import { ScreenShake } from '../vfx/screen-shake.js';
 import { drawWrapPuffs, WrapPuffTracker } from '../vfx/wrap-puff.js';
+
+// How many ticks all game logic freezes after each kind of hit. Overlapping hits take the longer
+// pause, they never add up.
+const SHOVE_HIT_PAUSE_TICKS = 3;
+const DASH_HIT_PAUSE_TICKS = 4;
+const STOMP_HIT_PAUSE_TICKS = 5;
+const BLAST_HIT_PAUSE_TICKS = 6;
 
 const WINS_NEEDED = 5;
 const READY_TICKS = 60;
@@ -69,6 +77,10 @@ export class VersusScene {
     // Elapsed scene ticks, kept across rounds. Display-only effects (like the held card flash)
     // time themselves off it instead of off rendered frames.
     this.tickCount = 0;
+    this.hitPauseTicksRemaining = 0;
+    // Display-only, and created here for the same reason as the stats: it must never miss an event.
+    this.screenShake = new ScreenShake();
+    this.screenShake.attach(this.events);
     // Display data for the results screen, counted only from events. Created here (rather than
     // lazily on first render) so it never misses an event: dev mode can run a whole match through
     // step() with no render call in between. Game logic never reads it, only the HUD does.
@@ -124,11 +136,13 @@ export class VersusScene {
     this.waterLineY = this.level.waterLineY;
     this.fightTicks = 0;
     this.suddenDeathPhase = 'none';
+    this.hitPauseTicksRemaining = 0;
   }
 
   update(inputByPlayerId) {
     this.tickCount++;
     this.ticksRemaining--;
+    this.screenShake.update();
     switch (this.phase) {
       case 'ready':
         if (this.ticksRemaining <= 0) {
@@ -137,6 +151,10 @@ export class VersusScene {
         }
         break;
       case 'fight':
+        if (this.hitPauseTicksRemaining > 0) {
+          this.hitPauseTicksRemaining--;
+          break;
+        }
         this.fightTicks++;
         this.updateSuddenDeath();
         this.updatePlayers(inputByPlayerId);
@@ -160,6 +178,11 @@ export class VersusScene {
         if (this.ticksRemaining <= 0) this.updateMatchReadiness(inputByPlayerId);
         break;
     }
+  }
+
+  requestHitPause(ticks) {
+    if (this.phase !== 'fight') return;
+    this.hitPauseTicksRemaining = Math.max(this.hitPauseTicksRemaining, ticks);
   }
 
   updateSuddenDeath() {
@@ -220,6 +243,7 @@ export class VersusScene {
 
       alreadyHitIds.add(opponent.id);
       opponent.applyKnockback(SHOVE_KNOCKBACK_VELOCITY_X * shover.facing, SHOVE_KNOCKBACK_VELOCITY_Y);
+      this.requestHitPause(SHOVE_HIT_PAUSE_TICKS);
       this.events.emit('player-shoved', { shoverId: shover.id, targetId: opponent.id });
       return;
     }
@@ -249,6 +273,7 @@ export class VersusScene {
   }
 
   resolveBlast(blastCenterX, blastCenterY) {
+    this.requestHitPause(BLAST_HIT_PAUSE_TICKS);
     for (const player of this.players) {
       if (player.inWater) continue;
       const distanceX = player.x + player.width / 2 - blastCenterX;
@@ -446,6 +471,7 @@ export class VersusScene {
         const knockbackVelocityX = isDashHit ? DASH_KNOCKBACK_VELOCITY_X : BUMP_KNOCKBACK_VELOCITY_X;
         leftPlayer.applyKnockback(-knockbackVelocityX, 0);
         rightPlayer.applyKnockback(knockbackVelocityX, 0);
+        if (isDashHit) this.requestHitPause(DASH_HIT_PAUSE_TICKS);
         this.events.emit('players-bumped', { playerIds: [playerA.id, playerB.id] });
       }
     }
@@ -495,6 +521,7 @@ export class VersusScene {
     const knockbackDirection = stompedCenterX >= stomperCenterX ? 1 : -1;
     stomped.applyKnockback(knockbackDirection * STOMP_KNOCKBACK_VELOCITY_X, STOMP_KNOCKBACK_VELOCITY_Y);
     stomped.makeDizzy(DIZZY_TICKS);
+    this.requestHitPause(STOMP_HIT_PAUSE_TICKS);
 
     this.events.emit('player-stomped', { stomperId: stomper.id, stompedId: stomped.id });
   }
@@ -551,6 +578,7 @@ export class VersusScene {
       this.backgroundDrawn = true;
     }
 
+    renderer.shakeOffset = this.screenShake.offset;
     renderer.clearGameLayer();
     for (const tile of this.level.tiles)
       renderer.gameContext.drawImage(this.level.tileSprites[tile.name], tile.x, tile.y);
