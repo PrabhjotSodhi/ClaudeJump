@@ -15,8 +15,8 @@ const CARD_GRANTS = [
   { tick: 1300, playerId: 'blue', cardName: 'fire' },
 ];
 
-function buildInput({ left = false, right = false, jump = false, down = false, card = false } = {}) {
-  return { left, right, jump, down, card, pause: false };
+function buildInput({ left = false, right = false, jump = false, down = false, action = false } = {}) {
+  return { left, right, jump, down, action, pause: false };
 }
 
 function scriptForTick(tick) {
@@ -49,9 +49,9 @@ function scriptForTick(tick) {
   }
 
   // Play the dash card granted at tick 100.
-  if (tick === 105) red.card = true;
+  if (tick === 105) red.action = true;
   // Play the rocket card granted at tick 150.
-  if (tick === 155) blue.card = true;
+  if (tick === 155) blue.action = true;
 
   // General wandering: both walk back and forth and hop periodically.
   if (tick >= 200 && tick < 900) {
@@ -64,7 +64,7 @@ function scriptForTick(tick) {
   }
 
   // Play the bouncePad card granted at tick 900.
-  if (tick === 905) red.card = true;
+  if (tick === 905) red.action = true;
 
   if (tick >= 950 && tick < 1300) {
     red.left = tick % 70 < 35;
@@ -76,7 +76,7 @@ function scriptForTick(tick) {
   }
 
   // Play the fire card granted at tick 1300.
-  if (tick === 1305) blue.card = true;
+  if (tick === 1305) blue.action = true;
 
   if (tick >= 1300 && tick < REPLAY_TOTAL_TICKS) {
     red.right = tick % 50 < 25;

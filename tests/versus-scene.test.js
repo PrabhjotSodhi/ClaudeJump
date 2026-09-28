@@ -457,9 +457,9 @@ test('a dash into the opponent knocks them away', () => {
   const cardEvents = [];
   scene.events.on('card-played', (event) => cardEvents.push(event));
 
-  // Release the jump/card keys held from spawn before pressing fresh, then dash.
+  // Release the jump/action keys held from spawn before pressing fresh, then dash.
   scene.update({ red: noInput(), blue: noInput() });
-  scene.update({ red: { left: false, right: false, jump: false, card: true }, blue: noInput() });
+  scene.update({ red: { left: false, right: false, jump: false, action: true }, blue: noInput() });
 
   assert.deepEqual(cardEvents, [{ playerId: 'red', cardName: 'dash' }]);
 
@@ -509,8 +509,8 @@ test('a dash into an opponent already being pushed against still lands the dash 
   const bumpEvents = [];
   scene.events.on('players-bumped', (event) => bumpEvents.push(event));
 
-  scene.update({ red: noInput(), blue: noInput() }); // release the jump/card keys held from the push
-  scene.update({ red: { left: false, right: false, jump: false, card: true }, blue: noInput() });
+  scene.update({ red: noInput(), blue: noInput() }); // release the jump/action keys held from the push
+  scene.update({ red: { left: false, right: false, jump: false, action: true }, blue: noInput() });
 
   assert.equal(bumpEvents.length, 1, 'the dash lands a hit immediately, even though the players were already touching');
   assert.ok(
@@ -531,13 +531,13 @@ test('a card pressed on the tick a player falls in the sea emits card-played onc
 
   const red = findPlayer(scene, 'red');
   red.heldCardName = 'dash';
-  scene.update({ red: noInput(), blue: noInput() }); // release the card key held from spawn
+  scene.update({ red: noInput(), blue: noInput() }); // release the action key held from spawn
 
   const cardEvents = [];
   scene.events.on('card-played', (event) => cardEvents.push(event));
 
   red.y = 600; // below the water line, falls in on this tick
-  scene.update({ red: { left: false, right: false, jump: false, card: true }, blue: noInput() });
+  scene.update({ red: { left: false, right: false, jump: false, action: true }, blue: noInput() });
   assert.equal(scene.phase, 'point');
   assert.equal(red.inWater, true);
 
@@ -619,7 +619,7 @@ test('landing on a bounce pad launches the player higher than a jump', () => {
   jumpScene.update(neutralInputs()); // release the jump key held from spawn
   // Held the whole way up, so the jump reaches its full, uncut height.
   const jumpRise = riseToApex(jumpScene, 'red', {
-    red: { left: false, right: false, jump: true, card: false },
+    red: { left: false, right: false, jump: true, action: false },
     blue: noInput(),
   });
   assert.ok(jumpRise > 0, 'a held jump rises above its starting height');
@@ -655,7 +655,7 @@ test('walking into the side of a bounce pad does nothing', () => {
   red.onGround = true;
 
   for (let tick = 0; tick < 20; tick++) {
-    scene.update({ red: { left: false, right: true, jump: false, card: false }, blue: noInput() });
+    scene.update({ red: { left: false, right: true, jump: false, action: false }, blue: noInput() });
   }
 
   assert.equal(red.velocityY, 0, 'walking past the pad from the side never launches the player');
@@ -685,7 +685,7 @@ test('a player standing where a bounce pad appears is launched at once', () => {
   const red = findPlayer(scene, 'red');
   const blue = findPlayer(scene, 'blue');
   blue.heldCardName = 'bouncePad';
-  scene.update(neutralInputs()); // release the card key held from spawn
+  scene.update(neutralInputs()); // release the action key held from spawn
 
   // Placed on the same tick the card is played, so the two players are not already pushed
   // apart by the bump resolution a lasting overlap between them would otherwise trigger.
@@ -697,7 +697,7 @@ test('a player standing where a bounce pad appears is launched at once', () => {
   red.onGround = true;
   red.velocityY = 0;
 
-  scene.update({ red: noInput(), blue: { left: false, right: false, jump: false, card: true } });
+  scene.update({ red: noInput(), blue: { left: false, right: false, jump: false, action: true } });
 
   assert.ok(red.velocityY < 0, 'a player already standing on the spot is launched immediately');
 });
@@ -708,8 +708,8 @@ test('a bounce pad disappears after 300 ticks', () => {
 
   const red = findPlayer(scene, 'red');
   red.heldCardName = 'bouncePad';
-  scene.update({ red: noInput(), blue: noInput() }); // release the card key held from spawn
-  scene.update({ red: { left: false, right: false, jump: false, card: true }, blue: noInput() }); // 1st tick since it appeared
+  scene.update({ red: noInput(), blue: noInput() }); // release the action key held from spawn
+  scene.update({ red: { left: false, right: false, jump: false, action: true }, blue: noInput() }); // 1st tick since it appeared
 
   assert.equal(scene.entityGroups.get('bouncePads').length, 1);
 
@@ -894,12 +894,12 @@ test('playing Fire Floor sets the platform under the opponent alight', () => {
   blue.y = 116; // standing on the middle platform, top y 144
   blue.onGround = true;
   red.heldCardName = 'fire';
-  scene.update(neutralInputs()); // release the card key held from spawn
+  scene.update(neutralInputs()); // release the action key held from spawn
 
   const middlePlatform = findPlatformAt(scene, 256, 144);
   assert.equal(middlePlatform.isBurning, false);
 
-  scene.update({ red: { left: false, right: false, jump: false, card: true }, blue: noInput() });
+  scene.update({ red: { left: false, right: false, jump: false, action: true }, blue: noInput() });
 
   assert.equal(middlePlatform.isBurning, true, 'the platform under the opponent catches fire');
 });
@@ -916,7 +916,7 @@ test('Fire Floor uses the platform under an airborne opponent', () => {
   red.heldCardName = 'fire';
   scene.update(neutralInputs());
 
-  scene.update({ red: { left: false, right: false, jump: false, card: true }, blue: noInput() });
+  scene.update({ red: { left: false, right: false, jump: false, action: true }, blue: noInput() });
 
   const sidePlatform = findPlatformAt(scene, 80, 224);
   assert.equal(sidePlatform.isBurning, true, 'the platform below the airborne opponent catches fire');
@@ -978,7 +978,7 @@ test('the player who played Fire Floor is popped too if they stand on the burnin
   blue.onGround = true;
   red.heldCardName = 'fire';
   scene.update(neutralInputs());
-  scene.update({ red: { left: false, right: false, jump: false, card: true }, blue: noInput() });
+  scene.update({ red: { left: false, right: false, jump: false, action: true }, blue: noInput() });
 
   advance(scene, 30);
 
@@ -1012,7 +1012,7 @@ test('nothing burns and the card is still spent when the opponent is airborne wi
   red.heldCardName = 'fire';
   scene.update(neutralInputs());
 
-  scene.update({ red: { left: false, right: false, jump: false, card: true }, blue: noInput() });
+  scene.update({ red: { left: false, right: false, jump: false, action: true }, blue: noInput() });
 
   assert.equal(red.heldCardName, null, 'the card is spent');
   for (const platform of scene.entityGroups.get('platforms')) assert.equal(platform.isBurning, false);
@@ -1044,12 +1044,12 @@ test('playing Ice Floor freezes the platform under the opponent', () => {
   blue.y = 116; // standing on the middle platform, top y 144
   blue.onGround = true;
   red.heldCardName = 'ice';
-  scene.update(neutralInputs()); // release the card key held from spawn
+  scene.update(neutralInputs()); // release the action key held from spawn
 
   const middlePlatform = findPlatformAt(scene, 256, 144);
   assert.equal(middlePlatform.isIcy, false);
 
-  scene.update({ red: { left: false, right: false, jump: false, card: true }, blue: noInput() });
+  scene.update({ red: { left: false, right: false, jump: false, action: true }, blue: noInput() });
 
   assert.equal(middlePlatform.isIcy, true, 'the platform under the opponent freezes');
 });
@@ -1066,7 +1066,7 @@ test('Ice Floor uses the platform under an airborne opponent', () => {
   red.heldCardName = 'ice';
   scene.update(neutralInputs());
 
-  scene.update({ red: { left: false, right: false, jump: false, card: true }, blue: noInput() });
+  scene.update({ red: { left: false, right: false, jump: false, action: true }, blue: noInput() });
 
   const sidePlatform = findPlatformAt(scene, 80, 224);
   assert.equal(sidePlatform.isIcy, true, 'the platform below the airborne opponent freezes');
@@ -1084,7 +1084,7 @@ test('nothing freezes and the card is still spent when the opponent has no platf
   red.heldCardName = 'ice';
   scene.update(neutralInputs());
 
-  scene.update({ red: { left: false, right: false, jump: false, card: true }, blue: noInput() });
+  scene.update({ red: { left: false, right: false, jump: false, action: true }, blue: noInput() });
 
   assert.equal(red.heldCardName, null, 'the card is spent');
   for (const platform of scene.entityGroups.get('platforms')) assert.equal(platform.isIcy, false);

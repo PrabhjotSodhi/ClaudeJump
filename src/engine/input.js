@@ -38,7 +38,7 @@ export function createKeyboardInput(playerKeyMappings) {
           right: isDown(mapping.keys.right),
           jump: isDown(mapping.keys.jump),
           down: isDown(mapping.keys.down),
-          card: isDown(mapping.keys.card),
+          action: isDown(mapping.keys.action),
           pause: isDown(mapping.keys.pause),
         };
       }
@@ -59,7 +59,7 @@ export function combineInputs(inputByPlayerIdA, inputByPlayerIdB) {
       right: inputA.right || !!inputB.right,
       jump: inputA.jump || !!inputB.jump,
       down: inputA.down || !!inputB.down,
-      card: inputA.card || !!inputB.card,
+      action: inputA.action || !!inputB.action,
       pause: inputA.pause || !!inputB.pause,
     };
   }

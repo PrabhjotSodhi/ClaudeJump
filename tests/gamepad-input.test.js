@@ -13,13 +13,13 @@ function fakeGamepad({ buttonsPressed = [], axes = [0, 0] } = {}) {
 test('neutral gamepad state maps to no input pressed', () => {
   const input = mapGamepadToInput(fakeGamepad());
 
-  assert.deepEqual(input, { left: false, right: false, jump: false, down: false, card: false, pause: false });
+  assert.deepEqual(input, { left: false, right: false, jump: false, down: false, action: false, pause: false });
 });
 
 test('a missing gamepad maps to no input pressed', () => {
   const input = mapGamepadToInput(null);
 
-  assert.deepEqual(input, { left: false, right: false, jump: false, down: false, card: false, pause: false });
+  assert.deepEqual(input, { left: false, right: false, jump: false, down: false, action: false, pause: false });
 });
 
 test('left stick past the dead zone moves left or right', () => {
@@ -50,11 +50,11 @@ test('d-pad buttons move left, right and down', () => {
   assert.equal(downInput.down, true);
 });
 
-test('button A jumps and button B plays the card', () => {
+test('button A jumps and button B plays the action button', () => {
   const input = mapGamepadToInput(fakeGamepad({ buttonsPressed: [0, 1] }));
 
   assert.equal(input.jump, true);
-  assert.equal(input.card, true);
+  assert.equal(input.action, true);
 });
 
 test('button Start pauses', () => {

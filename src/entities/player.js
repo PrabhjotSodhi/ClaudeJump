@@ -41,7 +41,7 @@ export class Player extends PhysicsEntity {
     this.dizzyTicksRemaining = 0;
     this.airJumpAvailable = false;
     this.heldCardName = null;
-    this.cardKeyHeldPrevious = false;
+    this.actionKeyHeldPrevious = false;
     this.playedCardName = null;
     this.dashTicksRemaining = 0;
   }
@@ -68,12 +68,12 @@ export class Player extends PhysicsEntity {
     this.velocityY = this.jumpHeld ? JUMP_VELOCITY : JUMP_VELOCITY * JUMP_CUT_MULTIPLIER;
   }
 
-  // The card key fires on the press, not while held, so keep tracking held state even when the
+  // The action key fires on the press, not while held, so keep tracking held state even when the
   // player cannot act, so a key already down does not fire the moment it becomes able to again.
-  handleCardInput(input, canAct) {
-    const pressed = input ? input.card : false;
-    const justPressed = pressed && !this.cardKeyHeldPrevious;
-    this.cardKeyHeldPrevious = pressed;
+  handleActionInput(input, canAct) {
+    const pressed = input ? input.action : false;
+    const justPressed = pressed && !this.actionKeyHeldPrevious;
+    this.actionKeyHeldPrevious = pressed;
     if (justPressed && canAct) this.playCard();
   }
 
@@ -102,7 +102,7 @@ export class Player extends PhysicsEntity {
       return;
     }
 
-    this.handleCardInput(input, this.dizzyTicksRemaining <= 0);
+    this.handleActionInput(input, this.dizzyTicksRemaining <= 0);
 
     if (this.dizzyTicksRemaining > 0) {
       input = null;

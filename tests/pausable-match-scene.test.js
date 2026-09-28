@@ -5,7 +5,7 @@ import { TitleScene } from '../src/scenes/title-scene.js';
 import { VersusScene } from '../src/scenes/versus-scene.js';
 
 function noInput() {
-  return { left: false, right: false, jump: false, down: false, card: false, pause: false };
+  return { left: false, right: false, jump: false, down: false, action: false, pause: false };
 }
 
 function neutralInputs() {

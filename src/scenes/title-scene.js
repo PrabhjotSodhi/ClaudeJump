@@ -133,11 +133,11 @@ function drawTitleUi(context, scene) {
     if (isSelected) drawSelectionMarker(context, y);
   });
 
-  drawText(context, 'Red: A D move  W jump  C card', SCREEN_WIDTH / 2, CONTROLS_TOP_Y, {
+  drawText(context, 'Red: A D move  W jump  C shove', SCREEN_WIDTH / 2, CONTROLS_TOP_Y, {
     align: 'center',
     color: RED_COLOR,
   });
-  drawText(context, 'Blue: Arrows move  Up jump  Comma card', SCREEN_WIDTH / 2, CONTROLS_TOP_Y + CONTROLS_ROW_HEIGHT, {
+  drawText(context, 'Blue: Arrows move  Up jump  Comma shove', SCREEN_WIDTH / 2, CONTROLS_TOP_Y + CONTROLS_ROW_HEIGHT, {
     align: 'center',
     color: BLUE_COLOR,
   });
