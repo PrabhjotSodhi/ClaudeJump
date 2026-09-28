@@ -34,8 +34,9 @@ function scriptForTick(tick) {
     }
   }
 
-  // They meet and bump around tick 47. Then both hold still while blue takes a short hop
-  // straight up and back down onto red's head, landing a stomp.
+  // They meet and bump around tick 47. Red shoves blue away with no card held, then both hold
+  // still while blue takes a short hop straight up and back down onto red's head, landing a stomp.
+  if (tick === 48) red.action = true;
   if (tick >= 55 && tick < 75) {
     red.right = false;
     blue.left = false;

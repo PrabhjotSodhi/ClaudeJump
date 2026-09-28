@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { SCREEN_WIDTH } from '../src/engine/config.js';
 import { Crate } from '../src/entities/crate.js';
+import { Platform } from '../src/entities/platform.js';
 import { Rocket } from '../src/entities/rocket.js';
 import { BouncePad } from '../src/entities/bounce-pad.js';
 import { VersusScene } from '../src/scenes/versus-scene.js';
@@ -523,6 +524,97 @@ test('a dash into an opponent already being pushed against still lands the dash 
   }
 
   assert.ok(blue.x - (red.x + red.width) > 0, 'blue ends clearly separated from red');
+});
+
+test('a shove knocks the player in front away and pops them upward', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+
+  const red = findPlayer(scene, 'red');
+  const blue = findPlayer(scene, 'blue');
+  red.x = 264;
+  red.y = 116;
+  red.onGround = true;
+  red.facing = 1;
+  blue.x = 300; // inside red's hit zone (red's right edge at 288, zone 16px wide), not yet touching red
+  blue.y = 116;
+  blue.onGround = true;
+  const blueStartX = blue.x;
+
+  const shoveEvents = [];
+  scene.events.on('player-shoved', (event) => shoveEvents.push(event));
+
+  scene.update({ red: noInput(), blue: noInput() }); // release the jump/action keys held from spawn
+  scene.update({ red: { left: false, right: false, jump: false, action: true }, blue: noInput() });
+
+  assert.deepEqual(shoveEvents, [{ shoverId: 'red', targetId: 'blue' }]);
+  assert.ok(blue.knockbackVelocityX > 0, 'the shove knocks blue away from red');
+  assert.ok(blue.velocityY < 0, 'the shove pops blue upward');
+
+  for (let tick = 0; tick < 15; tick++) {
+    scene.update({ red: noInput(), blue: noInput() });
+  }
+
+  assert.ok(blue.x > blueStartX, 'the shoved player ends up pushed away');
+});
+
+test('a shove never hits a player standing behind the shover', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+
+  const red = findPlayer(scene, 'red');
+  const blue = findPlayer(scene, 'blue');
+  red.x = 264;
+  red.y = 116;
+  red.onGround = true;
+  red.facing = 1; // facing right, so the hit zone opens to red's right, away from blue
+  blue.x = 150;
+  blue.y = 116;
+  blue.onGround = true;
+
+  const shoveEvents = [];
+  scene.events.on('player-shoved', (event) => shoveEvents.push(event));
+
+  scene.update({ red: noInput(), blue: noInput() });
+  scene.update({ red: { left: false, right: false, jump: false, action: true }, blue: noInput() });
+
+  for (let tick = 0; tick < 10; tick++) {
+    scene.update({ red: noInput(), blue: noInput() });
+  }
+
+  assert.equal(shoveEvents.length, 0, 'a player behind the shover is never hit');
+  assert.equal(blue.knockbackVelocityX, 0);
+});
+
+test('a shove hits an opponent at most once, even while the hit zone stays on them for the whole active window', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+
+  const red = findPlayer(scene, 'red');
+  const blue = findPlayer(scene, 'blue');
+  red.x = 264;
+  red.y = 116;
+  red.onGround = true;
+  red.facing = 1;
+  blue.x = 300;
+  blue.y = 116;
+  blue.onGround = true;
+  // A wall right against blue's far side stops the knockback from carrying blue out of the hit
+  // zone, so the zone stays on blue for the whole active window and a broken "once per shove"
+  // guard would otherwise land a hit on every one of those ticks.
+  scene.entityGroups.add('platforms', new Platform({ x: blue.x + blue.width, y: 100, width: 20, height: 100 }));
+
+  const shoveEvents = [];
+  scene.events.on('player-shoved', (event) => shoveEvents.push(event));
+
+  scene.update({ red: noInput(), blue: noInput() });
+  scene.update({ red: { left: false, right: false, jump: false, action: true }, blue: noInput() });
+
+  for (let tick = 0; tick < 10; tick++) {
+    scene.update({ red: noInput(), blue: noInput() });
+  }
+
+  assert.equal(shoveEvents.length, 1, 'the shove lands at most one hit, even across several active ticks');
 });
 
 test('a card pressed on the tick a player falls in the sea emits card-played once, not every sinking tick', () => {

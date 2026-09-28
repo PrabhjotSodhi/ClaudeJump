@@ -19,6 +19,10 @@ const JUMP_BUFFER_TICKS = 6;
 const SINK_SPEED = 1;
 const DASH_SPEED = 9;
 const DASH_TICKS = 10;
+export const SHOVE_ACTIVE_TICKS = 6;
+const SHOVE_COOLDOWN_TICKS = 30;
+export const SHOVE_HIT_ZONE_WIDTH = 16;
+export const SHOVE_HIT_ZONE_HEIGHT = 20;
 
 const SKIN_COLOR = '#f0c8a0';
 const EYE_COLOR = '#1e1e28';
@@ -44,6 +48,21 @@ export class Player extends PhysicsEntity {
     this.actionKeyHeldPrevious = false;
     this.playedCardName = null;
     this.dashTicksRemaining = 0;
+    this.shoveActiveTicksRemaining = 0;
+    this.shoveCooldownTicksRemaining = 0;
+    this.shoveJustStarted = false;
+  }
+
+  get isShoveActive() {
+    return this.shoveActiveTicksRemaining > 0;
+  }
+
+  // Sits just in front of the player, facing the way they are facing, so an opponent behind them
+  // is never inside it.
+  get shoveHitZone() {
+    const x = this.facing > 0 ? this.x + this.width : this.x - SHOVE_HIT_ZONE_WIDTH;
+    const y = this.y + this.height / 2 - SHOVE_HIT_ZONE_HEIGHT / 2;
+    return { x, y, width: SHOVE_HIT_ZONE_WIDTH, height: SHOVE_HIT_ZONE_HEIGHT };
   }
 
   startSinking() {
@@ -70,11 +89,14 @@ export class Player extends PhysicsEntity {
 
   // The action key fires on the press, not while held, so keep tracking held state even when the
   // player cannot act, so a key already down does not fire the moment it becomes able to again.
+  // A held pickup takes over the button; with nothing held, it shoves instead.
   handleActionInput(input, canAct) {
     const pressed = input ? input.action : false;
     const justPressed = pressed && !this.actionKeyHeldPrevious;
     this.actionKeyHeldPrevious = pressed;
-    if (justPressed && canAct) this.playCard();
+    if (!justPressed || !canAct) return;
+    if (this.heldCardName) this.playCard();
+    else this.startShove();
   }
 
   receiveCard(cardName) {
@@ -95,8 +117,17 @@ export class Player extends PhysicsEntity {
     this.velocityX = DASH_SPEED * this.facing;
   }
 
+  // The cooldown covers the active ticks too, so it is the whole gap between one shove and the next.
+  startShove() {
+    if (this.shoveActiveTicksRemaining > 0 || this.shoveCooldownTicksRemaining > 0) return;
+    this.shoveActiveTicksRemaining = SHOVE_ACTIVE_TICKS;
+    this.shoveCooldownTicksRemaining = SHOVE_COOLDOWN_TICKS;
+    this.shoveJustStarted = true;
+  }
+
   update(input, platforms) {
     this.playedCardName = null;
+    this.shoveJustStarted = false;
     if (this.inWater) {
       this.y += SINK_SPEED;
       return;
@@ -129,6 +160,9 @@ export class Player extends PhysicsEntity {
       this.velocityX += clamp(moveDirection * RUN_SPEED - this.velocityX, -acceleration, acceleration);
     }
 
+    if (this.shoveActiveTicksRemaining > 0) this.shoveActiveTicksRemaining--;
+    if (this.shoveCooldownTicksRemaining > 0) this.shoveCooldownTicksRemaining--;
+
     // Coyote time and the jump buffer forgive a press a few ticks early or late.
     if (this.onGround) this.airJumpAvailable = true;
     this.coyoteTicksRemaining = this.onGround ? COYOTE_TICKS : this.coyoteTicksRemaining - 1;
@@ -160,6 +194,11 @@ export class Player extends PhysicsEntity {
   renderAt(context, x) {
     const drawX = Math.round(x);
     const drawY = Math.round(this.y);
+    if (this.isShoveActive) {
+      const hitZone = this.shoveHitZone;
+      context.fillStyle = this.color;
+      context.fillRect(Math.round(drawX + (hitZone.x - this.x)), Math.round(hitZone.y), hitZone.width, hitZone.height);
+    }
     context.fillStyle = SKIN_COLOR;
     context.fillRect(drawX + 4, drawY, 16, 14);
     context.fillStyle = this.color;

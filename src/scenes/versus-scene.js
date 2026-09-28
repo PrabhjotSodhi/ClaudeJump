@@ -29,6 +29,8 @@ const STOMP_KNOCKBACK_VELOCITY_X = 5;
 const STOMP_KNOCKBACK_VELOCITY_Y = 2;
 const DIZZY_TICKS = 20;
 const DASH_KNOCKBACK_VELOCITY_X = 8;
+const SHOVE_KNOCKBACK_VELOCITY_X = 6;
+const SHOVE_KNOCKBACK_VELOCITY_Y = -3;
 // How far a rocket blast reaches, and how hard it knocks players inside that range.
 const BLAST_RADIUS = 48;
 const BLAST_KNOCKBACK_VELOCITY_X = 8;
@@ -62,6 +64,9 @@ export class VersusScene {
     this.skipNextReadyPhase = startInFightPhase;
     this.bumpingPairIds = new Set();
     this.stompingPairIds = new Set();
+    // Which opponents each shover has already hit this shove, so one shove lands at most one hit
+    // per opponent even while its hit zone stays active for several ticks.
+    this.shoveHitIdsByShoverId = new Map();
     // Elapsed scene ticks, kept across rounds. Display-only effects (like the held card flash)
     // time themselves off it instead of off rendered frames.
     this.tickCount = 0;
@@ -109,6 +114,7 @@ export class VersusScene {
     this.winnerId = null;
     this.bumpingPairIds.clear();
     this.stompingPairIds.clear();
+    this.shoveHitIdsByShoverId.clear();
     this.waterLineY = WATER_LINE_Y;
     this.fightTicks = 0;
     this.suddenDeathPhase = 'none';
@@ -175,6 +181,8 @@ export class VersusScene {
         if (player.playedCardName === 'ice') this.freezeIce(player);
         if (player.playedCardName === 'dash') this.clearBumpingPairsFor(player.id);
       }
+      if (player.shoveJustStarted) this.shoveHitIdsByShoverId.set(player.id, new Set());
+      if (player.isShoveActive) this.resolveShoveHit(player);
       if (!player.inWater && player.y + player.height >= this.waterLineY) {
         player.startSinking();
         this.events.emit('player-fell-in-water', { playerId: player.id });
@@ -189,6 +197,22 @@ export class VersusScene {
   clearBumpingPairsFor(playerId) {
     for (const pairId of this.bumpingPairIds) {
       if (pairId.split('-').includes(playerId)) this.bumpingPairIds.delete(pairId);
+    }
+  }
+
+  // The first opponent touching the shover's hit zone gets knocked away, once per shove. The pop
+  // upward lets air knockback decay carry the hit, so a shove near the edge can end a round.
+  resolveShoveHit(shover) {
+    const hitZone = shover.shoveHitZone;
+    const alreadyHitIds = this.shoveHitIdsByShoverId.get(shover.id);
+    for (const opponent of this.players) {
+      if (opponent.id === shover.id || opponent.inWater || alreadyHitIds.has(opponent.id)) continue;
+      if (!opponent.overlaps(hitZone)) continue;
+
+      alreadyHitIds.add(opponent.id);
+      opponent.applyKnockback(SHOVE_KNOCKBACK_VELOCITY_X * shover.facing, SHOVE_KNOCKBACK_VELOCITY_Y);
+      this.events.emit('player-shoved', { shoverId: shover.id, targetId: opponent.id });
+      return;
     }
   }
 
