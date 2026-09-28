@@ -5,19 +5,12 @@ export const ROCKET_WIDTH = 12;
 export const ROCKET_HEIGHT = 6;
 
 const ROCKET_SPEED = 4.4;
-// How much the rocket's velocity may turn toward its target each tick, so it curves gently
-// instead of snapping to face the opponent.
-const STEER_ACCELERATION = 0.1;
 const LIFETIME_TICKS = 240; // explodes on its own after 4 seconds so it can never circle forever
 
 const BODY_COLOR = '#c85050';
 const FLAME_COLOR = '#f0a028';
 
-function clamp(value, minimum, maximum) {
-  return Math.max(minimum, Math.min(maximum, value));
-}
-
-// A rocket fired by a player. It steers gently toward the nearest opponent and explodes on
+// A rocket fired by a player. It flies straight and explodes on
 // hitting a player, a platform or its own lifetime running out. The explosion itself, and who
 // it knocks back, is resolved by the scene so it can apply applyKnockback to every player.
 export class Rocket extends Entity {
@@ -43,35 +36,6 @@ export class Rocket extends Entity {
     );
   }
 
-  findTarget(players) {
-    const opponents = players.filter((player) => player.id !== this.shooterId && !player.inWater);
-    if (opponents.length === 0) return null;
-
-    const rocketCenterX = this.x + this.width / 2;
-    const rocketCenterY = this.y + this.height / 2;
-    return opponents.reduce((closest, candidate) => {
-      const candidateDistance = Math.hypot(
-        candidate.x + candidate.width / 2 - rocketCenterX,
-        candidate.y + candidate.height / 2 - rocketCenterY,
-      );
-      const closestDistance = Math.hypot(
-        closest.x + closest.width / 2 - rocketCenterX,
-        closest.y + closest.height / 2 - rocketCenterY,
-      );
-      return candidateDistance < closestDistance ? candidate : closest;
-    });
-  }
-
-  steerToward(targetX, targetY) {
-    const directionX = targetX - (this.x + this.width / 2);
-    const directionY = targetY - (this.y + this.height / 2);
-    const distance = Math.hypot(directionX, directionY) || 1;
-    const desiredVelocityX = (directionX / distance) * ROCKET_SPEED;
-    const desiredVelocityY = (directionY / distance) * ROCKET_SPEED;
-    this.velocityX += clamp(desiredVelocityX - this.velocityX, -STEER_ACCELERATION, STEER_ACCELERATION);
-    this.velocityY += clamp(desiredVelocityY - this.velocityY, -STEER_ACCELERATION, STEER_ACCELERATION);
-  }
-
   update(players, platforms) {
     if (this.exploded) return;
 
@@ -80,9 +44,6 @@ export class Rocket extends Entity {
       this.explode();
       return;
     }
-
-    const target = this.findTarget(players);
-    if (target) this.steerToward(target.x + target.width / 2, target.y + target.height / 2);
 
     this.x += this.velocityX;
     this.y += this.velocityY;

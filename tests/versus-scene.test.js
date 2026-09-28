@@ -842,6 +842,34 @@ test('touching a crate with no card takes the card', () => {
   assert.equal(scene.entityGroups.get('crates').includes(crate), false, 'the taken crate is removed');
 });
 
+test('a crate gives a pickup with 3 uses', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+
+  const red = findPlayer(scene, 'red');
+  red.x = 200;
+  red.y = 200;
+  addLandedCrate(scene, { x: red.x, y: red.y, cardName: 'rocket' });
+
+  scene.update(neutralInputs());
+
+  assert.equal(red.heldCardName, 'rocket');
+  assert.equal(red.heldCardUsesRemaining, 3);
+});
+
+test('crates only ever hold dash, rocket or a bounce pad', () => {
+  const allowedCardNames = new Set(['dash', 'rocket', 'bouncePad']);
+  for (let seed = 1; seed <= 20; seed++) {
+    const scene = new VersusScene({ seed });
+    for (let tick = 0; tick < 600; tick++) {
+      scene.update(neutralInputs());
+      for (const crate of scene.entityGroups.get('crates')) {
+        assert.ok(allowedCardNames.has(crate.cardName), `seed ${seed} dropped ${crate.cardName}`);
+      }
+    }
+  }
+});
+
 test('a player already holding a card cannot open a crate, and the crate stays', () => {
   const scene = new VersusScene();
   advance(scene, READY_TICKS);
@@ -970,300 +998,6 @@ test('a player touching where a waiting crate hides above the screen does not ta
   assert.equal(crate.isFalling, false, 'the crate has not started falling yet');
   assert.deepEqual(pickupEvents, [], 'nothing is taken from a crate that has not appeared yet');
   assert.equal(red.heldCardName, null);
-});
-
-function findPlatformAt(scene, x, y) {
-  return scene.entityGroups.get('platforms').find((platform) => platform.x === x && platform.y === y);
-}
-
-test('playing Fire Floor sets the platform under the opponent alight', () => {
-  const scene = new VersusScene();
-  advance(scene, READY_TICKS);
-
-  const red = findPlayer(scene, 'red');
-  const blue = findPlayer(scene, 'blue');
-  blue.x = 300;
-  blue.y = 116; // standing on the middle platform, top y 144
-  blue.onGround = true;
-  red.heldCardName = 'fire';
-  scene.update(neutralInputs()); // release the action key held from spawn
-
-  const middlePlatform = findPlatformAt(scene, 256, 144);
-  assert.equal(middlePlatform.isBurning, false);
-
-  scene.update({ red: { left: false, right: false, jump: false, action: true }, blue: noInput() });
-
-  assert.equal(middlePlatform.isBurning, true, 'the platform under the opponent catches fire');
-});
-
-test('Fire Floor uses the platform under an airborne opponent', () => {
-  const scene = new VersusScene();
-  advance(scene, READY_TICKS);
-
-  const red = findPlayer(scene, 'red');
-  const blue = findPlayer(scene, 'blue');
-  blue.x = 120;
-  blue.y = 180; // mid-air above the side platform (top y 224), not touching it
-  blue.onGround = false;
-  red.heldCardName = 'fire';
-  scene.update(neutralInputs());
-
-  scene.update({ red: { left: false, right: false, jump: false, action: true }, blue: noInput() });
-
-  const sidePlatform = findPlatformAt(scene, 80, 224);
-  assert.equal(sidePlatform.isBurning, true, 'the platform below the airborne opponent catches fire');
-});
-
-test('a player on a burning platform is popped every 30 ticks', () => {
-  const scene = new VersusScene();
-  advance(scene, READY_TICKS);
-
-  const blue = findPlayer(scene, 'blue');
-  blue.x = 300;
-  blue.y = 116;
-  blue.onGround = true;
-  const middlePlatform = findPlatformAt(scene, 256, 144);
-  middlePlatform.igniteWithFire();
-
-  const popTicks = [];
-  for (let tick = 1; tick <= 90; tick++) {
-    const velocityYBefore = blue.velocityY;
-    scene.update(neutralInputs());
-    if (velocityYBefore >= 0 && blue.velocityY < 0) popTicks.push(tick);
-  }
-
-  assert.deepEqual(popTicks, [30, 60, 90]);
-});
-
-test('a pop pushes a standing player upward and away from the platform center', () => {
-  const scene = new VersusScene();
-  advance(scene, READY_TICKS);
-
-  const blue = findPlayer(scene, 'blue');
-  blue.x = 300; // left of the middle platform's center (256 + 64 = 320)
-  blue.y = 116;
-  blue.onGround = true;
-  const middlePlatform = findPlatformAt(scene, 256, 144);
-  middlePlatform.igniteWithFire();
-
-  const popEvents = [];
-  scene.events.on('platform-popped', (event) => popEvents.push(event));
-
-  advance(scene, 30);
-
-  assert.equal(popEvents.length, 1);
-  assert.ok(blue.velocityY < 0, 'the popped player is launched upward');
-  assert.ok(blue.knockbackVelocityX < 0, 'blue sits left of center and is pushed further left');
-});
-
-test('the player who played Fire Floor is popped too if they stand on the burning platform', () => {
-  const scene = new VersusScene();
-  advance(scene, READY_TICKS);
-
-  const red = findPlayer(scene, 'red');
-  const blue = findPlayer(scene, 'blue');
-  red.x = 260;
-  red.y = 116;
-  red.onGround = true;
-  blue.x = 340;
-  blue.y = 116;
-  blue.onGround = true;
-  red.heldCardName = 'fire';
-  scene.update(neutralInputs());
-  scene.update({ red: { left: false, right: false, jump: false, action: true }, blue: noInput() });
-
-  advance(scene, 30);
-
-  assert.ok(red.velocityY < 0, 'the player who played the card is popped too when standing on the fire');
-  assert.ok(blue.velocityY < 0, 'the opponent standing on the same platform is popped too');
-});
-
-test('the fire ends after 180 ticks', () => {
-  const scene = new VersusScene();
-  advance(scene, READY_TICKS);
-
-  const middlePlatform = findPlatformAt(scene, 256, 144);
-  middlePlatform.igniteWithFire();
-
-  advance(scene, 179);
-  assert.equal(middlePlatform.isBurning, true, 'still burning just before 180 ticks');
-
-  scene.update(neutralInputs());
-  assert.equal(middlePlatform.isBurning, false, 'the fire ends at 180 ticks');
-});
-
-test('nothing burns and the card is still spent when the opponent is airborne with no platform below them', () => {
-  const scene = new VersusScene();
-  advance(scene, READY_TICKS);
-
-  const red = findPlayer(scene, 'red');
-  const blue = findPlayer(scene, 'blue');
-  blue.x = 0; // no platform sits under x 0 (see the crate test for the same gap)
-  blue.y = 180;
-  blue.onGround = false;
-  red.heldCardName = 'fire';
-  scene.update(neutralInputs());
-
-  scene.update({ red: { left: false, right: false, jump: false, action: true }, blue: noInput() });
-
-  assert.equal(red.heldCardName, null, 'the card is spent');
-  for (const platform of scene.entityGroups.get('platforms')) assert.equal(platform.isBurning, false);
-});
-
-test('fire is cleared from every platform at the start of a new round', () => {
-  const scene = new VersusScene();
-  advance(scene, READY_TICKS);
-
-  const middlePlatform = findPlatformAt(scene, 256, 144);
-  middlePlatform.igniteWithFire();
-
-  findPlayer(scene, 'red').y = 600;
-  scene.update(neutralInputs());
-  assert.equal(scene.phase, 'point');
-
-  advance(scene, 90); // point pause resolves back to a fresh 'ready' round
-  assert.equal(scene.phase, 'ready');
-  assert.equal(middlePlatform.isBurning, false, 'fire does not carry over into the next round');
-});
-
-test('playing Ice Floor freezes the platform under the opponent', () => {
-  const scene = new VersusScene();
-  advance(scene, READY_TICKS);
-
-  const red = findPlayer(scene, 'red');
-  const blue = findPlayer(scene, 'blue');
-  blue.x = 300;
-  blue.y = 116; // standing on the middle platform, top y 144
-  blue.onGround = true;
-  red.heldCardName = 'ice';
-  scene.update(neutralInputs()); // release the action key held from spawn
-
-  const middlePlatform = findPlatformAt(scene, 256, 144);
-  assert.equal(middlePlatform.isIcy, false);
-
-  scene.update({ red: { left: false, right: false, jump: false, action: true }, blue: noInput() });
-
-  assert.equal(middlePlatform.isIcy, true, 'the platform under the opponent freezes');
-});
-
-test('Ice Floor uses the platform under an airborne opponent', () => {
-  const scene = new VersusScene();
-  advance(scene, READY_TICKS);
-
-  const red = findPlayer(scene, 'red');
-  const blue = findPlayer(scene, 'blue');
-  blue.x = 120;
-  blue.y = 180; // mid-air above the side platform (top y 224), not touching it
-  blue.onGround = false;
-  red.heldCardName = 'ice';
-  scene.update(neutralInputs());
-
-  scene.update({ red: { left: false, right: false, jump: false, action: true }, blue: noInput() });
-
-  const sidePlatform = findPlatformAt(scene, 80, 224);
-  assert.equal(sidePlatform.isIcy, true, 'the platform below the airborne opponent freezes');
-});
-
-test('nothing freezes and the card is still spent when the opponent has no platform below them', () => {
-  const scene = new VersusScene();
-  advance(scene, READY_TICKS);
-
-  const red = findPlayer(scene, 'red');
-  const blue = findPlayer(scene, 'blue');
-  blue.x = 0; // no platform sits under x 0 (see the crate test for the same gap)
-  blue.y = 180;
-  blue.onGround = false;
-  red.heldCardName = 'ice';
-  scene.update(neutralInputs());
-
-  scene.update({ red: { left: false, right: false, jump: false, action: true }, blue: noInput() });
-
-  assert.equal(red.heldCardName, null, 'the card is spent');
-  for (const platform of scene.entityGroups.get('platforms')) assert.equal(platform.isIcy, false);
-});
-
-test('a player on ice takes clearly longer to stop than on metal', () => {
-  const scene = new VersusScene();
-  advance(scene, READY_TICKS);
-
-  const blue = findPlayer(scene, 'blue');
-  blue.x = 300;
-  blue.y = 116;
-  blue.onGround = true;
-  blue.velocityX = 3.6; // full running speed, coasting with no input
-  const middlePlatform = findPlatformAt(scene, 256, 144);
-  middlePlatform.freezeWithIce();
-
-  let icyTicksToStop = 0;
-  while (blue.velocityX > 0) {
-    scene.update(neutralInputs());
-    icyTicksToStop++;
-    if (icyTicksToStop > 1000) throw new Error('the icy player never stopped');
-  }
-
-  const metalScene = new VersusScene();
-  advance(metalScene, READY_TICKS);
-  const metalBlue = findPlayer(metalScene, 'blue');
-  metalBlue.x = 300;
-  metalBlue.y = 116;
-  metalBlue.onGround = true;
-  metalBlue.velocityX = 3.6;
-
-  let metalTicksToStop = 0;
-  while (metalBlue.velocityX > 0) {
-    metalScene.update(neutralInputs());
-    metalTicksToStop++;
-    if (metalTicksToStop > 1000) throw new Error('the player on metal never stopped');
-  }
-
-  assert.ok(
-    icyTicksToStop > metalTicksToStop * 3,
-    `expected icy stop (${icyTicksToStop} ticks) to take much longer than metal (${metalTicksToStop} ticks)`,
-  );
-});
-
-test('the ice ends after 300 ticks', () => {
-  const scene = new VersusScene();
-  advance(scene, READY_TICKS);
-
-  const middlePlatform = findPlatformAt(scene, 256, 144);
-  middlePlatform.freezeWithIce();
-
-  advance(scene, 299);
-  assert.equal(middlePlatform.isIcy, true, 'still icy just before 300 ticks');
-
-  scene.update(neutralInputs());
-  assert.equal(middlePlatform.isIcy, false, 'the ice ends at 300 ticks');
-});
-
-test('ice is cleared from every platform at the start of a new round', () => {
-  const scene = new VersusScene();
-  advance(scene, READY_TICKS);
-
-  const middlePlatform = findPlatformAt(scene, 256, 144);
-  middlePlatform.freezeWithIce();
-
-  findPlayer(scene, 'red').y = 600;
-  scene.update(neutralInputs());
-  assert.equal(scene.phase, 'point');
-
-  advance(scene, 90); // point pause resolves back to a fresh 'ready' round
-  assert.equal(scene.phase, 'ready');
-  assert.equal(middlePlatform.isIcy, false, 'ice does not carry over into the next round');
-});
-
-test('ice replaces fire on the same platform, and fire replaces ice', () => {
-  const platform = findPlatformAt(new VersusScene(), 256, 144);
-
-  platform.igniteWithFire();
-  assert.equal(platform.isBurning, true);
-  platform.freezeWithIce();
-  assert.equal(platform.isBurning, false, 'ice puts the fire out');
-  assert.equal(platform.isIcy, true);
-
-  platform.igniteWithFire();
-  assert.equal(platform.isIcy, false, 'fire melts the ice');
-  assert.equal(platform.isBurning, true);
 });
 
 test('a crate with no platform below it falls into the sea and the next crate is scheduled', () => {

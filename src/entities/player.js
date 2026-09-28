@@ -1,4 +1,5 @@
 import { SCREEN_WIDTH } from '../engine/config.js';
+import { PICKUP_USES } from '../cards/card-definitions.js';
 import { PhysicsEntity } from '../engine/physics-entity.js';
 
 export const PLAYER_WIDTH = 24;
@@ -9,8 +10,6 @@ const MAX_FALL_SPEED = 12;
 const RUN_SPEED = 3.6;
 const GROUND_ACCELERATION = 0.7;
 const AIR_ACCELERATION = 0.4;
-// A sharp drop from GROUND_ACCELERATION so a player on ice slides and struggles to stop.
-const ICE_GROUND_ACCELERATION = 0.1;
 const JUMP_VELOCITY = -10.4;
 const JUMP_CUT_MULTIPLIER = 0.5;
 const AIR_JUMP_MULTIPLIER = 0.85;
@@ -45,6 +44,7 @@ export class Player extends PhysicsEntity {
     this.dizzyTicksRemaining = 0;
     this.airJumpAvailable = false;
     this.heldCardName = null;
+    this.heldCardUsesRemaining = 0;
     this.actionKeyHeldPrevious = false;
     this.playedCardName = null;
     this.dashTicksRemaining = 0;
@@ -102,13 +102,15 @@ export class Player extends PhysicsEntity {
   receiveCard(cardName) {
     if (this.heldCardName) return false;
     this.heldCardName = cardName;
+    this.heldCardUsesRemaining = PICKUP_USES;
     return true;
   }
 
   playCard() {
     if (!this.heldCardName) return;
     this.playedCardName = this.heldCardName;
-    this.heldCardName = null;
+    this.heldCardUsesRemaining--;
+    if (this.heldCardUsesRemaining <= 0) this.heldCardName = null;
     if (this.playedCardName === 'dash') this.startDash();
   }
 
@@ -151,12 +153,7 @@ export class Player extends PhysicsEntity {
       this.velocityX = DASH_SPEED * this.facing;
       this.dashTicksRemaining--;
     } else {
-      const onIcyGround = this.onGround && this.standingPlatform?.isIcy;
-      const acceleration = onIcyGround
-        ? ICE_GROUND_ACCELERATION
-        : this.onGround
-          ? GROUND_ACCELERATION
-          : AIR_ACCELERATION;
+      const acceleration = this.onGround ? GROUND_ACCELERATION : AIR_ACCELERATION;
       this.velocityX += clamp(moveDirection * RUN_SPEED - this.velocityX, -acceleration, acceleration);
     }
 
