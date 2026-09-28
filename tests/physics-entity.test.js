@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { PhysicsEntity } from '../src/engine/physics-entity.js';
-import { Player } from '../src/entities/player.js';
+import { Player, SHOVE_ACTIVE_TICKS } from '../src/entities/player.js';
 
 function makeEntity() {
   return new PhysicsEntity({ x: 200, y: 200, width: 16, height: 24 });
@@ -168,4 +168,65 @@ test('landing refreshes the air jump', () => {
   player.update({ left: false, right: false, jump: false }, []);
 
   assert.equal(player.airJumpAvailable, true);
+});
+
+function actionInput(action) {
+  return { left: false, right: false, jump: false, action };
+}
+
+test('a fresh press of the action button starts a shove, but holding it down never fires another one', () => {
+  const player = new Player({ id: 'red', color: '#ff0000', spawnX: 200, spawnY: 200, facing: 1 });
+  player.onGround = true;
+  player.update(actionInput(false), []); // release the action key held from spawn
+
+  player.update(actionInput(true), []); // fresh press
+  assert.ok(player.isShoveActive, 'the fresh press starts a shove');
+
+  let shoveStartedAgainWhileHeld = false;
+  for (let tick = 0; tick < 50; tick++) {
+    const wasActive = player.isShoveActive;
+    player.update(actionInput(true), []); // held the whole time, never released
+    if (!wasActive && player.isShoveActive) shoveStartedAgainWhileHeld = true;
+  }
+
+  assert.equal(shoveStartedAgainWhileHeld, false, 'holding the button never fires a second shove');
+});
+
+test('a press of the action button during the cooldown after a shove does nothing', () => {
+  const player = new Player({ id: 'red', color: '#ff0000', spawnX: 200, spawnY: 200, facing: 1 });
+  player.onGround = true;
+  player.update(actionInput(false), []); // release the action key held from spawn
+
+  player.update(actionInput(true), []); // fresh press starts a shove
+  player.update(actionInput(false), []); // release
+
+  for (let tick = 0; tick < SHOVE_ACTIVE_TICKS; tick++) player.update(actionInput(false), []);
+  assert.equal(player.isShoveActive, false, 'the shove has ended, but the cooldown has not');
+
+  player.update(actionInput(true), []); // press again while still on cooldown
+  assert.equal(player.isShoveActive, false, 'a press during the cooldown does not start another shove');
+});
+
+test('a dizzy player cannot shove', () => {
+  const player = new Player({ id: 'red', color: '#ff0000', spawnX: 200, spawnY: 200, facing: 1 });
+  player.onGround = true;
+  player.update(actionInput(false), []); // release the action key held from spawn
+  player.makeDizzy(20);
+
+  player.update(actionInput(true), []);
+
+  assert.equal(player.isShoveActive, false, 'a dizzy player cannot start a shove');
+});
+
+test('a held pickup is played by the action button instead of starting a shove', () => {
+  const player = new Player({ id: 'red', color: '#ff0000', spawnX: 200, spawnY: 200, facing: 1 });
+  player.onGround = true;
+  player.update(actionInput(false), []); // release the action key held from spawn
+  player.heldCardName = 'rocket';
+
+  player.update(actionInput(true), []);
+
+  assert.equal(player.playedCardName, 'rocket', 'the held pickup is played');
+  assert.equal(player.heldCardName, null);
+  assert.equal(player.isShoveActive, false, 'the button plays the pickup instead of shoving');
 });

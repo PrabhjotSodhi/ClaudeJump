@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { TitleScene } from '../src/scenes/title-scene.js';
 
 function noInput() {
-  return { left: false, right: false, jump: false, down: false, card: false };
+  return { left: false, right: false, jump: false, down: false, action: false };
 }
 
 function neutralInputs() {

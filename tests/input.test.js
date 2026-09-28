@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { combineInputs } from '../src/engine/input.js';
 
-function input({ left = false, right = false, jump = false, down = false, card = false, pause = false } = {}) {
-  return { left, right, jump, down, card, pause };
+function input({ left = false, right = false, jump = false, down = false, action = false, pause = false } = {}) {
+  return { left, right, jump, down, action, pause };
 }
 
 test('combineInputs presses a control when either source presses it', () => {
@@ -38,10 +38,10 @@ test('combineInputs presses pause when either source presses it', () => {
 });
 
 test('combineInputs tolerates a player missing from the second source', () => {
-  const keyboard = { red: input({ card: true }) };
+  const keyboard = { red: input({ action: true }) };
   const gamepad = {};
 
   const combined = combineInputs(keyboard, gamepad);
 
-  assert.equal(combined.red.card, true);
+  assert.equal(combined.red.action, true);
 });

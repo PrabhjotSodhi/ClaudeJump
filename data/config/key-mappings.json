@@ -1,7 +1,7 @@
 [
   {
     "id": "red",
-    "keys": { "left": "KeyA", "right": "KeyD", "jump": "KeyW", "down": "KeyS", "card": "KeyC", "pause": "Escape" }
+    "keys": { "left": "KeyA", "right": "KeyD", "jump": "KeyW", "down": "KeyS", "action": "KeyC", "pause": "Escape" }
   },
   {
     "id": "blue",
@@ -10,7 +10,7 @@
       "right": "ArrowRight",
       "jump": "ArrowUp",
       "down": "ArrowDown",
-      "card": "Comma",
+      "action": "Comma",
       "pause": "Escape"
     }
   }
