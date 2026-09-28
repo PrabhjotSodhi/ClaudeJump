@@ -857,8 +857,8 @@ test('a crate gives a pickup with 3 uses', () => {
   assert.equal(red.heldCardUsesRemaining, 3);
 });
 
-test('crates only ever hold dash, rocket or a bounce pad', () => {
-  const allowedCardNames = new Set(['dash', 'rocket', 'bouncePad']);
+test('crates only ever hold a known pickup', () => {
+  const allowedCardNames = new Set(['dash', 'rocket', 'bouncePad', 'bomb', 'banana']);
   for (let seed = 1; seed <= 20; seed++) {
     const scene = new VersusScene({ seed });
     for (let tick = 0; tick < 600; tick++) {
@@ -1114,4 +1114,112 @@ test('a new match starts only once every player is ready', () => {
   assert.equal(scene.phase, 'ready', 'the new match starts once every player is ready');
   assert.equal(scene.wins.red, 0);
   assert.equal(scene.wins.blue, 0);
+});
+
+function playHeldCard(scene, player, cardName) {
+  player.heldCardName = cardName;
+  player.heldCardUsesRemaining = 3;
+  scene.update(neutralInputs()); // release the action key held from spawn
+  scene.update({ red: { ...noInput(), action: true }, blue: noInput() });
+}
+
+test('a bomb lands ahead of the thrower and knocks a nearby player away', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+  const red = findPlayer(scene, 'red');
+  const blue = findPlayer(scene, 'blue');
+  red.x = 90;
+  red.y = 196;
+  blue.x = 180;
+  blue.y = 196;
+  const explosions = [];
+  scene.events.on('bomb-exploded', (event) => explosions.push(event));
+
+  playHeldCard(scene, red, 'bomb');
+  advance(scene, 60);
+
+  assert.equal(explosions.length, 1);
+  assert.ok(explosions[0].x > red.x + red.width, 'the bomb went off ahead of the thrower');
+  assert.ok(
+    (blue.x + blue.width / 2 - explosions[0].x) * (blue.x - 180) > 0,
+    'the blast pushes blue away from the bomb',
+  );
+  assert.equal(scene.entityGroups.get('bombs').length, 0);
+});
+
+test('a bomb explodes in the sea', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+  const red = findPlayer(scene, 'red');
+  red.x = 200;
+  red.y = 196;
+  const explosions = [];
+  scene.events.on('bomb-exploded', (event) => explosions.push(event));
+
+  playHeldCard(scene, red, 'bomb');
+  advance(scene, 90);
+
+  assert.equal(explosions.length, 1);
+});
+
+test('stepping on a banana makes a player slip for the set ticks, then the banana is gone', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+  const red = findPlayer(scene, 'red');
+  const blue = findPlayer(scene, 'blue');
+  red.x = 100;
+  red.y = 196;
+  blue.x = 400;
+  blue.y = 196;
+  const slips = [];
+  scene.events.on('player-slipped', (event) => slips.push(event));
+
+  playHeldCard(scene, red, 'banana');
+  assert.equal(scene.entityGroups.get('bananas').length, 1);
+  const banana = scene.entityGroups.get('bananas')[0];
+  assert.ok(banana.x + banana.width <= red.x + 8, 'the banana lands behind the dropper');
+
+  blue.x = banana.x;
+  blue.y = banana.y - blue.height;
+  blue.velocityX = -2;
+  scene.update(neutralInputs());
+
+  assert.deepEqual(slips, [{ playerId: 'blue' }]);
+  assert.equal(scene.entityGroups.get('bananas').length, 0, 'one slip uses the banana up');
+  const startX = blue.x;
+  advance(scene, 5, { red: noInput(), blue: { left: false, right: true, jump: false } });
+  assert.ok(blue.x < startX - 20, 'blue keeps sliding left even while steering right');
+});
+
+test('the dropper does not slip on their own banana right away', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+  const red = findPlayer(scene, 'red');
+  red.x = 100;
+  red.y = 196;
+  playHeldCard(scene, red, 'banana');
+  const banana = scene.entityGroups.get('bananas')[0];
+
+  red.x = banana.x;
+  scene.update(neutralInputs());
+  assert.equal(red.slipTicksRemaining, 0, 'immune while the banana is fresh');
+  assert.equal(scene.entityGroups.get('bananas').length, 1);
+
+  advance(scene, 40);
+  assert.ok(red.slipTicksRemaining > 0, 'the dropper slips once the immunity is over');
+});
+
+test('a banana dropped over the sea falls in and disappears', () => {
+  const scene = new VersusScene();
+  advance(scene, READY_TICKS);
+  const red = findPlayer(scene, 'red');
+  red.x = 300;
+  red.y = 250;
+  red.velocityY = -20;
+  playHeldCard(scene, red, 'banana');
+  assert.equal(scene.entityGroups.get('bananas').length, 1);
+
+  advance(scene, 120);
+
+  assert.equal(scene.entityGroups.get('bananas').length, 0);
 });

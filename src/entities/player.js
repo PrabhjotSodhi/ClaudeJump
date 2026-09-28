@@ -18,6 +18,8 @@ const JUMP_BUFFER_TICKS = 6;
 const SINK_SPEED = 1;
 const DASH_SPEED = 9;
 const DASH_TICKS = 10;
+const SLIP_SPEED = 5;
+const SLIP_STEER_SPEED = 0.5;
 export const SHOVE_ACTIVE_TICKS = 6;
 const SHOVE_COOLDOWN_TICKS = 30;
 export const SHOVE_HIT_ZONE_WIDTH = 16;
@@ -42,6 +44,8 @@ export class Player extends PhysicsEntity {
     this.jumpHeld = true;
     this.inWater = false;
     this.dizzyTicksRemaining = 0;
+    this.slipTicksRemaining = 0;
+    this.slipDirection = 0;
     this.airJumpAvailable = false;
     this.heldCardName = null;
     this.heldCardUsesRemaining = 0;
@@ -71,6 +75,12 @@ export class Player extends PhysicsEntity {
 
   makeDizzy(tickCount) {
     this.dizzyTicksRemaining = tickCount;
+  }
+
+  // Keeps sliding the way they were moving; a player standing still slides the way they face.
+  makeSlip(tickCount) {
+    this.slipTicksRemaining = tickCount;
+    this.slipDirection = Math.sign(this.velocityX + this.knockbackVelocityX) || this.facing;
   }
 
   refreshAirJump() {
@@ -135,7 +145,8 @@ export class Player extends PhysicsEntity {
       return;
     }
 
-    this.handleActionInput(input, this.dizzyTicksRemaining <= 0);
+    const slipping = this.slipTicksRemaining > 0;
+    this.handleActionInput(input, this.dizzyTicksRemaining <= 0 && !slipping);
 
     if (this.dizzyTicksRemaining > 0) {
       input = null;
@@ -143,15 +154,18 @@ export class Player extends PhysicsEntity {
     }
 
     const moveDirection = input ? input.right - input.left : 0;
-    const jumpPressed = input ? input.jump : false;
+    const jumpPressed = input && !slipping ? input.jump : false;
     if (jumpPressed && !this.jumpHeld) this.jumpBufferTicksRemaining = JUMP_BUFFER_TICKS;
     const jumpReleased = !jumpPressed && this.jumpHeld;
     this.jumpHeld = jumpPressed;
-    if (moveDirection) this.facing = moveDirection;
+    if (moveDirection && !slipping) this.facing = moveDirection;
 
     if (this.dashTicksRemaining > 0) {
       this.velocityX = DASH_SPEED * this.facing;
       this.dashTicksRemaining--;
+    } else if (slipping) {
+      this.velocityX = this.slipDirection * SLIP_SPEED + moveDirection * SLIP_STEER_SPEED;
+      this.slipTicksRemaining--;
     } else {
       const acceleration = this.onGround ? GROUND_ACCELERATION : AIR_ACCELERATION;
       this.velocityX += clamp(moveDirection * RUN_SPEED - this.velocityX, -acceleration, acceleration);

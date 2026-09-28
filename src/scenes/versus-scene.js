@@ -3,6 +3,8 @@ import { SCREEN_WIDTH } from '../engine/config.js';
 import { EntityGroups } from '../engine/entity-groups.js';
 import { EventEmitter } from '../engine/events.js';
 import { SeededRandom } from '../engine/seeded-random.js';
+import { Banana, BANANA_WIDTH, BANANA_HEIGHT, BANANA_SLIP_TICKS } from '../entities/banana.js';
+import { Bomb, BOMB_WIDTH, BOMB_HEIGHT } from '../entities/bomb.js';
 import { BouncePad, BOUNCE_PAD_WIDTH, BOUNCE_PAD_HEIGHT, BOUNCE_PAD_LAUNCH_VELOCITY } from '../entities/bounce-pad.js';
 import { Crate, CRATE_WIDTH, CRATE_HEIGHT, CRATE_WARNING_TICKS } from '../entities/crate.js';
 import { Platform } from '../entities/platform.js';
@@ -31,7 +33,7 @@ const DIZZY_TICKS = 20;
 const DASH_KNOCKBACK_VELOCITY_X = 8;
 const SHOVE_KNOCKBACK_VELOCITY_X = 7;
 const SHOVE_KNOCKBACK_VELOCITY_Y = -4;
-// How far a rocket blast reaches, and how hard it knocks players inside that range.
+// How far a rocket or bomb blast reaches, and how hard it knocks players inside that range.
 const BLAST_RADIUS = 48;
 const BLAST_KNOCKBACK_VELOCITY_X = 8;
 const BLAST_KNOCKBACK_VELOCITY_Y = -4;
@@ -95,8 +97,10 @@ export class VersusScene {
     // the entity groups) before players, so they render underneath the players standing on them.
     this.entityGroups.clear('crates');
     this.entityGroups.clear('bouncePads');
+    this.entityGroups.clear('bananas');
     this.entityGroups.clear('players');
     this.entityGroups.clear('rockets');
+    this.entityGroups.clear('bombs');
     for (const spawn of PLAYER_SPAWNS) this.entityGroups.add('players', new Player(spawn));
     this.ticksUntilCrateSpawn = CRATE_SPAWN_DELAY_TICKS;
     if (this.skipNextReadyPhase) {
@@ -131,18 +135,22 @@ export class VersusScene {
         this.updateSuddenDeath();
         this.updatePlayers(inputByPlayerId);
         this.updateRockets();
+        this.updateBombs();
         this.updateBouncePads();
+        this.updateBananas();
         this.updateCrates();
         this.checkRoundEnd();
         break;
       case 'point':
         this.updatePlayers(null);
         this.updateRockets();
+        this.updateBombs();
         if (this.ticksRemaining <= 0) this.startRound();
         break;
       case 'match':
         this.updatePlayers(null);
         this.updateRockets();
+        this.updateBombs();
         if (this.ticksRemaining <= 0) this.updateMatchReadiness(inputByPlayerId);
         break;
     }
@@ -172,6 +180,8 @@ export class VersusScene {
         this.events.emit('card-played', { playerId: player.id, cardName: player.playedCardName });
         if (player.playedCardName === 'rocket') this.spawnRocket(player);
         if (player.playedCardName === 'bouncePad') this.spawnBouncePad(player);
+        if (player.playedCardName === 'bomb') this.spawnBomb(player);
+        if (player.playedCardName === 'banana') this.spawnBanana(player);
         if (player.playedCardName === 'dash') this.clearBumpingPairsFor(player.id);
       }
       if (player.shoveJustStarted) this.shoveHitIdsByShoverId.set(player.id, new Set());
@@ -227,6 +237,12 @@ export class VersusScene {
   resolveRocketExplosion(rocket) {
     const blastCenterX = rocket.x + rocket.width / 2;
     const blastCenterY = rocket.y + rocket.height / 2;
+    this.resolveBlast(blastCenterX, blastCenterY);
+    this.events.emit('rocket-exploded', { x: blastCenterX, y: blastCenterY });
+    this.entityGroups.remove('rockets', rocket);
+  }
+
+  resolveBlast(blastCenterX, blastCenterY) {
     for (const player of this.players) {
       if (player.inWater) continue;
       const distanceX = player.x + player.width / 2 - blastCenterX;
@@ -237,9 +253,51 @@ export class VersusScene {
       const knockbackDirectionX = distance === 0 ? 1 : distanceX / distance;
       player.applyKnockback(knockbackDirectionX * BLAST_KNOCKBACK_VELOCITY_X, BLAST_KNOCKBACK_VELOCITY_Y);
     }
+  }
 
-    this.events.emit('rocket-exploded', { x: blastCenterX, y: blastCenterY });
-    this.entityGroups.remove('rockets', rocket);
+  spawnBomb(player) {
+    const spawnX = player.facing > 0 ? player.x + player.width : player.x - BOMB_WIDTH;
+    const spawnY = player.y + player.height / 2 - BOMB_HEIGHT / 2;
+    this.entityGroups.add('bombs', new Bomb({ x: spawnX, y: spawnY, facing: player.facing, throwerId: player.id }));
+  }
+
+  updateBombs() {
+    const platforms = this.entityGroups.get('platforms');
+    for (const bomb of this.entityGroups.get('bombs')) {
+      bomb.update(this.players, platforms, this.waterLineY);
+      this.wrapAroundScreen(bomb);
+      if (!bomb.exploded) continue;
+
+      const blastCenterX = bomb.x + bomb.width / 2;
+      const blastCenterY = bomb.y + bomb.height / 2;
+      this.resolveBlast(blastCenterX, blastCenterY);
+      this.events.emit('bomb-exploded', { x: blastCenterX, y: blastCenterY });
+      this.entityGroups.remove('bombs', bomb);
+    }
+  }
+
+  // Dropped just behind the player, then falls to the ground from there, or into the sea.
+  spawnBanana(player) {
+    const x = player.facing > 0 ? player.x - BANANA_WIDTH : player.x + player.width;
+    const y = player.y + player.height - BANANA_HEIGHT;
+    this.entityGroups.add('bananas', new Banana({ x, y, dropperId: player.id }));
+  }
+
+  updateBananas() {
+    const platforms = this.entityGroups.get('platforms');
+    for (const banana of this.entityGroups.get('bananas')) {
+      banana.update(platforms);
+      if (banana.expired || banana.y + banana.height >= this.waterLineY) {
+        this.entityGroups.remove('bananas', banana);
+        continue;
+      }
+      const slippingPlayer = this.players.find((player) => banana.canSlip(player) && player.overlaps(banana));
+      if (!slippingPlayer) continue;
+
+      slippingPlayer.makeSlip(BANANA_SLIP_TICKS);
+      this.events.emit('player-slipped', { playerId: slippingPlayer.id });
+      this.entityGroups.remove('bananas', banana);
+    }
   }
 
   // Placed under the player's feet wherever they are, even in midair over the sea, so it doubles
