@@ -29,8 +29,8 @@ const STOMP_KNOCKBACK_VELOCITY_X = 5;
 const STOMP_KNOCKBACK_VELOCITY_Y = 2;
 const DIZZY_TICKS = 20;
 const DASH_KNOCKBACK_VELOCITY_X = 8;
-const SHOVE_KNOCKBACK_VELOCITY_X = 6;
-const SHOVE_KNOCKBACK_VELOCITY_Y = -3;
+const SHOVE_KNOCKBACK_VELOCITY_X = 8;
+const SHOVE_KNOCKBACK_VELOCITY_Y = -6;
 // How far a rocket blast reaches, and how hard it knocks players inside that range.
 const BLAST_RADIUS = 48;
 const BLAST_KNOCKBACK_VELOCITY_X = 8;
