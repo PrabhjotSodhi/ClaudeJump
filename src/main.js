@@ -12,6 +12,9 @@ import { StyleTestScene } from './scenes/style-test-scene.js';
 import { FULLSCREEN_BUTTON, TitleScene } from './scenes/title-scene.js';
 import { VersusScene } from './scenes/versus-scene.js';
 
+// The order players cycle through when voting for a level.
+const LEVEL_FILE_NAMES = ['harbor', 'rooftops', 'cave', 'server-farm'];
+
 async function loadText(path) {
   const response = await fetch(path);
   return response.text();
@@ -51,7 +54,9 @@ async function main() {
     loadText('data/shaders/composite.frag'),
   ]);
 
-  const levels = [await loadLevel('data/levels/harbor.json', tiles)];
+  const levels = await Promise.all(
+    LEVEL_FILE_NAMES.map((fileName) => loadLevel(`data/levels/${fileName}.json`, tiles)),
+  );
 
   const canvas = document.getElementById('screen');
   const gameWindow = createWindow(canvas, vertexShaderSource, fragmentShaderSource, buildLookupTexture(palette));
@@ -71,7 +76,9 @@ async function main() {
       }),
     );
   } else if (isDevMode) {
-    sceneManager.setScene(new VersusScene({ level: levels[0], startInFightPhase: true, seed: 0 }));
+    // ?dev&level=cave starts on that level file. Harbor is the default.
+    const levelIndex = Math.max(0, LEVEL_FILE_NAMES.indexOf(searchParameters.get('level')));
+    sceneManager.setScene(new VersusScene({ level: levels[levelIndex], startInFightPhase: true, seed: 0 }));
   } else {
     sceneManager.setScene(new TitleScene({ sceneManager, levels, seed: Date.now() }));
   }

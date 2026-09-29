@@ -85,6 +85,7 @@ Before calling work done, check which of these your change touches and confirm e
   window.claudeJump.render();
   ```
   `step` runs the given number of ticks (one input record applied every tick, or an array of records applied one per tick) and returns a snapshot of phase, wins and player positions. `render` draws the current state once, so a screenshot taken right after matches what `step` left behind.
+- Dev mode starts on Harbor. Add a level file name to start elsewhere: `http://localhost:8000/?dev&level=server-farm`.
 
 ## Tickets and pull requests
 
