@@ -221,7 +221,11 @@ export class PausableMatchScene {
   render(renderer) {
     this.matchScene.render(renderer);
     if (!this.paused && this.showingResults)
-      drawResultsMenu(renderer.uiContext, { options: RESULTS_MENU_OPTIONS, selectedIndex: this.resultsSelectedIndex });
+      drawResultsMenu(renderer.uiContext, {
+        matchScene: this.matchScene,
+        options: RESULTS_MENU_OPTIONS,
+        selectedIndex: this.resultsSelectedIndex,
+      });
     if (this.paused)
       drawPauseMenu(renderer.uiContext, { options: PAUSE_MENU_OPTIONS, selectedIndex: this.selectedIndex });
   }
