@@ -571,10 +571,10 @@ test('landing on a bounce pad launches the player higher than a jump', () => {
   const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
   // A gap with no platform above or below it, so nothing but gravity shapes either player's arc.
-  scene.entityGroups.add('bouncePads', new BouncePad({ x: 236, y: 280 }));
+  scene.entityGroups.add('bouncePads', new BouncePad({ x: 36, y: 280 }));
 
   const red = findPlayer(scene, 'red');
-  red.x = 240;
+  red.x = 40;
   red.y = 248; // feet above the pad's top surface
   red.velocityY = 12; // already falling at max speed, so this tick's fall crosses the pad
   red.onGround = false;

@@ -1,6 +1,10 @@
 {
   "name": "Rooftops",
-  "background": "rooftops",
+  "stone": {
+    "light": "#d77643",
+    "mid": "#be4a2f",
+    "dark": "#733e39"
+  },
   "grid": [
     "........................................",
     "........................................",
@@ -10,32 +14,22 @@
     "........................................",
     "........................................",
     "........................................",
-    "................[RCRRRR]................",
-    "................{HWHWHW}................",
-    "................{WWWWWW}................",
-    "................{HWHWHW}................",
-    ".......[CRRR]...{WWWWWW}...[CRRR].......",
-    ".......{HWHW}...{HWHWHW}...{HWHW}.......",
-    ".......{WWWW}...{WWWWWW}...{WWWW}.......",
-    "RRR]...{HWHW}...{HWHWHW}...{HWHW}...[RCR",
-    "WHW}...{WWWW}...{WWWWWW}...{WWWW}...{HWH",
-    "WWW}...{HWHW}...{HWHWHW}...{HWHW}...{WWW",
-    "WHW}...{WWWW}...{WWWWWW}...{WWWW}...{HWH",
-    "WWW}...{HWHW}...{HWHWHW}...{HWHW}...{WWW",
-    "WHW}...{WWWW}...{WWWWWW}...{WWWW}...{HWH",
-    "WWW}...{HWHW}...{HWHWHW}...{HWHW}...{WWW",
-    "WHW}...{WWWW}...{WWWWWW}...{WWWW}...{HWH"
+    "................BBBBBBBB................",
+    "................BBBBBBBB................",
+    "................sBBBBBBs................",
+    ".................BBBBBB.................",
+    ".......BBBB.....BBBBBBBB...BBBB.........",
+    ".......BBBB.....BBBBBBBB...BBBB.........",
+    ".......sBBs.....sBBBBBBs...sBBs.........",
+    "sBBs....BB.......BBBBBB.....BB......sBBs",
+    ".BB....BBBB.....BBBBBBBB...BBBB......BB.",
+    "BBss...BBBB.....BBBBBBBB...BBBB.....ssBB",
+    "BB.....sBBs.....sBBBBBBs...sBBs.......BB",
+    "sBBs....BB.......BBBBBB.....BB......sBBs",
+    ".BB....BBBB.....BBBBBBBB...BBBB......BB.",
+    "BBss...BBBB.....BBBBBBBB...BBBB.....ssBB",
+    "BB....................................BB"
   ],
-  "legend": {
-    "[": "roof-left",
-    "R": "roof",
-    "C": "roof-crack",
-    "]": "roof-right",
-    "{": "wall-left",
-    "W": "wall",
-    "H": "wall-window",
-    "}": "wall-right"
-  },
   "spawns": [
     {
       "id": "red",

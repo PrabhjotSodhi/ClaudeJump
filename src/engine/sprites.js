@@ -16,8 +16,7 @@ export function gridToPixels(rows, colorByKey) {
   return { width, height: rows.length, data };
 }
 
-function gridToCanvas(rows, colorByKey) {
-  const { width, height, data } = gridToPixels(rows, colorByKey);
+function pixelsToCanvas({ width, height, data }) {
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
@@ -25,10 +24,21 @@ function gridToCanvas(rows, colorByKey) {
   return canvas;
 }
 
+// Returns { frameName: pixels } for a parsed sprite file. colorOverrides replaces the file's colors by key.
+export function spriteFileToPixels({ colors, frames }, colorOverrides = {}) {
+  const colorByKey = { ...colors, ...colorOverrides };
+  return Object.fromEntries(
+    Object.entries(frames).map(([frameName, rows]) => [frameName, gridToPixels(rows, colorByKey)]),
+  );
+}
+
 // Returns { frameName: canvas } for one sprite file.
-export async function loadSpriteFile(path) {
-  const { colors, frames } = await fetch(path).then((response) => response.json());
-  const canvasByFrameName = {};
-  for (const [frameName, rows] of Object.entries(frames)) canvasByFrameName[frameName] = gridToCanvas(rows, colors);
-  return canvasByFrameName;
+export async function loadSpriteFile(path, colorOverrides = {}) {
+  const spriteFile = await fetch(path).then((response) => response.json());
+  return Object.fromEntries(
+    Object.entries(spriteFileToPixels(spriteFile, colorOverrides)).map(([frameName, pixels]) => [
+      frameName,
+      pixelsToCanvas(pixels),
+    ]),
+  );
 }
