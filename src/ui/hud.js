@@ -5,9 +5,6 @@ const WARNING_MARKER_FLASH_TICKS = 20;
 const WARNING_MARKER_SIZE = 12;
 const WARNING_MARKER_GAP = 32;
 const WARNING_MARKER_COLOR = '#ffdc28';
-const RESULTS_TOP_Y = 124;
-const RESULTS_ROW_HEIGHT = 18;
-const RESULTS_COLUMN_OFFSET_X = 148;
 
 function displayName(scene, playerId) {
   return scene.players.find((player) => player.id === playerId).character.displayName;
@@ -49,27 +46,6 @@ function drawSuddenDeathWarning(context, scene) {
   }
 }
 
-// Placeholder layout: each player's column of stats, in their own color, and their readiness for the next match.
-function drawMatchResults(context, scene) {
-  const stats = scene.matchStats;
-
-  scene.players.forEach((player, columnIndex) => {
-    const x = SCREEN_WIDTH / 2 + (columnIndex === 0 ? -RESULTS_COLUMN_OFFSET_X : RESULTS_COLUMN_OFFSET_X);
-    let y = RESULTS_TOP_Y;
-
-    drawText(context, player.character.displayName, x, y, { align: 'center', color: player.color });
-    y += RESULTS_ROW_HEIGHT;
-    drawText(context, `Wins ${scene.wins[player.id]}`, x, y, { align: 'center' });
-    y += RESULTS_ROW_HEIGHT;
-    drawText(context, `Falls ${stats.fallsIn[player.id]}`, x, y, { align: 'center' });
-    y += RESULTS_ROW_HEIGHT;
-    drawText(context, scene.matchReadyIds.has(player.id) ? 'Ready!' : 'Press jump', x, y, {
-      align: 'center',
-      color: player.color,
-    });
-  });
-}
-
 export function drawHud(context, scene) {
   drawText(context, `${displayName(scene, 'red')} Wins: ${scene.wins.red}`, 8, 8);
   drawText(context, `${displayName(scene, 'blue')} Wins: ${scene.wins.blue}`, SCREEN_WIDTH - 8, 8, { align: 'right' });
@@ -80,8 +56,6 @@ export function drawHud(context, scene) {
   const [title, subtitle] = phaseMessages(scene);
   if (title) drawText(context, title, SCREEN_WIDTH / 2, 60, { scale: 4, align: 'center' });
   if (subtitle) drawText(context, subtitle, SCREEN_WIDTH / 2, 96, { align: 'center' });
-
-  if (scene.phase === 'match' && scene.ticksRemaining <= 0) drawMatchResults(context, scene);
 
   drawSuddenDeathWarning(context, scene);
 }

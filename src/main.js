@@ -9,6 +9,7 @@ import { loadSpriteFile } from './engine/sprites.js';
 import { loadLevel } from './levels/level-loader.js';
 import { createLevelThumbnail } from './levels/level-thumbnail.js';
 import { createWindow } from './engine/window.js';
+import { PausableMatchScene } from './scenes/pausable-match-scene.js';
 import { StyleTestScene } from './scenes/style-test-scene.js';
 import { FULLSCREEN_BUTTON, TitleScene } from './scenes/title-scene.js';
 import { VersusScene } from './scenes/versus-scene.js';
@@ -77,7 +78,18 @@ async function main() {
   } else if (isDevMode) {
     // ?dev&level=cave starts on that level file. Harbor is the default.
     const levelIndex = Math.max(0, LEVEL_FILE_NAMES.indexOf(searchParameters.get('level')));
-    sceneManager.setScene(new VersusScene({ level: levels[levelIndex], startInFightPhase: true, seed: 0, sprites }));
+    sceneManager.setScene(
+      new PausableMatchScene({
+        sceneManager,
+        matchScene: new VersusScene({
+          level: levels[levelIndex],
+          startInFightPhase: true,
+          seed: 0,
+          sprites,
+          levels,
+        }),
+      }),
+    );
   } else {
     sceneManager.setScene(new TitleScene({ sceneManager, levels, sprites, seed: Date.now() }));
   }
@@ -159,7 +171,8 @@ async function main() {
         sceneManager.update(inputByPlayerId ?? {});
       }
 
-      const scene = sceneManager.currentScene;
+      const currentScene = sceneManager.currentScene;
+      const scene = currentScene.matchScene ?? currentScene;
       return {
         phase: scene.phase,
         wins: { ...scene.wins },

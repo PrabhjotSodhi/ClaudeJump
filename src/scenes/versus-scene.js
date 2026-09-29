@@ -204,7 +204,6 @@ export class VersusScene {
         this.updatePlayers(null);
         this.updateRockets();
         this.updateBombs();
-        if (this.ticksRemaining <= 0) this.updateMatchReadiness(inputByPlayerId);
         break;
     }
   }
@@ -533,29 +532,7 @@ export class VersusScene {
     if (this.wins[this.winnerId] >= WINS_NEEDED) {
       this.phase = 'match';
       this.ticksRemaining = RESTART_DELAY_TICKS;
-      this.matchReadyIds = new Set();
-      this.matchReadinessBaseline = null;
     }
-  }
-
-  // Each player readies up with a fresh press of jump. The baseline is captured from the real
-  // input on the first tick the results screen is showing, so a press already held over from the
-  // fight (or from mashing jump during the delay before the screen appears) never counts on its
-  // own: it must be released and pressed again once the screen is up.
-  updateMatchReadiness(inputByPlayerId) {
-    if (!this.matchReadinessBaseline) {
-      this.matchReadinessBaseline = {};
-      for (const playerId in inputByPlayerId) this.matchReadinessBaseline[playerId] = inputByPlayerId[playerId].jump;
-      return;
-    }
-
-    for (const playerId in inputByPlayerId) {
-      const jumpPressed = inputByPlayerId[playerId].jump;
-      if (jumpPressed && !this.matchReadinessBaseline[playerId]) this.matchReadyIds.add(playerId);
-      this.matchReadinessBaseline[playerId] = jumpPressed;
-    }
-
-    if (this.matchReadyIds.size >= Object.keys(this.wins).length) this.startNewMatch();
   }
 
   startNewMatch() {

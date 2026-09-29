@@ -957,17 +957,6 @@ test('a crate with no platform below it falls into the sea and the next crate is
   }
 });
 
-const RESTART_DELAY_TICKS = 60;
-
-function reachMatchPhase(scene) {
-  for (let win = 1; win <= 5; win++) {
-    advance(scene, READY_TICKS);
-    findPlayer(scene, 'blue').y = 600;
-    scene.update(neutralInputs());
-    if (win < 5) advance(scene, 90); // point pause resolves back to a fresh 'ready' round
-  }
-}
-
 test('a fall landed after the round is already decided is not counted in match stats', () => {
   const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
@@ -1000,39 +989,6 @@ test('stats are counted even when a match runs entirely through updates, with no
   scene.update(neutralInputs());
 
   assert.deepEqual(scene.matchStats.fallsIn, { red: 1, blue: 0 });
-});
-
-test('a new match starts only once every player is ready', () => {
-  const scene = new VersusScene({ level: harborLevel });
-  reachMatchPhase(scene);
-  assert.equal(scene.phase, 'match');
-
-  // The results screen is not showing yet; a jump here (still held from the fight) never counts.
-  for (let tick = 0; tick < RESTART_DELAY_TICKS; tick++) {
-    scene.update({ red: { left: false, right: false, jump: true }, blue: { left: false, right: false, jump: true } });
-  }
-  assert.equal(scene.phase, 'match');
-
-  // The results screen is showing now, but both players are still holding jump from before it
-  // appeared. A press held over like this must not count.
-  scene.update({ red: { left: false, right: false, jump: true }, blue: { left: false, right: false, jump: true } });
-  assert.equal(scene.phase, 'match', 'a press held over from before the results screen does not ready anyone up');
-  assert.equal(scene.matchReadyIds.size, 0);
-
-  // Red releases and presses again: a fresh press, so only red is ready.
-  scene.update(neutralInputs());
-  scene.update({ red: { left: false, right: false, jump: true }, blue: noInput() });
-  assert.equal(scene.matchReadyIds.has('red'), true);
-  assert.equal(scene.matchReadyIds.has('blue'), false);
-  assert.equal(scene.phase, 'match', 'the match does not restart until every player is ready');
-
-  // Blue releases and presses too: now both are ready.
-  scene.update(neutralInputs());
-  scene.update({ red: noInput(), blue: { left: false, right: false, jump: true } });
-
-  assert.equal(scene.phase, 'ready', 'the new match starts once every player is ready');
-  assert.equal(scene.wins.red, 0);
-  assert.equal(scene.wins.blue, 0);
 });
 
 function playHeldCard(scene, player, cardName) {
