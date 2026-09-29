@@ -20,15 +20,17 @@ async function main() {
   const searchParameters = new URLSearchParams(location.search);
   const isDevMode = searchParameters.has('dev');
 
-  const [keyMappings, palette, claude, tiles, props, vertexShaderSource, fragmentShaderSource] = await Promise.all([
-    fetch('data/config/key-mappings.json').then((response) => response.json()),
-    fetch('data/palette.json').then((response) => response.json()),
-    loadSpriteFile('data/sprites/claude.json'),
-    loadSpriteFile('data/sprites/tiles.json'),
-    loadSpriteFile('data/sprites/props.json'),
-    loadText('data/shaders/composite.vert'),
-    loadText('data/shaders/composite.frag'),
-  ]);
+  const [keyMappings, palette, claude, muse, tiles, props, vertexShaderSource, fragmentShaderSource] =
+    await Promise.all([
+      fetch('data/config/key-mappings.json').then((response) => response.json()),
+      fetch('data/palette.json').then((response) => response.json()),
+      loadSpriteFile('data/sprites/claude.json'),
+      loadSpriteFile('data/sprites/muse.json'),
+      loadSpriteFile('data/sprites/tiles.json'),
+      loadSpriteFile('data/sprites/props.json'),
+      loadText('data/shaders/composite.vert'),
+      loadText('data/shaders/composite.frag'),
+    ]);
 
   const canvas = document.getElementById('screen');
   const gameWindow = createWindow(canvas, vertexShaderSource, fragmentShaderSource, buildLookupTexture(palette));
@@ -42,7 +44,7 @@ async function main() {
   const gamepadInput = createGamepadInput(keyMappings.map((mapping) => mapping.id));
   const sceneManager = new SceneManager();
   if (isDevMode && searchParameters.get('scene') === 'style') {
-    sceneManager.setScene(new StyleTestScene({ sprites: { claude, tiles, props } }));
+    sceneManager.setScene(new StyleTestScene({ sprites: { claude, muse, tiles, props } }));
   } else if (isDevMode) {
     sceneManager.setScene(new VersusScene({ startInFightPhase: true, seed: 0 }));
   } else {

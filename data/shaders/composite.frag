@@ -21,6 +21,8 @@ const float NIGHT_WATER_BRIGHTNESS = 0.55;
 // Must match the palette size and the fog period in window.js.
 const int PALETTE_SIZE = 32;
 const float FOG_PERIOD = 512.0;
+// Unlit pixels sit this many steps down their ramp. Each light level lifts a pixel one step.
+const float UNLIT_RAMP_STEPS = 2.0;
 
 vec4 samplePixel(sampler2D layer, vec2 pixelPosition) {
   return texture2D(layer, (pixelPosition + 0.5) / u_resolution);
@@ -66,15 +68,17 @@ float fogDarkness(vec2 pixelPosition) {
   float noise = 0.6 * valueNoise(fogPosition, 128.0) + 0.4 * valueNoise(fogPosition, 32.0);
   float fog = clamp((noise - 0.3) * 2.0, 0.0, 1.0) * u_fogStrength;
   vec2 fromCenter = (pixelPosition + 0.5) / u_resolution - 0.5;
-  return fog + dot(fromCenter, fromCenter) * 1.6;
+  return fog + dot(fromCenter, fromCenter) * 1.2;
 }
 
 vec3 litSceneColor(vec2 pixelPosition) {
   vec3 color = sceneColor(pixelPosition);
   if (u_lightingEnabled < 0.5) return color;
   float lightLevel = floor(samplePixel(u_lightLayer, pixelPosition).r * 3.0 + 0.5);
+  // Open air and the distant background catch one step of light at most, so a light glows instead of cutting a disc.
+  if (samplePixel(u_gameLayer, pixelPosition).a < 0.5) lightLevel = min(lightLevel, 1.0);
   float extraSteps = floor(max(fogDarkness(pixelPosition) - lightLevel * 0.25, 0.0));
-  return stepDownRamp(color, clamp(3.0 - lightLevel + extraSteps, 0.0, 3.0));
+  return stepDownRamp(color, clamp(UNLIT_RAMP_STEPS - lightLevel + extraSteps, 0.0, 3.0));
 }
 
 void main() {

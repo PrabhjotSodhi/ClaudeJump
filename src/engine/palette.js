@@ -1,4 +1,4 @@
-export const LIGHT_LEVEL_MAX = 3;
+export const MAX_RAMP_STEPS = 3;
 
 function hexToRgb(hex) {
   return [1, 3, 5].map((start) => parseInt(hex.slice(start, start + 2), 16));
@@ -17,11 +17,11 @@ export function stepDownRamp(palette, color, steps) {
   return color;
 }
 
-// One column per palette color, one row per step count (0 to LIGHT_LEVEL_MAX): that color stepped down its own ramp.
+// One column per palette color, one row per step count (0 to MAX_RAMP_STEPS): that color stepped down its own ramp.
 // The shader finds a pixel's column by matching its color against row 0, then reads the row it needs.
 export function buildLookupTexture(palette) {
   const colors = paletteColors(palette);
-  const height = LIGHT_LEVEL_MAX + 1;
+  const height = MAX_RAMP_STEPS + 1;
   const pixels = new Uint8Array(colors.length * height * 4);
   for (let steps = 0; steps < height; steps++) {
     colors.forEach((color, column) => {

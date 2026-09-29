@@ -18,7 +18,7 @@ test('the palette loads with every ramp from the art direction, dark to light', 
     'purple',
   ]);
   assert.deepEqual(palette.ramps.orange, ['#be4a2f', '#d77643', '#f77622', '#feae34', '#fee761']);
-  assert.deepEqual(palette.ramps.warmGrey, ['#585050', '#a09088', '#c8c0b8']);
+  assert.deepEqual(palette.ramps.warmGrey, ['#181425', '#3e2731', '#585050', '#a09088', '#c8c0b8']);
   assert.equal(paletteColors(palette).length, 32);
 });
 
@@ -31,7 +31,7 @@ test('a color steps down its own ramp by the number of steps', () => {
 
 test('a color at the dark end of its ramp stays put', () => {
   assert.equal(stepDownRamp(palette, '#be4a2f', 3), '#be4a2f');
-  assert.equal(stepDownRamp(palette, '#a09088', 3), '#585050');
+  assert.equal(stepDownRamp(palette, '#585050', 3), '#181425');
 });
 
 test('a color outside the palette is unchanged', () => {
