@@ -101,6 +101,7 @@ export class PlayerSelectScene {
             seed: this.seed,
             characterByPlayerId: this.pickedCharacters(),
             sprites: this.sprites,
+            levels: this.levels,
           }),
         }),
       );

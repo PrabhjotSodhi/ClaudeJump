@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { PausableMatchScene } from '../src/scenes/pausable-match-scene.js';
+import { PlayerSelectScene } from '../src/scenes/player-select-scene.js';
 import { TitleScene } from '../src/scenes/title-scene.js';
 import { VersusScene } from '../src/scenes/versus-scene.js';
 import { harborLevel } from './fixtures/harbor-level.mjs';
@@ -236,4 +237,29 @@ test('resuming with up, action and confirm held keeps them out of the match unti
   assert.equal(forwarded[0].action, false);
   assert.equal(forwarded[0].confirm, false);
   assert.equal(forwarded[0].up, false);
+});
+
+test('Return to title, then Versus, opens a player select that can run a tick', () => {
+  let currentScene;
+  const sceneManager = { setScene: (nextScene) => (currentScene = nextScene) };
+  const readyInputs = () => ({ red: { ...noInput(), jump: true }, blue: { ...noInput(), jump: true } });
+  const playerSelectScene = new PlayerSelectScene({ sceneManager, levels: [harborLevel], seed: 0 });
+  playerSelectScene.update(neutralInputs());
+  for (let press = 0; press < 3; press++) {
+    playerSelectScene.update(readyInputs());
+    playerSelectScene.update(neutralInputs());
+  }
+  assert.equal(currentScene.constructor.name, 'PausableMatchScene');
+
+  currentScene.update(inputsWith('red', { pause: true }));
+  currentScene.update(inputsWith('red', { down: true }));
+  currentScene.update(inputsWith('red', { confirm: true }));
+  const titleScene = currentScene;
+  assert.equal(titleScene.constructor.name, 'TitleScene');
+
+  titleScene.update(neutralInputs());
+  titleScene.update(inputsWith('red', { confirm: true }));
+
+  assert.equal(currentScene.constructor.name, 'PlayerSelectScene');
+  assert.doesNotThrow(() => currentScene.update(neutralInputs()));
 });

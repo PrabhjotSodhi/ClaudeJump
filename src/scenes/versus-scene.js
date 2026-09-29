@@ -66,9 +66,11 @@ export class VersusScene {
     seed = Date.now(),
     characterByPlayerId = DEFAULT_CHARACTER_BY_PLAYER_ID,
     sprites = {},
+    levels = [],
   } = {}) {
     this.characterByPlayerId = characterByPlayerId;
     this.sprites = sprites;
+    this.levels = levels;
     this.events = new EventEmitter();
     this.random = new SeededRandom(seed);
     this.entityGroups = new EntityGroups();
