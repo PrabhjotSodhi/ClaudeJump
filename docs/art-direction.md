@@ -42,16 +42,11 @@ The palette is [Endesga 32](https://lospec.com/palette-list/endesga-32) plus thr
 
 ## Platforms and levels
 
-- Tiles are 16x16. Platforms use the warm grey ramp with a light top edge, a dark bottom edge, a few pits or cracks and a little moss from the green ramp. Keep the texture sparse.
-- The background is cool greys and deep blue only, low contrast: distant cliffs and structures and a few clouds. It sits one or two values darker than the platforms. It never competes with the characters.
-- Each level gets a mood from the shader: a fog color, a fog density and the number of lights. The tiles stay the same.
-
-## Lighting
-
-- The scene is drawn normally, and a separate light layer stores a light level from 0 to 2 per pixel.
-- Unlit pixels sit 2 steps down their own ramp, and each light level lifts them one step, using a lookup table built from the palette. Light never creates new colors, so the picture stays pixel art.
-- Lights are two rings (levels 1 and 2) with checkered edges and radii that breathe slowly, so a light reads as a glow. The background and open air catch only the outer ring. Rockets, bombs, sparks, explosions and level lamps carry lights.
-- Fog is a slow scrolling noise that darkens by one more step, snapped to whole pixels, plus a light vignette. It stays subtle: patches, never a blanket.
+- Arenas are loose clusters of stone blocks, big 32x32 and small 16x16, with small gaps and offsets. Never one smooth slab. Each block reads as its own object because each one can break on its own.
+- Blocks use the warm grey ramp with a `#3e2731` outline, a light top left edge, a dark bottom right edge and one or two chips. No moss, no noise. Two variants per size so clusters do not look tiled.
+- Steel girders hang on chains that run off the top of the screen. They use the cool grey ramp with a few rivets and never break, so they must read as a different material from stone at a glance.
+- The background is three layers of city and factory silhouettes in the cool grey ramp, with checker dither between layers for mist. The far layer is lightest, the near layer darkest. It stays low contrast and never competes with the characters.
+- Arenas use flat, overcast light.
 
 ## Effects
 
