@@ -12,11 +12,9 @@ export class Renderer {
     this.backgroundCanvas = createLayerCanvas();
     this.gameCanvas = createLayerCanvas();
     this.uiCanvas = createLayerCanvas();
-    this.lightCanvas = createLayerCanvas();
     this.backgroundContext = this.backgroundCanvas.getContext('2d');
     this.gameContext = this.gameCanvas.getContext('2d');
     this.uiContext = this.uiCanvas.getContext('2d');
-    this.lightContext = this.lightCanvas.getContext('2d');
     this.backgroundChanged = false;
     // Whole pixels the shader moves the background and game layers by. The UI layer never moves.
     this.shakeOffset = { x: 0, y: 0 };
@@ -30,12 +28,6 @@ export class Renderer {
 
   clearGameLayer() {
     this.gameContext.clearRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-  }
-
-  // Black is light level 0. See vfx/light-rings.js for how levels are stored.
-  clearLightLayer() {
-    this.lightContext.fillStyle = 'rgb(0, 0, 0)';
-    this.lightContext.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
   }
 
   clearUiLayer() {

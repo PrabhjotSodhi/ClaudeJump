@@ -36,7 +36,6 @@ function fightingScene(rows) {
     ],
     waterLineY: 300,
     suddenDeathLineY: 200,
-    mood: {},
   });
   const scene = new VersusScene({ level, seed: 1 });
   advance(scene, READY_TICKS);

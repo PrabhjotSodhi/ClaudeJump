@@ -56,18 +56,5 @@
     }
   ],
   "waterLineY": 328,
-  "suddenDeathLineY": 144,
-  "mood": {
-    "fogStrength": 0.6,
-    "lamps": [
-      {
-        "x": 128,
-        "y": 192
-      },
-      {
-        "x": 512,
-        "y": 192
-      }
-    ]
-  }
+  "suddenDeathLineY": 144
 }
