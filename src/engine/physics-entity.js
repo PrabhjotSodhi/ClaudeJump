@@ -38,7 +38,7 @@ export class PhysicsEntity extends Entity {
     const totalVelocityX = this.velocityX + this.knockbackVelocityX;
     this.x += totalVelocityX;
     for (const platform of platforms) {
-      if (!this.overlaps(platform)) continue;
+      if (platform.oneWay || !this.overlaps(platform)) continue;
       if (totalVelocityX > 0) this.x = platform.x - this.width;
       else if (totalVelocityX < 0) this.x = platform.x + platform.width;
       this.velocityX = 0;
@@ -54,6 +54,8 @@ export class PhysicsEntity extends Entity {
     this.onGround = false;
     for (const platform of platforms) {
       if (!this.overlaps(platform)) continue;
+      // A one way platform only catches feet that were above its top before this move.
+      if (platform.oneWay && (this.velocityY <= 0 || this.previousY + this.height > platform.y)) continue;
       if (this.velocityY > 0) {
         this.y = platform.y - this.height;
         this.onGround = true;
