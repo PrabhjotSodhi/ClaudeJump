@@ -8,8 +8,9 @@ import { Platform } from '../entities/platform.js';
 import { Player } from '../entities/player.js';
 import { drawArenaBackground } from '../levels/arena-backgrounds.js';
 import { blockName } from '../levels/level-loader.js';
-import { NO_WATER_LINE_Y } from '../ui/menu-screen.js';
+import { drawSurvivalHud } from '../ui/hud.js';
 import { PlayerEyes } from '../vfx/player-eyes.js';
+import { SeaRipple } from '../vfx/sea-ripple.js';
 
 const PLAYER_ID = 'red';
 const START_FLOOR_Y = SCREEN_HEIGHT - 2 * TILE_SIZE;
@@ -26,6 +27,10 @@ const CAMERA_LEAD_Y = 180;
 const GENERATE_AHEAD_Y = SCREEN_HEIGHT;
 // Rows are dropped once they are this far below the top of the screen.
 const KEEP_BELOW_Y = 2 * SCREEN_HEIGHT;
+export const SEA_START_BELOW = 48;
+export const SEA_GRACE_TICKS = 180;
+export const SEA_RISE_PER_TICK = 0.25;
+export const BEST_SCORE_STORAGE_KEY = 'claudejump.survival.best';
 
 // The horizontal gap between two runs, taking the shortest way round the screen edge. 0 when they overlap.
 function horizontalGap(runA, runB) {
@@ -42,17 +47,55 @@ export function isRowReachable(row, rowBelow) {
   return row.runs.some((run) => rowBelow.runs.some((runBelow) => horizontalGap(run, runBelow) <= MAX_REACH_X));
 }
 
+export function nextBestScore(best, score) {
+  return Math.max(best, score);
+}
+
+function loadBestScore() {
+  try {
+    const stored = Number(globalThis.localStorage.getItem(BEST_SCORE_STORAGE_KEY));
+    return Number.isInteger(stored) && stored > 0 ? stored : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function saveBestScore(bestScore) {
+  try {
+    globalThis.localStorage.setItem(BEST_SCORE_STORAGE_KEY, String(bestScore));
+  } catch {
+    // Storage can be missing or blocked. The best score then lasts until the page closes.
+  }
+}
+
 export class SurvivalScene {
   constructor({ sprites = {}, seed = Date.now() } = {}) {
     this.sprites = sprites;
-    this.random = new SeededRandom(seed);
+    this.seed = seed;
     this.events = new EventEmitter();
     this.entityGroups = new EntityGroups();
     this.playerEyes = new PlayerEyes();
     this.playerEyes.attach(this.events, () => this.players);
-    this.waterLineY = NO_WATER_LINE_Y;
+    this.seaRipple = new SeaRipple();
+    this.seaRipple.attach(this.events, () => this.players);
+    this.bestScore = loadBestScore();
+    this.events.on('run-ended', ({ score }) => {
+      this.bestScore = nextBestScore(this.bestScore, score);
+      saveBestScore(this.bestScore);
+    });
     this.backgroundDrawn = false;
+    this.jumpHeld = false;
     this.startRun();
+  }
+
+  // Screen space, which is where the water shader draws the surface.
+  get waterLineY() {
+    return this.seaY - this.cameraTopY;
+  }
+
+  // Pixels climbed since the run started.
+  get score() {
+    return this.startPlayerY - this.lowestPlayerY;
   }
 
   get players() {
@@ -60,6 +103,10 @@ export class SurvivalScene {
   }
 
   startRun() {
+    this.random = new SeededRandom(this.seed);
+    this.phase = 'playing';
+    this.runTicks = 0;
+    this.seaY = START_FLOOR_Y + SEA_START_BELOW;
     this.entityGroups.clear('platforms');
     this.entityGroups.clear('players');
     this.rows = [];
@@ -76,6 +123,8 @@ export class SurvivalScene {
         facing: 1,
       }),
     );
+    this.startPlayerY = Math.round(this.players[0].y);
+    this.lowestPlayerY = this.startPlayerY;
     this.generateRows();
   }
 
@@ -139,6 +188,19 @@ export class SurvivalScene {
   }
 
   update(inputByPlayerId) {
+    const jumpPressed = inputByPlayerId[PLAYER_ID]?.jump ?? false;
+    const freshJump = jumpPressed && !this.jumpHeld;
+    this.jumpHeld = jumpPressed;
+    this.seaRipple.update();
+
+    if (this.phase === 'over') {
+      if (freshJump) {
+        this.seed++;
+        this.startRun();
+      }
+      return;
+    }
+
     const player = this.players[0];
     player.update(inputByPlayerId[PLAYER_ID] ?? null, this.entityGroups.get('platforms'));
     if (player.ticksSinceJump === 0) {
@@ -154,7 +216,15 @@ export class SurvivalScene {
     this.cameraTopY = Math.min(this.cameraTopY, Math.round(player.y) - CAMERA_LEAD_Y);
     this.generateRows();
     this.dropRowsBelowCamera();
-    if (player.y > this.cameraTopY + SCREEN_HEIGHT) this.startRun();
+
+    this.lowestPlayerY = Math.min(this.lowestPlayerY, Math.round(player.y));
+    this.runTicks++;
+    if (this.runTicks > SEA_GRACE_TICKS) this.seaY -= SEA_RISE_PER_TICK;
+    if (player.y + player.height >= this.seaY) {
+      this.phase = 'over';
+      this.events.emit('player-fell-in-water', { playerId: player.id });
+      this.events.emit('run-ended', { score: this.score });
+    }
   }
 
   render(renderer) {
@@ -163,6 +233,7 @@ export class SurvivalScene {
       this.backgroundDrawn = true;
     }
 
+    renderer.seaRippleBytes = this.seaRipple.toBytes();
     renderer.clearGameLayer();
     renderer.clearUiLayer();
     const context = renderer.gameContext;
@@ -184,5 +255,6 @@ export class SurvivalScene {
       .get('players')
       .forEach((player) => player.render(context, { sprites: this.sprites, playerEyes: this.playerEyes }));
     context.restore();
+    drawSurvivalHud(renderer.uiContext, this);
   }
 }

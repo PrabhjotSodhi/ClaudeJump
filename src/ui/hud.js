@@ -63,3 +63,14 @@ export function drawHud(context, scene) {
 
   drawSuddenDeathWarning(context, scene);
 }
+
+export function formatScore(label, score) {
+  return `${label}: ${String(score).padStart(10, '0')}`;
+}
+
+export function drawSurvivalHud(context, scene) {
+  drawText(context, formatScore('Score', scene.score), 8, 8);
+  drawText(context, formatScore('Best', Math.max(scene.bestScore, scene.score)), SCREEN_WIDTH - 8, 8, {
+    align: 'right',
+  });
+}
