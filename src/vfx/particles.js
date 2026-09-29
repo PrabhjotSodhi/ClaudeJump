@@ -45,6 +45,7 @@ export class Particles {
       const player = findPlayer(playerId);
       if (player) burst(centerOf(player).x, centerOf(player).y, player.color, HIT_SPARKS);
     });
+    events.on('block-broken', ({ x, y, size }) => burst(x + size / 2, y + size / 2, DUST_COLOR, LANDING_DUST));
     events.on('rocket-exploded', ({ x, y }) => burst(x, y, BLAST_COLOR, BLAST_SPARKS));
     events.on('bomb-exploded', ({ x, y }) => burst(x, y, BLAST_COLOR, BLAST_SPARKS));
     events.on('player-fell-in-water', ({ playerId }) => {

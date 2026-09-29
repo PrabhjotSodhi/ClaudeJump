@@ -1,5 +1,5 @@
 import { CARD_NAMES } from '../cards/card-definitions.js';
-import { SCREEN_WIDTH } from '../engine/config.js';
+import { SCREEN_WIDTH, TILE_SIZE } from '../engine/config.js';
 import { EntityGroups } from '../engine/entity-groups.js';
 import { EventEmitter } from '../engine/events.js';
 import { SeededRandom } from '../engine/seeded-random.js';
@@ -19,6 +19,7 @@ import { Platform } from '../entities/platform.js';
 import { Player } from '../entities/player.js';
 import { Rocket, ROCKET_WIDTH, ROCKET_HEIGHT } from '../entities/rocket.js';
 import { drawCityBackground } from '../levels/city-background.js';
+import { solidRuns } from '../levels/level-loader.js';
 import { drawHeldCardIcons } from '../ui/held-card-icons.js';
 import { drawHud } from '../ui/hud.js';
 import { MatchStats } from '../ui/match-stats.js';
@@ -51,6 +52,23 @@ const SHOVE_KNOCKBACK_VELOCITY_Y = -4;
 const BLAST_RADIUS = 48;
 const BLAST_KNOCKBACK_VELOCITY_X = 8;
 const BLAST_KNOCKBACK_VELOCITY_Y = -4;
+// A dashing player stopped by a wall only touches it, so the body reaches this far sideways to break it.
+const DASH_BREAK_REACH = 1;
+
+function blockOverlaps(block, rectangle) {
+  return (
+    block.x < rectangle.x + rectangle.width &&
+    block.x + block.size > rectangle.x &&
+    block.y < rectangle.y + rectangle.height &&
+    block.y + block.size > rectangle.y
+  );
+}
+
+function blockIsInBlast(block, blastCenterX, blastCenterY) {
+  const nearestX = Math.max(block.x, Math.min(blastCenterX, block.x + block.size));
+  const nearestY = Math.max(block.y, Math.min(blastCenterY, block.y + block.size));
+  return Math.hypot(nearestX - blastCenterX, nearestY - blastCenterY) <= BLAST_RADIUS;
+}
 
 const SUDDEN_DEATH_ROUND_TICKS = 1800; // 30 seconds; the round timer and the warning start point
 const SUDDEN_DEATH_WARNING_TICKS = 120; // 2 seconds of flashing markers before the sea rises
@@ -77,7 +95,6 @@ export class VersusScene {
     this.random = new SeededRandom(seed);
     this.entityGroups = new EntityGroups();
     this.level = level;
-    for (const layout of level.platforms) this.entityGroups.add('platforms', new Platform(layout));
     this.suddenDeathRisePerTick = (level.waterLineY - level.suddenDeathLineY) / SUDDEN_DEATH_RISE_TICKS;
 
     this.waterLineY = level.waterLineY;
@@ -138,6 +155,7 @@ export class VersusScene {
     this.entityGroups.clear('players');
     this.entityGroups.clear('rockets');
     this.entityGroups.clear('bombs');
+    this.restoreBlocks();
     for (const { x, y } of this.level.bouncePads) {
       this.entityGroups.add('bouncePads', new BouncePad({ x, y, lifetimeTicks: Infinity }));
     }
@@ -163,6 +181,41 @@ export class VersusScene {
     this.fightTicks = 0;
     this.suddenDeathPhase = 'none';
     this.hitPauseTicksRemaining = 0;
+  }
+
+  // Blocks broken in a round are gone until the next one. The level itself is never changed, so the next round
+  // and the thumbnails still see every block.
+  restoreBlocks() {
+    this.blocks = [...this.level.blocks];
+    this.solidCells = this.level.solidCells.map((row) => [...row]);
+    this.brokenTiles = new Set();
+    this.rebuildSolids();
+  }
+
+  rebuildSolids() {
+    const { platforms, openTops } = solidRuns(this.solidCells);
+    this.entityGroups.clear('platforms');
+    for (const layout of platforms) this.entityGroups.add('platforms', new Platform(layout));
+    this.openTops = openTops;
+  }
+
+  breakBlocksWhere(touchesBlock) {
+    const brokenBlocks = this.blocks.filter(touchesBlock);
+    if (brokenBlocks.length === 0) return;
+
+    this.blocks = this.blocks.filter((block) => !brokenBlocks.includes(block));
+    for (const block of brokenBlocks) {
+      const firstColumn = block.x / TILE_SIZE;
+      const firstRow = block.y / TILE_SIZE;
+      for (let row = firstRow; row < firstRow + block.size / TILE_SIZE; row++) {
+        for (let column = firstColumn; column < firstColumn + block.size / TILE_SIZE; column++) {
+          this.solidCells[row][column] = false;
+        }
+      }
+      this.brokenTiles.add(block.tile);
+      this.events.emit('block-broken', { x: block.x, y: block.y, size: block.size });
+    }
+    this.rebuildSolids();
   }
 
   update(inputByPlayerId) {
@@ -245,8 +298,21 @@ export class VersusScene {
         if (player.playedCardName === 'bomb') this.spawnBomb(player);
         if (player.playedCardName === 'banana') this.spawnBanana(player);
       }
-      if (player.shoveJustStarted) this.shoveHitIdsByShoverId.set(player.id, new Set());
+      if (player.shoveJustStarted) {
+        this.shoveHitIdsByShoverId.set(player.id, new Set());
+        const hitZone = player.shoveHitZone;
+        this.breakBlocksWhere((block) => blockOverlaps(block, hitZone));
+      }
       if (player.isShoveActive) this.resolveShoveHit(player);
+      if (player.dashTicksRemaining > 0 && !player.inWater) {
+        const reachedBody = {
+          x: player.x - DASH_BREAK_REACH,
+          y: player.y,
+          width: player.width + 2 * DASH_BREAK_REACH,
+          height: player.height,
+        };
+        this.breakBlocksWhere((block) => blockOverlaps(block, reachedBody));
+      }
       if (!player.inWater && player.y + player.height >= this.waterLineY) {
         player.startSinking();
         this.events.emit('player-fell-in-water', { playerId: player.id });
@@ -310,6 +376,7 @@ export class VersusScene {
       player.applyKnockback(knockbackDirectionX * BLAST_KNOCKBACK_VELOCITY_X, BLAST_KNOCKBACK_VELOCITY_Y);
       knockedPlayerIds.push(player.id);
     }
+    this.breakBlocksWhere((block) => blockIsInBlast(block, blastCenterX, blastCenterY));
     return knockedPlayerIds;
   }
 
@@ -432,7 +499,7 @@ export class VersusScene {
   // The landing spot and the card both come from the scene's seeded random, so the same seed
   // always drops the same crates in the same places.
   spawnCrate() {
-    const openTops = this.level.openTops.filter((openTop) => openTop.y < this.waterLineY);
+    const openTops = this.openTops.filter((openTop) => openTop.y < this.waterLineY);
     if (openTops.length === 0) return; // no dry platform right now; try again next tick
 
     const openTop = openTops[Math.floor(this.random.next() * openTops.length)];
@@ -551,8 +618,10 @@ export class VersusScene {
     renderer.shakeOffset = this.screenShake.offset;
     renderer.seaRippleBytes = this.seaRipple.toBytes();
     renderer.clearGameLayer();
-    for (const tile of this.level.tiles)
-      renderer.gameContext.drawImage(this.level.tileSprites[tile.name], tile.x, tile.y);
+    for (const tile of this.level.tiles) {
+      if (!this.brokenTiles.has(tile))
+        renderer.gameContext.drawImage(this.level.tileSprites[tile.name], tile.x, tile.y);
+    }
     drawWrapPuffs(renderer.gameContext, this);
     this.entityGroups.renderAll(renderer.gameContext, { sprites: this.sprites, playerEyes: this.playerEyes });
     drawParticles(renderer.gameContext, this);
