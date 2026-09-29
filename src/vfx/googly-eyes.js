@@ -1,7 +1,7 @@
 // Googly eyes are display only. They update once per tick from a body's velocity, and game logic never reads them.
 
-const WHITE_DIAMETER = 10;
-const PUPIL_DIAMETER = 4;
+const WHITE_DIAMETER = 7;
+const PUPIL_DIAMETER = 3;
 const MAX_PUPIL_OFFSET = (WHITE_DIAMETER - PUPIL_DIAMETER) / 2;
 // The pupil trails this many pixels behind each pixel per tick the body moves.
 const LAG_PER_VELOCITY = 1.3;

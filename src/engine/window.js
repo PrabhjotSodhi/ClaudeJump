@@ -96,6 +96,7 @@ export function createWindow(canvas, vertexShaderSource, fragmentShaderSource, p
     paletteLookup.pixels,
   );
   webglContext.uniform1i(webglContext.getUniformLocation(program, 'u_paletteLookup'), PALETTE_LOOKUP_TEXTURE_UNIT);
+  webglContext.uniform1f(webglContext.getUniformLocation(program, 'u_paletteSize'), paletteLookup.width);
   webglContext.uniform2f(webglContext.getUniformLocation(program, 'u_resolution'), SCREEN_WIDTH, SCREEN_HEIGHT);
   const waterLineUniformLocation = webglContext.getUniformLocation(program, 'u_waterLine');
   const timeUniformLocation = webglContext.getUniformLocation(program, 'u_time');

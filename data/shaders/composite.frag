@@ -5,6 +5,7 @@ uniform sampler2D u_gameLayer;
 uniform sampler2D u_uiLayer;
 uniform sampler2D u_lightLayer;
 uniform sampler2D u_paletteLookup;
+uniform float u_paletteSize;
 uniform vec2 u_resolution;
 uniform float u_time;
 uniform float u_waterLine;
@@ -18,8 +19,8 @@ const vec3 WATER_TOP_COLOR = vec3(0.16, 0.36, 0.82);
 const vec3 WATER_DEEP_COLOR = vec3(0.06, 0.16, 0.47);
 const vec3 CREST_COLOR = vec3(0.72, 0.9, 1.0);
 const float NIGHT_WATER_BRIGHTNESS = 0.55;
-// Must match the palette size and the fog period in window.js.
-const int PALETTE_SIZE = 32;
+// Must match the fog period in window.js. The palette size comes from window.js as u_paletteSize.
+const int MAX_PALETTE_SIZE = 64;
 const float FOG_PERIOD = 512.0;
 // Unlit pixels sit this many steps down their ramp. Each light level lifts a pixel one step.
 const float UNLIT_RAMP_STEPS = 2.0;
@@ -36,8 +37,9 @@ vec3 sceneColor(vec2 pixelPosition) {
 // Palette lookup texture: one column per palette color, row n holds that color stepped down its ramp n times.
 // Row 0 is the palette itself, so matching a pixel against row 0 finds its column. Colors outside the palette pass through.
 vec3 stepDownRamp(vec3 color, float steps) {
-  for (int index = 0; index < PALETTE_SIZE; index++) {
-    float column = (float(index) + 0.5) / float(PALETTE_SIZE);
+  for (int index = 0; index < MAX_PALETTE_SIZE; index++) {
+    if (float(index) >= u_paletteSize) break;
+    float column = (float(index) + 0.5) / u_paletteSize;
     vec3 paletteColor = texture2D(u_paletteLookup, vec2(column, 0.125)).rgb;
     if (all(lessThan(abs(paletteColor - color), vec3(0.003)))) {
       return texture2D(u_paletteLookup, vec2(column, (steps + 0.5) / 4.0)).rgb;

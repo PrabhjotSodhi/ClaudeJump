@@ -16,7 +16,7 @@ The palette is [Endesga 32](https://lospec.com/palette-list/endesga-32) plus thr
 | Outline                    | `#181425` `#3e2731`                                                   |
 | Warm grey (platforms)      | `#181425` `#3e2731` `#585050` `#a09088` `#c8c0b8`                     |
 | Cool grey (background, UI) | `#181425` `#262b44` `#3a4466` `#5a6988` `#8b9bb4` `#c0cbdc` `#ffffff` |
-| Skin                       | `#733e39` `#b86f50` `#e4a672` `#ead4aa`                               |
+| Skin                       | `#733e39` `#b86f50` `#e4a672` `#e8b796` `#ead4aa`                     |
 | Orange                     | `#be4a2f` `#d77643` `#f77622` `#feae34` `#fee761`                     |
 | Red                        | `#3e2731` `#a22633` `#e43b44` `#f6757a`                               |
 | Green                      | `#193c3e` `#265c42` `#3e8948` `#63c74d`                               |
@@ -32,8 +32,8 @@ The palette is [Endesga 32](https://lospec.com/palette-list/endesga-32) plus thr
 
 - Characters are AI logos and mascots. A logo character's body is the logo's shape drawn as pixel art, like Claude's orange spark. A mascot is one chunky, round head-body blob, like Muse the yeti.
 - The body is about 28x28, drawn in a 32x32 frame so the outlines and squash fit. The hitbox is 24x28.
-- No arms or legs. Motion comes from hopping, squash and stretch, and the eyes.
-- Every character has two massive googly eyes: 10 pixel white discs with a `#3e2731` rim and a 4 pixel dark pupil. The engine draws them on top of the body from `src/vfx/googly-eyes.js`. Each pupil lags behind the body's motion, flies up on a jump and rattles on a hit.
+- No animated limbs. A mascot may have stubby arms and legs as part of its one body shape. Motion comes from hopping, squash and stretch, and the eyes.
+- Every character has two big googly eyes: 7 pixel white discs with a `#3e2731` rim and a 3 pixel dark pupil. They must leave room for the shape that makes the character recognizable: the spark's rays, the mascot's face window. The engine draws them on top of the body from `src/vfx/googly-eyes.js`. Each pupil lags behind the body's motion, flies up on a jump and rattles on a hit.
 - Silhouettes read as a solid shape at thumbnail size. Texture such as fur comes from a broken outline edge and a few darker clusters, never from noise.
 - Two outlines: `#3e2731` all around, then a 1 pixel `#ffffff` outer outline. The white outline is what separates a character from any background.
 - Body colors are saturated, from the middle of a ramp, with one hue-shifted shadow and one highlight. No more than 5 colors per character, plus the outlines.

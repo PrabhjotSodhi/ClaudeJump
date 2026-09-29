@@ -299,7 +299,7 @@ export class StyleTestScene {
       homeX: 236,
       firstRestTicks: 20,
       eyeFramePositions: [
-        [4, 8],
+        [7, 8],
         [16, 8],
       ],
     });
@@ -308,8 +308,8 @@ export class StyleTestScene {
       homeX: 404,
       firstRestTicks: 34,
       eyeFramePositions: [
-        [4, 7],
-        [16, 7],
+        [7, 6],
+        [16, 6],
       ],
     });
     // Dev-mode snapshots read these.
