@@ -1,5 +1,5 @@
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../engine/config.js';
-import { drawArenaBackground } from './versus-arena.js';
+import { drawCityBackground } from './city-background.js';
 
 // Each thumbnail pixel is one point sampled from a square of screen pixels this wide, so the thumbnail
 // stays pixel art made of palette colors.
@@ -23,7 +23,7 @@ function createCanvas(width, height) {
 export function createLevelThumbnail(level) {
   const fullSizeCanvas = createCanvas(SCREEN_WIDTH, SCREEN_HEIGHT);
   const fullSizeContext = fullSizeCanvas.getContext('2d');
-  drawArenaBackground(fullSizeContext, level.background);
+  drawCityBackground(fullSizeContext);
   for (const tile of level.tiles) fullSizeContext.drawImage(level.tileSprites[tile.name], tile.x, tile.y);
   fullSizeContext.fillStyle = SEA_SURFACE_COLOR;
   fullSizeContext.fillRect(0, level.waterLineY, SCREEN_WIDTH, SEA_SURFACE_HEIGHT);

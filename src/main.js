@@ -36,7 +36,6 @@ async function main() {
     grok,
     deepseek,
     mistral,
-    tiles,
     props,
     blocks,
     vertexShaderSource,
@@ -51,16 +50,13 @@ async function main() {
     loadSpriteFile('data/sprites/grok.json'),
     loadSpriteFile('data/sprites/deepseek.json'),
     loadSpriteFile('data/sprites/mistral.json'),
-    loadSpriteFile('data/sprites/tiles.json'),
     loadSpriteFile('data/sprites/props.json'),
     loadSpriteFile('data/sprites/blocks.json'),
     loadText('data/shaders/composite.vert'),
     loadText('data/shaders/composite.frag'),
   ]);
 
-  const levels = await Promise.all(
-    LEVEL_FILE_NAMES.map((fileName) => loadLevel(`data/levels/${fileName}.json`, tiles)),
-  );
+  const levels = await Promise.all(LEVEL_FILE_NAMES.map((fileName) => loadLevel(`data/levels/${fileName}.json`)));
   for (const level of levels) level.thumbnail = createLevelThumbnail(level);
 
   const canvas = document.getElementById('screen');
@@ -74,7 +70,7 @@ async function main() {
   const keyboardInput = createKeyboardInput(keyMappings);
   const gamepadInput = createGamepadInput(keyMappings.map((mapping) => mapping.id));
   const sceneManager = new SceneManager();
-  const sprites = { claude, muse, chatgpt, gemini, grok, deepseek, mistral, tiles, props, blocks };
+  const sprites = { claude, muse, chatgpt, gemini, grok, deepseek, mistral, props, blocks };
   if (isDevMode && searchParameters.get('scene') === 'style') {
     sceneManager.setScene(new StyleTestScene({ sprites }));
   } else if (isDevMode) {

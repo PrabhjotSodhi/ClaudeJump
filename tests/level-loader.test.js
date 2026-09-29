@@ -1,24 +1,26 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
+import { spriteFileToPixels } from '../src/engine/sprites.js';
 import { LEVEL_COLUMNS, LEVEL_ROWS, SCREEN_HEIGHT, SCREEN_WIDTH } from '../src/engine/config.js';
 import { PLAYER_WIDTH } from '../src/entities/player.js';
-import { buildLevel } from '../src/levels/level-loader.js';
+import { buildLevel, stoneColorOverrides } from '../src/levels/level-loader.js';
 import { arenaLevels } from './fixtures/arena-levels.mjs';
 import { harborLevel } from './fixtures/harbor-level.mjs';
 
 function levelWithTiles(tilesByRow) {
   const grid = Array.from({ length: LEVEL_ROWS }, (_, row) => (tilesByRow[row] ?? '').padEnd(LEVEL_COLUMNS, '.'));
-  return { name: 'Test', grid, legend: { T: 'top', C: 'top-crack' }, spawns: [], waterLineY: 300, mood: {} };
+  return { name: 'Test', grid, spawns: [], waterLineY: 300, mood: {} };
 }
 
 test('a horizontal run of solid tiles becomes one platform', () => {
-  const level = buildLevel(levelWithTiles({ 5: '...TCT..' }));
+  const level = buildLevel(levelWithTiles({ 5: '...sss..' }));
 
   assert.deepEqual(level.platforms, [{ x: 48, y: 80, width: 48, height: 16 }]);
 });
 
 test('a gap splits a row into two platforms, and each row gets its own', () => {
-  const level = buildLevel(levelWithTiles({ 2: 'TT..T', 3: 'TT' }));
+  const level = buildLevel(levelWithTiles({ 2: 'ss..s', 3: 'ss' }));
 
   assert.deepEqual(level.platforms, [
     { x: 0, y: 32, width: 32, height: 16 },
@@ -28,22 +30,55 @@ test('a gap splits a row into two platforms, and each row gets its own', () => {
 });
 
 test('a run that reaches the right edge still becomes a platform', () => {
-  const level = buildLevel(levelWithTiles({ 0: 'T'.padStart(LEVEL_COLUMNS, '.') }));
+  const level = buildLevel(levelWithTiles({ 0: 's'.padStart(LEVEL_COLUMNS, '.') }));
 
   assert.deepEqual(level.platforms, [{ x: 624, y: 0, width: 16, height: 16 }]);
 });
 
-test('every solid tile is drawn with the sprite its legend names', () => {
-  const level = buildLevel(levelWithTiles({ 1: 'TC' }));
+test('small blocks, big blocks and girders are drawn with their sprites, and a big block is one tile', () => {
+  const level = buildLevel(levelWithTiles({ 1: 's.BB', 2: '..BB', 5: '.===' }));
+  const chains = level.tiles.filter((tile) => tile.name === 'chain');
 
-  assert.deepEqual(level.tiles, [
-    { x: 0, y: 16, name: 'top' },
-    { x: 16, y: 16, name: 'top-crack' },
-  ]);
+  assert.deepEqual(
+    level.tiles.filter((tile) => tile.name !== 'chain'),
+    [
+      { x: 0, y: 16, name: 'block-small-1' },
+      { x: 32, y: 16, name: 'block-big-1' },
+      { x: 16, y: 80, name: 'girder-left' },
+      { x: 32, y: 80, name: 'girder-middle' },
+      { x: 48, y: 80, name: 'girder-right' },
+    ],
+  );
+  assert.deepEqual([...new Set(chains.map((chain) => chain.x))], [22, 54]);
+  assert.deepEqual(
+    chains.filter((chain) => chain.x === 22).map((chain) => chain.y),
+    [72, 64, 56, 48, 40, 32, 24, 16, 8, 0],
+  );
 });
 
-test('a level with a character missing from its legend is rejected', () => {
-  assert.throws(() => buildLevel(levelWithTiles({ 0: 'X' })), /not in its legend/);
+test('a lone or broken big block is rejected with its position', () => {
+  assert.throws(() => buildLevel(levelWithTiles({ 3: '.B' })), /broken big block at 1,3/);
+  assert.throws(() => buildLevel(levelWithTiles({ 3: 'BB', 4: 'B' })), /broken big block at 0,3/);
+  assert.throws(() => buildLevel(levelWithTiles({ 3: 'BBB', 4: 'BBB' })), /broken big block at 2,3/);
+});
+
+test('a character that is not a block or girder is rejected', () => {
+  assert.throws(() => buildLevel(levelWithTiles({ 0: 'X' })), /not a block or girder/);
+});
+
+test("a level's stone colors replace the block colors but not the girder colors", async () => {
+  const spriteFile = JSON.parse(await readFile(new URL('../data/sprites/blocks.json', import.meta.url), 'utf8'));
+  const stone = { light: '#111111', mid: '#222222', dark: '#333333' };
+
+  const stoneSprites = spriteFileToPixels(spriteFile, stoneColorOverrides(stone));
+  const defaultSprites = spriteFileToPixels(spriteFile);
+
+  const middleOfBlockPixel = 4 * (8 * 16 + 8);
+  assert.deepEqual(
+    [...stoneSprites['block-small-0'].data.slice(middleOfBlockPixel, middleOfBlockPixel + 4)],
+    [0x22, 0x22, 0x22, 255],
+  );
+  assert.deepEqual(stoneSprites['girder-left'].data, defaultSprites['girder-left'].data);
 });
 
 test('a grid of the wrong size is rejected', () => {
@@ -53,12 +88,13 @@ test('a grid of the wrong size is rejected', () => {
   assert.throws(() => buildLevel({ ...levelWithTiles({}), grid: [] }), /rows/);
 });
 
-test('harbor has the three platforms the arena always had', () => {
-  const sorted = [...harborLevel.platforms].sort((first, second) => first.x - second.x);
+test('harbor has a girder above two block islands', () => {
+  const topPlatforms = harborLevel.platforms.filter((platform) => platform.y === 144 || platform.y === 224);
 
-  assert.deepEqual(sorted, [
-    { x: 80, y: 224, width: 144, height: 16 },
+  assert.deepEqual(topPlatforms, [
     { x: 256, y: 144, width: 128, height: 16 },
+    { x: 80, y: 224, width: 176, height: 16 },
+    { x: 272, y: 224, width: 16, height: 16 },
     { x: 416, y: 224, width: 144, height: 16 },
   ]);
 });
@@ -75,7 +111,7 @@ test('harbor loads its spawns, sea line and mood', () => {
 });
 
 test('open tops leave out tiles that have another tile anywhere above them', () => {
-  const level = buildLevel(levelWithTiles({ 2: 'TTTT', 5: '.TT...TT' }));
+  const level = buildLevel(levelWithTiles({ 2: 'ssss', 5: '.ss...ss' }));
 
   assert.deepEqual(level.openTops, [
     { x: 0, y: 32, width: 64, height: 16 },
