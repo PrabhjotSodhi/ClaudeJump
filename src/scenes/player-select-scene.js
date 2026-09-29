@@ -1,6 +1,6 @@
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../engine/config.js';
 import { Player } from '../entities/player.js';
-import { PLAYER_SPAWNS } from '../levels/versus-arena.js';
+import { PLAYERS } from '../levels/versus-arena.js';
 import { MENU_BACKGROUND_COLOR, NO_WATER_LINE_Y } from '../ui/menu-screen.js';
 import { drawText } from '../ui/text.js';
 import { PausableMatchScene } from './pausable-match-scene.js';
@@ -31,8 +31,9 @@ const STATUS_LABEL = {
 };
 
 export class PlayerSelectScene {
-  constructor({ sceneManager, seed = Date.now() } = {}) {
+  constructor({ sceneManager, level, seed = Date.now() } = {}) {
     this.sceneManager = sceneManager;
+    this.level = level;
     this.seed = seed;
     this.waterLineY = NO_WATER_LINE_Y;
     this.backgroundDrawn = false;
@@ -40,17 +41,17 @@ export class PlayerSelectScene {
     // the title screen's confirm press never counts as a fresh press here.
     this.jumpBaseline = null;
     this.stateByPlayerId = {};
-    for (const spawn of PLAYER_SPAWNS) this.stateByPlayerId[spawn.id] = 'unjoined';
+    for (const spawn of PLAYERS) this.stateByPlayerId[spawn.id] = 'unjoined';
   }
 
   update(inputByPlayerId) {
     if (!this.jumpBaseline) {
       this.jumpBaseline = {};
-      for (const spawn of PLAYER_SPAWNS) this.jumpBaseline[spawn.id] = inputByPlayerId[spawn.id]?.jump ?? false;
+      for (const spawn of PLAYERS) this.jumpBaseline[spawn.id] = inputByPlayerId[spawn.id]?.jump ?? false;
       return;
     }
 
-    for (const spawn of PLAYER_SPAWNS) {
+    for (const spawn of PLAYERS) {
       const jumpPressed = inputByPlayerId[spawn.id]?.jump ?? false;
       if (jumpPressed && !this.jumpBaseline[spawn.id]) this.advance(spawn.id);
       this.jumpBaseline[spawn.id] = jumpPressed;
@@ -58,7 +59,10 @@ export class PlayerSelectScene {
 
     if (Object.values(this.stateByPlayerId).every((state) => state === 'ready')) {
       this.sceneManager.setScene(
-        new PausableMatchScene({ sceneManager: this.sceneManager, matchScene: new VersusScene({ seed: this.seed }) }),
+        new PausableMatchScene({
+          sceneManager: this.sceneManager,
+          matchScene: new VersusScene({ level: this.level, seed: this.seed }),
+        }),
       );
     }
   }
@@ -87,7 +91,7 @@ function drawPlayerSelectBackground(context) {
 }
 
 function drawPlayerCard(context, spawn, state) {
-  const columnIndex = PLAYER_SPAWNS.indexOf(spawn);
+  const columnIndex = PLAYERS.indexOf(spawn);
   const centerX = SCREEN_WIDTH / 2 + (columnIndex === 0 ? -CARD_OFFSET_X : CARD_OFFSET_X);
   const cardX = Math.round(centerX - CARD_WIDTH / 2);
 
@@ -100,7 +104,7 @@ function drawPlayerCard(context, spawn, state) {
     color: spawn.color,
   });
 
-  if (state !== 'unjoined') drawPlayerPortrait(context, spawn, centerX, PORTRAIT_TOP_Y);
+  if (state !== 'unjoined') drawPlayerPortrait(context, spawn, columnIndex, centerX, PORTRAIT_TOP_Y);
 
   drawStatus(context, STATUS_LABEL[state], centerX, state === 'ready' ? READY_COLOR : spawn.color);
 }
@@ -114,8 +118,8 @@ function drawStatus(context, lines, centerX, color) {
 }
 
 // Reuses the player's own in-game drawing, magnified so it reads clearly on the card.
-function drawPlayerPortrait(context, spawn, centerX, topY) {
-  const player = new Player(spawn);
+function drawPlayerPortrait(context, spawn, columnIndex, centerX, topY) {
+  const player = new Player({ ...spawn, spawnX: 0, spawnY: 0, facing: columnIndex === 0 ? 1 : -1 });
   player.y = 0;
   context.save();
   context.translate(Math.round(centerX - (player.width * PORTRAIT_SCALE) / 2), Math.round(topY));
@@ -127,5 +131,5 @@ function drawPlayerPortrait(context, spawn, centerX, topY) {
 function drawPlayerSelectUi(context, scene) {
   drawText(context, 'Player Select', SCREEN_WIDTH / 2, TITLE_Y, { scale: TITLE_SCALE, align: 'center' });
 
-  for (const spawn of PLAYER_SPAWNS) drawPlayerCard(context, spawn, scene.stateByPlayerId[spawn.id]);
+  for (const spawn of PLAYERS) drawPlayerCard(context, spawn, scene.stateByPlayerId[spawn.id]);
 }

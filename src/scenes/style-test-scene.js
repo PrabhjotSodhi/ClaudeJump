@@ -1,11 +1,11 @@
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../engine/config.js';
-import { WATER_LINE_Y } from '../levels/versus-arena.js';
 import { drawPanel } from '../ui/panel.js';
 import { drawText } from '../ui/text.js';
 import { drawGooglyEye, EYE_SIZE, GooglyEye } from '../vfx/googly-eyes.js';
 import { drawFullyLit, drawLightRings } from '../vfx/light-rings.js';
 
 const TILE_SIZE = 16;
+const STYLE_TEST_WATER_LINE_Y = 328;
 const PLATFORM = { x: 64, y: 232, tileCount: 32 };
 const TOP_TILE_BY_COLUMN = {
   2: 'top-moss',
@@ -374,7 +374,7 @@ class HoppingCharacter {
 export class StyleTestScene {
   constructor({ sprites }) {
     this.sprites = sprites;
-    this.waterLineY = WATER_LINE_Y;
+    this.waterLineY = STYLE_TEST_WATER_LINE_Y;
     this.lighting = { fogStrength: FOG_STRENGTH };
     this.backgroundDrawn = false;
     this.tickCount = 0;

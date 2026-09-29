@@ -1,5 +1,5 @@
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../engine/config.js';
-import { PLAYER_SPAWNS } from '../levels/versus-arena.js';
+import { PLAYERS } from '../levels/versus-arena.js';
 import { MENU_BACKGROUND_COLOR, NO_WATER_LINE_Y } from '../ui/menu-screen.js';
 import { drawText } from '../ui/text.js';
 import { PlayerSelectScene } from './player-select-scene.js';
@@ -14,8 +14,8 @@ const SELECTION_MARKER_X = OPTIONS_LEFT_X - 20;
 const SELECTION_MARKER_HEIGHT = 18;
 const CONTROLS_TOP_Y = 260;
 const CONTROLS_ROW_HEIGHT = 20;
-const RED_COLOR = PLAYER_SPAWNS.find((spawn) => spawn.id === 'red').color;
-const BLUE_COLOR = PLAYER_SPAWNS.find((spawn) => spawn.id === 'blue').color;
+const RED_COLOR = PLAYERS.find((spawn) => spawn.id === 'red').color;
+const BLUE_COLOR = PLAYERS.find((spawn) => spawn.id === 'blue').color;
 
 const FULLSCREEN_BUTTON_SIZE = 28;
 const FULLSCREEN_BUTTON_MARGIN = 12;
@@ -36,8 +36,9 @@ export class TitleScene {
   // initialInput seeds the held-key baseline from whatever opened this scene, so a jump or down
   // press still held over from that moment (such as confirming "Return to title" from the pause
   // menu) does not immediately count as a fresh press here.
-  constructor({ sceneManager, seed = Date.now(), options = MENU_OPTIONS, initialInput = {} } = {}) {
+  constructor({ sceneManager, level, seed = Date.now(), options = MENU_OPTIONS, initialInput = {} } = {}) {
     this.sceneManager = sceneManager;
+    this.level = level;
     this.seed = seed;
     this.options = options;
     this.selectedIndex = 0;
@@ -69,7 +70,9 @@ export class TitleScene {
   confirmSelection() {
     const option = this.options[this.selectedIndex];
     if (option.id === 'versus')
-      this.sceneManager.setScene(new PlayerSelectScene({ sceneManager: this.sceneManager, seed: this.seed }));
+      this.sceneManager.setScene(
+        new PlayerSelectScene({ sceneManager: this.sceneManager, level: this.level, seed: this.seed }),
+      );
   }
 
   render(renderer) {

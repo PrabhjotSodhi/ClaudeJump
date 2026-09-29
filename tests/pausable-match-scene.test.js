@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import { PausableMatchScene } from '../src/scenes/pausable-match-scene.js';
 import { TitleScene } from '../src/scenes/title-scene.js';
 import { VersusScene } from '../src/scenes/versus-scene.js';
+import { harborLevel } from './fixtures/harbor-level.mjs';
 
 function noInput() {
   return { left: false, right: false, jump: false, down: false, action: false, pause: false };
@@ -21,7 +22,7 @@ function inputsWith(playerId, overrides) {
 function pausedScene(overrides = {}) {
   const scenes = [];
   const sceneManager = { setScene: (nextScene) => scenes.push(nextScene) };
-  const matchScene = new VersusScene({ startInFightPhase: true, seed: 0 });
+  const matchScene = new VersusScene({ level: harborLevel, startInFightPhase: true, seed: 0 });
   const scene = new PausableMatchScene({ sceneManager, matchScene, ...overrides });
   return { scene, matchScene, sceneManager, scenes };
 }
@@ -102,7 +103,7 @@ test('Return to title switches the scene to a fresh TitleScene', () => {
 test("the title seed is drawn from the match's seeded random, not the clock", () => {
   // A second match built with the same seed draws the same first random value, so the title
   // seed this test expects is not tied to Date.now() or any other wall-clock source.
-  const expectedSeed = Math.floor(new VersusScene({ seed: 0 }).random.next() * 0xffffffff);
+  const expectedSeed = Math.floor(new VersusScene({ level: harborLevel, seed: 0 }).random.next() * 0xffffffff);
   const { scene, scenes } = pausedScene();
 
   scene.update(inputsWith('red', { pause: true }));

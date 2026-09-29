@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { PlayerSelectScene } from '../src/scenes/player-select-scene.js';
+import { harborLevel } from './fixtures/harbor-level.mjs';
 
 function noInput() {
   return { left: false, right: false, jump: false, down: false, action: false };
@@ -19,7 +20,7 @@ function inputsWithJump(playerId) {
 function sceneWithBaseline(overrides = {}) {
   const scenes = [];
   const sceneManager = { setScene: (nextScene) => scenes.push(nextScene) };
-  const scene = new PlayerSelectScene({ sceneManager, seed: 0, ...overrides });
+  const scene = new PlayerSelectScene({ sceneManager, level: harborLevel, seed: 0, ...overrides });
   // First tick only captures the baseline, so run it once with neutral input before each test acts.
   scene.update(neutralInputs());
   return { scene, scenes };
@@ -58,7 +59,7 @@ test('a second fresh press readies up a joined player', () => {
 test('a press held over from before this scene does not count as a fresh press', () => {
   const scenes = [];
   const sceneManager = { setScene: (nextScene) => scenes.push(nextScene) };
-  const scene = new PlayerSelectScene({ sceneManager, seed: 0 });
+  const scene = new PlayerSelectScene({ sceneManager, level: harborLevel, seed: 0 });
 
   // Jump already held on the very first tick, carried over from confirming Versus on the title screen.
   scene.update(inputsWithJump('red'));

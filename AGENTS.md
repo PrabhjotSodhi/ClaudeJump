@@ -42,11 +42,11 @@ Rules that keep the game deterministic:
 - `src/engine/` runs any scene: the tick loop, window and shader, renderer, input, events, entities, assets, sounds.
 - `src/entities/` holds the things in the world: player, platform, rocket, crab.
 - `src/scenes/` holds the rules of each screen: title, Versus, Survival.
-- `src/levels/` holds fixed platform layouts.
+- `src/levels/` holds the level loader and the Versus background.
 - `src/cards/` holds card definitions and a player's hand.
 - `src/ui/` holds the pixel font and HUD.
 - `src/vfx/` holds effects that only listen to events: particles, sparks, water, clouds, screen shake.
-- `data/` holds `config/`, `images/entities/<type>/<action>/`, `fonts/`, `shaders/` and `sfx/`.
+- `data/` holds `config/`, `levels/` (tile grid files), `images/entities/<type>/<action>/`, `fonts/`, `shaders/` and `sfx/`.
 - `tests/` holds `node --test` tests for game logic.
 
 Put every file in the folder that matches its job, even when it is the only file there.

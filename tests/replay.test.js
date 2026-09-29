@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 import { VersusScene } from '../src/scenes/versus-scene.js';
+import { harborLevel } from './fixtures/harbor-level.mjs';
 import { runScriptedReplay } from './fixtures/replay-script.mjs';
 
 const baseline = JSON.parse(
@@ -10,7 +11,7 @@ const baseline = JSON.parse(
 );
 
 test('the 640x360 grid plays the scripted replay exactly matching the recorded baseline', () => {
-  const { snapshots } = runScriptedReplay(VersusScene);
+  const { snapshots } = runScriptedReplay(VersusScene, harborLevel);
 
   assert.equal(snapshots.length, baseline.length);
   for (let index = 0; index < baseline.length; index++) {
