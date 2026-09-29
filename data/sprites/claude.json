@@ -1,0 +1,47 @@
+{
+  "colors": {
+    ".": null,
+    "o": "#3e2731",
+    "w": "#ffffff",
+    "h": "#f77622",
+    "b": "#d77643",
+    "s": "#be4a2f",
+    "d": "#a22633"
+  },
+  "frames": {
+    "body": [
+      "................................",
+      "............w...................",
+      "...........wow....w.............",
+      "..........wosow..wow............",
+      ".........wohssowwosow...ww......",
+      ".......w.wohsdowohdow.wwoow.....",
+      "......wowwohbssoohdowwoohsow....",
+      ".....wosooohbsdohsdooohhdow.....",
+      ".....wohhbohbbbhbsdohhbsdow.....",
+      ".....wosbbhbbbbbbbbhbbsdow......",
+      "..wwwwwohbbbbbbbbbbbbbsdowww....",
+      ".woooooohbbbbbbbbbbbbsdooooow...",
+      "woshhhhhbbbbbbbbbbbbbbbhhhhsow..",
+      ".wosdsbbbbbbbbbbbbbbbbbbssdow...",
+      "..woossbbbbbbbbbbbbbbbbbddow....",
+      "...wwobbbbbbbbbbbbbbbbsdoow.....",
+      "....wwohbbbbbbbbbbbbbbbssoow....",
+      "...woohbbbbbbbbbbbbbbbbbbhsoww..",
+      "..woshssbbbbbbbbbbbbbbbsssssoow.",
+      "...wosddbbbbbbbbbbbbbbbdddddssow",
+      "....wooohbbbbbbbbbbbbsdooooooow.",
+      ".....wohbbbsbbbbbbbbssdowwwwww..",
+      ".....wohbssdbbbsbbbbdsssow......",
+      "....wohssddohbbdbbsdosddow......",
+      "....wohddooohsdohbsdooosow......",
+      "...wosdoowwohsdosbsdowwow.......",
+      "....wooww.wohdowohsdow.w........",
+      ".....ww...wosowwossdow..........",
+      "...........wow..wosow...........",
+      "............w....wow............",
+      "..................w.............",
+      "................................"
+    ]
+  }
+}

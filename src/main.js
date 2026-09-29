@@ -2,9 +2,12 @@ import { SCREEN_HEIGHT, SCREEN_WIDTH, TICK_RATE } from './engine/config.js';
 import { createGameLoop } from './engine/game-loop.js';
 import { createGamepadInput } from './engine/gamepad-input.js';
 import { combineInputs, createKeyboardInput } from './engine/input.js';
+import { buildLookupTexture } from './engine/palette.js';
 import { Renderer } from './engine/renderer.js';
 import { SceneManager } from './engine/scene-manager.js';
+import { loadSpriteFile } from './engine/sprites.js';
 import { createWindow } from './engine/window.js';
+import { StyleTestScene } from './scenes/style-test-scene.js';
 import { FULLSCREEN_BUTTON, TitleScene } from './scenes/title-scene.js';
 import { VersusScene } from './scenes/versus-scene.js';
 
@@ -14,16 +17,41 @@ async function loadText(path) {
 }
 
 async function main() {
-  const isDevMode = new URLSearchParams(location.search).has('dev');
+  const searchParameters = new URLSearchParams(location.search);
+  const isDevMode = searchParameters.has('dev');
 
-  const [keyMappings, vertexShaderSource, fragmentShaderSource] = await Promise.all([
+  const [
+    keyMappings,
+    palette,
+    claude,
+    muse,
+    chatgpt,
+    gemini,
+    grok,
+    deepseek,
+    mistral,
+    tiles,
+    props,
+    vertexShaderSource,
+    fragmentShaderSource,
+  ] = await Promise.all([
     fetch('data/config/key-mappings.json').then((response) => response.json()),
+    fetch('data/palette.json').then((response) => response.json()),
+    loadSpriteFile('data/sprites/claude.json'),
+    loadSpriteFile('data/sprites/muse.json'),
+    loadSpriteFile('data/sprites/chatgpt.json'),
+    loadSpriteFile('data/sprites/gemini.json'),
+    loadSpriteFile('data/sprites/grok.json'),
+    loadSpriteFile('data/sprites/deepseek.json'),
+    loadSpriteFile('data/sprites/mistral.json'),
+    loadSpriteFile('data/sprites/tiles.json'),
+    loadSpriteFile('data/sprites/props.json'),
     loadText('data/shaders/composite.vert'),
     loadText('data/shaders/composite.frag'),
   ]);
 
   const canvas = document.getElementById('screen');
-  const gameWindow = createWindow(canvas, vertexShaderSource, fragmentShaderSource);
+  const gameWindow = createWindow(canvas, vertexShaderSource, fragmentShaderSource, buildLookupTexture(palette));
   if (!gameWindow) {
     canvas.style.display = 'none';
     document.getElementById('webgl-message').style.display = 'block';
@@ -33,7 +61,13 @@ async function main() {
   const keyboardInput = createKeyboardInput(keyMappings);
   const gamepadInput = createGamepadInput(keyMappings.map((mapping) => mapping.id));
   const sceneManager = new SceneManager();
-  if (isDevMode) {
+  if (isDevMode && searchParameters.get('scene') === 'style') {
+    sceneManager.setScene(
+      new StyleTestScene({
+        sprites: { claude, muse, chatgpt, gemini, grok, deepseek, mistral, tiles, props },
+      }),
+    );
+  } else if (isDevMode) {
     sceneManager.setScene(new VersusScene({ startInFightPhase: true, seed: 0 }));
   } else {
     sceneManager.setScene(new TitleScene({ sceneManager, seed: Date.now() }));
@@ -45,6 +79,8 @@ async function main() {
       backgroundCanvas: renderer.backgroundChanged ? renderer.backgroundCanvas : null,
       gameCanvas: renderer.gameCanvas,
       uiCanvas: renderer.uiCanvas,
+      lightCanvas: sceneManager.currentScene.lighting ? renderer.lightCanvas : null,
+      fogStrength: sceneManager.currentScene.lighting?.fogStrength,
       waterLineY: sceneManager.currentScene.waterLineY,
       timeSeconds: timestamp / 1000,
     });
