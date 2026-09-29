@@ -463,6 +463,7 @@ export class VersusScene {
       const awayFromCenterDirection = player.x + player.width / 2 < bouncePad.x + bouncePad.width / 2 ? -1 : 1;
       const flingDirection = movingDirection === 0 ? awayFromCenterDirection : -movingDirection;
       player.applyKnockback(BOUNCE_PAD_FLING_VELOCITY_X * flingDirection, BOUNCE_PAD_FLING_VELOCITY_Y);
+      this.events.emit('trap-sprung', { ownerId: bouncePad.ownerId, targetId: player.id });
       this.requestHitPause(SHOVE_HIT_PAUSE_TICKS);
       this.entityGroups.remove('bouncePads', bouncePad);
       return;

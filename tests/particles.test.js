@@ -36,6 +36,13 @@ test('shoves and card plays throw sparks in the hitting player color', () => {
   assert.deepEqual([...colors].sort(), ['#2864dc', '#dc2828']);
 });
 
+test('a sprung trap throws sparks at the target in the trap owner color', () => {
+  const { events, particles } = setUp();
+  events.emit('trap-sprung', { ownerId: 'blue', targetId: 'red' });
+  assert.equal(particles.list.length, 8);
+  assert.ok(particles.list.every((particle) => particle.color === '#2864dc'));
+});
+
 test('a dash hit throws sparks in both players colors, and blasts throw sparks', () => {
   const { events, particles } = setUp();
   events.emit('dash-hit', { playerIds: ['red', 'blue'] });

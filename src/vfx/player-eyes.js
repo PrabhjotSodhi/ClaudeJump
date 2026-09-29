@@ -11,6 +11,7 @@ export class PlayerEyes {
     this.getPlayers = getPlayers;
     events.on('player-jumped', ({ playerId }) => this.jump(playerId));
     events.on('player-shoved', ({ targetId }) => this.hit(targetId));
+    events.on('trap-sprung', ({ targetId }) => this.hit(targetId));
     events.on('dash-hit', ({ playerIds = [] }) => playerIds.forEach((playerId) => this.hit(playerId)));
     events.on('rocket-exploded', ({ playerIds = [] }) => playerIds.forEach((playerId) => this.hit(playerId)));
     events.on('bomb-exploded', ({ playerIds = [] }) => playerIds.forEach((playerId) => this.hit(playerId)));
