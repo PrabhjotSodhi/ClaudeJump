@@ -15,6 +15,8 @@ import { drawHeldCardIcons } from '../ui/held-card-icons.js';
 import { drawHud } from '../ui/hud.js';
 import { MatchStats } from '../ui/match-stats.js';
 import { drawPlayerTags } from '../ui/player-tags.js';
+import { drawParticles, HARD_LANDING_SPEED, Particles } from '../vfx/particles.js';
+import { SeaRipple } from '../vfx/sea-ripple.js';
 import { ScreenShake } from '../vfx/screen-shake.js';
 import { drawWrapPuffs, WrapPuffTracker } from '../vfx/wrap-puff.js';
 
@@ -81,6 +83,14 @@ export class VersusScene {
     // Display-only, and created here for the same reason as the stats: it must never miss an event.
     this.screenShake = new ScreenShake();
     this.screenShake.attach(this.events);
+    this.seaRipple = new SeaRipple();
+    this.seaRipple.attach(this.events, () => this.players);
+    this.particles = new Particles();
+    this.particles.attach(this.events, {
+      getPlayers: () => this.players,
+      getWaterLineY: () => this.waterLineY,
+      getTickCount: () => this.tickCount,
+    });
     // Display data for the results screen, counted only from events. Created here (rather than
     // lazily on first render) so it never misses an event: dev mode can run a whole match through
     // step() with no render call in between. Game logic never reads it, only the HUD does.
@@ -143,6 +153,8 @@ export class VersusScene {
     this.tickCount++;
     this.ticksRemaining--;
     this.screenShake.update();
+    this.seaRipple.update();
+    this.particles.update();
     switch (this.phase) {
       case 'ready':
         if (this.ticksRemaining <= 0) {
@@ -204,7 +216,12 @@ export class VersusScene {
   updatePlayers(inputByPlayerId) {
     const platforms = this.entityGroups.get('platforms');
     for (const player of this.players) {
+      const wasOnGround = player.onGround;
+      const fallSpeed = player.velocityY;
       player.update(inputByPlayerId ? inputByPlayerId[player.id] : null, platforms);
+      const feet = { playerId: player.id, x: player.x + player.width / 2, y: player.y + player.height };
+      if (player.ticksSinceJump === 0) this.events.emit('player-jumped', feet);
+      if (player.onGround && !wasOnGround && fallSpeed >= HARD_LANDING_SPEED) this.events.emit('player-landed', feet);
       if (player.playedCardName) {
         this.events.emit('card-played', { playerId: player.id, cardName: player.playedCardName });
         if (player.playedCardName === 'rocket') this.spawnRocket(player);
@@ -579,11 +596,13 @@ export class VersusScene {
     }
 
     renderer.shakeOffset = this.screenShake.offset;
+    renderer.seaRippleBytes = this.seaRipple.toBytes();
     renderer.clearGameLayer();
     for (const tile of this.level.tiles)
       renderer.gameContext.drawImage(this.level.tileSprites[tile.name], tile.x, tile.y);
     drawWrapPuffs(renderer.gameContext, this);
     this.entityGroups.renderAll(renderer.gameContext);
+    drawParticles(renderer.gameContext, this);
     drawHeldCardIcons(renderer.gameContext, this);
     drawPlayerTags(renderer.gameContext, this);
 

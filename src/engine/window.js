@@ -1,7 +1,8 @@
-import { SCREEN_HEIGHT, SCREEN_WIDTH } from './config.js';
+import { SCREEN_HEIGHT, SCREEN_WIDTH, SEA_COLUMN_COUNT } from './config.js';
 
 const TEXTURE_UNIT_BY_LAYER_NAME = { background: 0, game: 1, ui: 2, light: 3 };
 const PALETTE_LOOKUP_TEXTURE_UNIT = 4;
+const SEA_TEXTURE_UNIT = 5;
 // Fog noise repeats every this many pixels, so its scroll offset wraps without a jump.
 const FOG_PERIOD_PIXELS = 512;
 const FOG_SCROLL_PIXELS_PER_SECOND = { x: 4, y: 1.5 };
@@ -97,6 +98,14 @@ export function createWindow(canvas, vertexShaderSource, fragmentShaderSource, p
   );
   webglContext.uniform1i(webglContext.getUniformLocation(program, 'u_paletteLookup'), PALETTE_LOOKUP_TEXTURE_UNIT);
   webglContext.uniform1f(webglContext.getUniformLocation(program, 'u_paletteSize'), paletteLookup.width);
+  const flatSea = new Uint8Array(SEA_COLUMN_COUNT * 4).fill(128);
+  webglContext.activeTexture(webglContext.TEXTURE0 + SEA_TEXTURE_UNIT);
+  webglContext.bindTexture(webglContext.TEXTURE_2D, webglContext.createTexture());
+  webglContext.texParameteri(webglContext.TEXTURE_2D, webglContext.TEXTURE_MIN_FILTER, webglContext.NEAREST);
+  webglContext.texParameteri(webglContext.TEXTURE_2D, webglContext.TEXTURE_MAG_FILTER, webglContext.NEAREST);
+  webglContext.texParameteri(webglContext.TEXTURE_2D, webglContext.TEXTURE_WRAP_S, webglContext.CLAMP_TO_EDGE);
+  webglContext.texParameteri(webglContext.TEXTURE_2D, webglContext.TEXTURE_WRAP_T, webglContext.CLAMP_TO_EDGE);
+  webglContext.uniform1i(webglContext.getUniformLocation(program, 'u_seaHeights'), SEA_TEXTURE_UNIT);
   webglContext.uniform2f(webglContext.getUniformLocation(program, 'u_resolution'), SCREEN_WIDTH, SCREEN_HEIGHT);
   const waterLineUniformLocation = webglContext.getUniformLocation(program, 'u_waterLine');
   const shakeOffsetUniformLocation = webglContext.getUniformLocation(program, 'u_shakeOffset');
@@ -124,10 +133,32 @@ export function createWindow(canvas, vertexShaderSource, fragmentShaderSource, p
 
   return {
     // Pass lightCanvas only for scenes that use lighting. Other scenes draw exactly as before.
-    render({ backgroundCanvas, gameCanvas, uiCanvas, lightCanvas, fogStrength, shakeOffset, waterLineY, timeSeconds }) {
+    render({
+      backgroundCanvas,
+      gameCanvas,
+      uiCanvas,
+      lightCanvas,
+      fogStrength,
+      shakeOffset,
+      seaRippleBytes,
+      waterLineY,
+      timeSeconds,
+    }) {
       if (backgroundCanvas) uploadLayer('background', backgroundCanvas);
       uploadLayer('game', gameCanvas);
       uploadLayer('ui', uiCanvas);
+      webglContext.activeTexture(webglContext.TEXTURE0 + SEA_TEXTURE_UNIT);
+      webglContext.texImage2D(
+        webglContext.TEXTURE_2D,
+        0,
+        webglContext.RGBA,
+        SEA_COLUMN_COUNT,
+        1,
+        0,
+        webglContext.RGBA,
+        webglContext.UNSIGNED_BYTE,
+        seaRippleBytes ?? flatSea,
+      );
       webglContext.uniform2f(shakeOffsetUniformLocation, shakeOffset.x, shakeOffset.y);
       if (lightCanvas) uploadLayer('light', lightCanvas);
       webglContext.uniform1f(lightingEnabledUniformLocation, lightCanvas ? 1 : 0);
