@@ -7,6 +7,7 @@ import { wrapAroundScreen } from '../engine/wrap-around-screen.js';
 import { DEFAULT_CHARACTER_BY_PLAYER_ID } from '../entities/characters.js';
 import { BANANA_SLIP_TICKS } from '../entities/banana.js';
 import { BouncePad, BOUNCE_PAD_HEIGHT, BOUNCE_PAD_LAUNCH_VELOCITY, BOUNCE_PAD_WIDTH } from '../entities/bounce-pad.js';
+import { Crab, CRAB_HEIGHT, CRAB_WIDTH } from '../entities/crab.js';
 import { Platform } from '../entities/platform.js';
 import { Player, SHOVE_KNOCKBACK_VELOCITY_X, SHOVE_KNOCKBACK_VELOCITY_Y } from '../entities/player.js';
 import { Rocket, ROCKET_HEIGHT, ROCKET_WIDTH } from '../entities/rocket.js';
@@ -49,6 +50,14 @@ export const ROCKET_WARNING_TICKS = 60;
 export const ROCKET_MAX_OFFSET_Y = 60;
 // Rockets draw from their own stream so they never change how the rows are laid out.
 const ROCKET_SEED_OFFSET = 0x5f3759df;
+// Crabs draw from their own stream too, so they never change how the rows are laid out.
+const CRAB_SEED_OFFSET = 0x2545f491;
+// The chance that a run at least CRAB_MIN_RUN_BLOCKS wide carries a crab.
+export const CRAB_CHANCE = 0.15;
+const CRAB_MIN_RUN_BLOCKS = 4;
+export const CRAB_STOMP_VELOCITY_Y = -8;
+export const CRAB_KNOCKBACK_VELOCITY_X = 8;
+export const CRAB_KNOCKBACK_VELOCITY_Y = -4;
 export const BEST_SCORE_STORAGE_KEY = 'claudejump.survival.best';
 
 // The horizontal gap between two runs, taking the shortest way round the screen edge. 0 when they overlap.
@@ -132,8 +141,10 @@ export class SurvivalScene {
   startRun() {
     this.random = new SeededRandom(this.seed);
     this.rocketRandom = new SeededRandom(this.seed + ROCKET_SEED_OFFSET);
+    this.crabRandom = new SeededRandom(this.seed + CRAB_SEED_OFFSET);
     this.rocketWarnings = [];
     this.entityGroups.clear('rockets');
+    this.entityGroups.clear('crabs');
     this.phase = 'playing';
     this.runTicks = 0;
     this.seaY = START_FLOOR_Y + SEA_START_BELOW;
@@ -218,7 +229,20 @@ export class SurvivalScene {
 
   generateRows() {
     while (this.rows.at(-1).y > this.cameraTopY - GENERATE_AHEAD_Y) {
-      this.addRow(this.generateRow(this.rows.at(-1)));
+      const row = this.generateRow(this.rows.at(-1));
+      this.addRow(row);
+      this.spawnCrabs(row);
+    }
+  }
+
+  spawnCrabs(row) {
+    for (const run of row.runs) {
+      if (run.width < CRAB_MIN_RUN_BLOCKS * TILE_SIZE || this.crabRandom.next() >= CRAB_CHANCE) continue;
+      const maxX = run.x + run.width - CRAB_WIDTH;
+      const x = run.x + Math.floor(this.crabRandom.next() * (maxX - run.x + 1));
+      const direction = this.crabRandom.next() < 0.5 ? -1 : 1;
+      run.crab = new Crab({ x, y: row.y - CRAB_HEIGHT, minX: run.x, maxX, direction });
+      this.entityGroups.add('crabs', run.crab);
     }
   }
 
@@ -235,6 +259,7 @@ export class SurvivalScene {
   removeRun(run) {
     this.entityGroups.remove('platforms', run.platform);
     if (run.pad) this.entityGroups.remove('bouncePads', run.pad);
+    if (run.crab) this.entityGroups.remove('crabs', run.crab);
   }
 
   runUnderfoot(player) {
@@ -281,6 +306,32 @@ export class SurvivalScene {
           this.events.emit('block-broken', { x: run.x + block * TILE_SIZE, y: row.y, size: TILE_SIZE });
         }
       }
+    }
+  }
+
+  // A stomp is the player's feet crossing the crab's top this tick. Any other touch pinches, unless a hit is
+  // already knocking the player away.
+  updateCrabs(player) {
+    for (const crab of this.entityGroups.get('crabs')) {
+      crab.update();
+      if (player.inWater || !player.overlaps(crab)) continue;
+      const feetY = player.y + player.height;
+      if (player.previousY + player.height <= crab.y && feetY >= crab.y) {
+        player.launchUpward(CRAB_STOMP_VELOCITY_Y);
+        this.removeCrab(crab);
+        this.events.emit('crab-stomped', { x: crab.x + crab.width / 2, y: crab.y });
+      } else if (player.knockbackVelocityX === 0) {
+        const awayDirection = Math.sign(player.x + player.width / 2 - (crab.x + crab.width / 2)) || -player.facing;
+        player.applyKnockback(CRAB_KNOCKBACK_VELOCITY_X * awayDirection, CRAB_KNOCKBACK_VELOCITY_Y);
+        this.events.emit('player-pinched', { playerId: player.id });
+      }
+    }
+  }
+
+  removeCrab(crab) {
+    this.entityGroups.remove('crabs', crab);
+    for (const row of this.rows) {
+      for (const run of row.runs) if (run.crab === crab) delete run.crab;
     }
   }
 
@@ -338,6 +389,7 @@ export class SurvivalScene {
     player.update(inputByPlayerId[PLAYER_ID] ?? null, this.entityGroups.get('platforms'));
     if (player.ticksSinceLanding === 0) this.applyLanding(player);
     this.launchFromBouncePads(player);
+    this.updateCrabs(player);
     this.updateRockets(player);
     if (player.ticksSinceJump === 0) {
       this.events.emit('player-jumped', {
@@ -398,6 +450,7 @@ export class SurvivalScene {
         run.pad?.render(context);
       }
     }
+    this.entityGroups.get('crabs').forEach((crab) => crab.render(context));
     this.entityGroups
       .get('players')
       .forEach((player) => player.render(context, { sprites: this.sprites, playerEyes: this.playerEyes }));

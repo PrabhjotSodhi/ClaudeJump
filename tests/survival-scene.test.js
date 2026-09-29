@@ -37,7 +37,7 @@ function makeClimber(scene) {
 }
 
 function layout(scene) {
-  return scene.rows.map((row) => ({ y: row.y, runs: row.runs }));
+  return scene.rows.map((row) => ({ y: row.y, runs: row.runs.map(({ crab, ...run }) => run) }));
 }
 
 test('the same seed builds the same tower', () => {

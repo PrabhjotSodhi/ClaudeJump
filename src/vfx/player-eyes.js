@@ -12,6 +12,7 @@ export class PlayerEyes {
     events.on('player-jumped', ({ playerId }) => this.jump(playerId));
     events.on('player-shoved', ({ targetId }) => this.hit(targetId));
     events.on('player-burned', ({ playerId }) => this.hit(playerId));
+    events.on('player-pinched', ({ playerId }) => this.hit(playerId));
     events.on('trap-sprung', ({ targetId }) => this.hit(targetId));
     events.on('dash-hit', ({ playerIds = [] }) => playerIds.forEach((playerId) => this.hit(playerId)));
     events.on('rocket-exploded', ({ playerIds = [] }) => playerIds.forEach((playerId) => this.hit(playerId)));
