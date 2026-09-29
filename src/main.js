@@ -6,7 +6,7 @@ import { buildLookupTexture } from './engine/palette.js';
 import { Renderer } from './engine/renderer.js';
 import { SceneManager } from './engine/scene-manager.js';
 import { loadSpriteFile } from './engine/sprites.js';
-import { loadLevel } from './levels/level-loader.js';
+import { loadLevel, stoneColorOverrides } from './levels/level-loader.js';
 import { createLevelThumbnail } from './levels/level-thumbnail.js';
 import { createWindow } from './engine/window.js';
 import { PausableMatchScene } from './scenes/pausable-match-scene.js';
@@ -74,6 +74,16 @@ async function main() {
   const sprites = { claude, muse, chatgpt, gemini, grok, deepseek, mistral, props, blocks };
   // Survival builds its platforms from the Harbor stone, the first level file.
   sprites.stoneBlocks = levels[0].tileSprites;
+  const platformStoneColors = {
+    ice: { light: '#2ce8f5', mid: '#0099db', dark: '#124e89' },
+    fire: { light: '#feae34', mid: '#f77622', dark: '#be4a2f' },
+    'fire-flicker': { light: '#fee761', mid: '#feae34', dark: '#f77622' },
+    crumbling: { light: '#a09088', mid: '#585050', dark: '#3e2731' },
+  };
+  sprites.stoneBlocksByKind = { stone: sprites.stoneBlocks };
+  for (const [kind, colors] of Object.entries(platformStoneColors)) {
+    sprites.stoneBlocksByKind[kind] = await loadSpriteFile('data/sprites/blocks.json', stoneColorOverrides(colors));
+  }
   if (isDevMode && searchParameters.get('scene') === 'style') {
     sceneManager.setScene(new StyleTestScene({ sprites }));
   } else if (isDevMode && searchParameters.get('scene') === 'survival') {

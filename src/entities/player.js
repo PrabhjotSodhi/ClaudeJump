@@ -25,6 +25,8 @@ export const SHOVE_ACTIVE_TICKS = 6;
 const SHOVE_COOLDOWN_TICKS = 30;
 export const SHOVE_HIT_ZONE_WIDTH = 16;
 export const SHOVE_HIT_ZONE_HEIGHT = 20;
+export const SHOVE_KNOCKBACK_VELOCITY_X = 7;
+export const SHOVE_KNOCKBACK_VELOCITY_Y = -4;
 
 // Display only: how long, and by how many pixels, a player stretches after a jump and squashes
 // after a landing. The hitbox never changes.

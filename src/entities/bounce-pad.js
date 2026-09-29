@@ -27,6 +27,16 @@ export class BouncePad extends Entity {
     if (this.ticksRemaining <= 0) this.expired = true;
   }
 
+  // Only a fall that crosses the pad's top surface this tick counts as landing on it.
+  // Walking into its side never crosses that surface, so it does nothing.
+  isLandedOnBy(player) {
+    if (player.velocityY <= 0) return false;
+    const previousFeetY = player.previousY + player.height;
+    const feetY = player.y + player.height;
+    if (previousFeetY > this.y || feetY <= this.y) return false;
+    return player.x + player.width > this.x && player.x < this.x + this.width;
+  }
+
   render(context) {
     const drawX = Math.round(this.x);
     const drawY = Math.round(this.y);

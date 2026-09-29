@@ -3,6 +3,7 @@
 // spaced angles, and the small offsets come from the tick count, so the same events always
 // throw the same particles.
 const DUST_COLOR = '#c8ccd4';
+const FIRE_COLOR = '#f77622';
 const BLAST_COLOR = '#ffd23c';
 const DROPLET_COLOR = '#b8e0ff';
 const PLAYER_HALF_WIDTH = 12;
@@ -45,6 +46,10 @@ export class Particles {
       const owner = findPlayer(ownerId);
       const target = findPlayer(targetId);
       if (owner && target) burst(centerOf(target).x, centerOf(target).y, owner.color, HIT_SPARKS);
+    });
+    events.on('player-burned', ({ playerId }) => {
+      const player = findPlayer(playerId);
+      if (player) burst(centerOf(player).x, player.y + player.height, FIRE_COLOR, HIT_SPARKS);
     });
     events.on('card-played', ({ playerId }) => {
       const player = findPlayer(playerId);
