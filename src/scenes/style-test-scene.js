@@ -4,122 +4,118 @@ import { drawText } from '../ui/text.js';
 import { findCharacter } from '../entities/characters.js';
 import { drawCharacterBody, FRAME_SIZE } from '../vfx/character-body.js';
 import { EYE_STIFFNESSES, GooglyEye } from '../vfx/googly-eyes.js';
-import { drawFullyLit, drawLightRings } from '../vfx/light-rings.js';
 
-const TILE_SIZE = 16;
 const STYLE_TEST_WATER_LINE_Y = 328;
-const PLATFORM = { x: 64, y: 232, tileCount: 32 };
-const TOP_TILE_BY_COLUMN = {
-  2: 'top-moss',
-  6: 'top-crack',
-  10: 'top-moss',
-  14: 'top-crack',
-  17: 'top-moss',
-  22: 'top-crack',
-  26: 'top-moss',
-  29: 'top-crack',
-};
-const BOTTOM_TILE_BY_COLUMN = { 4: 'bottom-crack', 15: 'bottom-crack', 25: 'bottom-crack' };
 
-// Background colors are drawn bright because the shader darkens everything unlit by two ramp steps.
-const SKY_COLOR = '#8b9bb4';
-const HORIZON_COLOR = '#c0cbdc';
-const HORIZON_Y = 196;
-const CLOUD_COLOR = '#c0cbdc';
-const CLOUD_TOP_COLOR = '#ffffff';
-// Each cloud is a row of bumps on a flat base: [offset x, width, height].
-const CLOUDS = [
-  {
-    x: 190,
-    y: 132,
-    bumps: [
-      [0, 34, 5],
-      [8, 18, 10],
-      [22, 16, 7],
-    ],
-  },
-  {
-    x: 286,
-    y: 50,
-    bumps: [
-      [0, 22, 4],
-      [6, 20, 8],
-      [20, 24, 6],
-      [36, 18, 3],
-    ],
-  },
-  {
-    x: 508,
-    y: 104,
-    bumps: [
-      [0, 20, 4],
-      [6, 14, 8],
-      [16, 16, 5],
-    ],
-  },
+// Every block's top sits on CLUSTER_TOP_Y so the cast can hop across the cluster.
+const CLUSTER_TOP_Y = 216;
+const CLUSTER_BLOCKS = [
+  ['block-big-0', 56, 216],
+  ['block-big-1', 90, 216],
+  ['block-small-0', 124, 216],
+  ['block-big-1', 142, 216],
+  ['block-big-0', 176, 216],
+  ['block-small-1', 210, 216],
+  ['block-big-1', 228, 216],
+  ['block-small-1', 124, 234],
+  ['block-big-1', 74, 250],
+  ['block-small-0', 108, 252],
+  ['block-big-0', 160, 250],
+  ['block-small-0', 210, 234],
+  ['block-small-1', 90, 284],
 ];
-const FAR_CLIFF_COLOR = '#8b9bb4';
-const FAR_WINDOW_COLOR = '#5a6988';
-// Stepped cliff tops: each [x, top y] runs until the next x.
-const FAR_CLIFF_STEPS = [
-  [0, 236],
-  [36, 228],
-  [70, 240],
-  [112, 222],
-  [150, 230],
-  [214, 244],
-  [262, 236],
-  [330, 248],
-  [384, 238],
-  [432, 226],
-  [474, 234],
-  [520, 220],
-  [566, 232],
-  [604, 226],
-];
-const FAR_TOWERS = [
-  { x: 186, top: 190, width: 14, height: 44, windowY: 200 },
-  { x: 446, top: 200, width: 10, height: 30, windowY: 208 },
-];
-const NEAR_CLIFF_COLOR = '#5a6988';
-const NEAR_CLIFF_RIM_COLOR = '#8b9bb4';
-const NEAR_CLIFF_LEDGE_COLOR = '#3a4466';
-const NEAR_CLIFFS = [
-  {
-    steps: [
-      [0, 170],
-      [22, 180],
-      [48, 194],
-      [80, 212],
-      [102, 240],
-    ],
-    endX: 120,
-  },
-  {
-    steps: [
-      [530, 236],
-      [552, 214],
-      [580, 196],
-      [610, 182],
-    ],
-    endX: SCREEN_WIDTH,
-  },
-];
-const NEAR_CLIFF_LEDGES = [
-  [8, 200, 10],
-  [30, 226, 12],
-  [60, 250, 8],
-  [88, 276, 14],
-  [560, 244, 12],
-  [596, 222, 10],
-  [616, 262, 14],
-];
+const GIRDER = { x: 352, y: 168, middleCount: 14 };
+const CHAIN_XS = [390, 565];
+const CHAIN_LINK_HEIGHT = 8;
 
-const LAMP_XS = [70, 560];
-const LAMP_LIGHT_RADII = [88, 52];
-const ROCKET_LIGHT_RADII = [44, 24];
 const ROCKET = { y: 104, startX: 60, travelPixels: 460, pixelsPerTick: 1.5, flameFlickerTicks: 6 };
-const FOG_STRENGTH = 0.8;
+
+const SKY_COLOR = '#5a6988';
+const FAR_COLOR = '#3a4466';
+const MID_COLOR = '#3a4466';
+const NEAR_COLOR = '#262b44';
+const NEAR_RIM_COLOR = '#3a4466';
+const WINDOW_COLOR = '#8b9bb4';
+// Each building is [x, top, width] and runs down to the bottom of the screen.
+const FAR_BUILDINGS = [
+  [0, 190, 40],
+  [40, 150, 18],
+  [62, 176, 50],
+  [120, 134, 10],
+  [140, 196, 60],
+  [210, 118, 22],
+  [240, 170, 44],
+  [300, 188, 70],
+  [382, 140, 12],
+  [410, 176, 56],
+  [472, 124, 24],
+  [500, 162, 40],
+  [548, 184, 50],
+  [602, 146, 20],
+  [622, 180, 18],
+];
+const MID_BUILDINGS = [
+  [0, 212, 64],
+  [70, 184, 30],
+  [110, 232, 80],
+  [196, 200, 36],
+  [250, 236, 70],
+  [330, 190, 40],
+  [380, 226, 90],
+  [480, 196, 36],
+  [520, 230, 60],
+  [584, 204, 56],
+];
+// Sawtooth factory roofs: [x, base y, tooth count].
+const MID_ROOFS = [
+  [110, 232, 8],
+  [380, 226, 9],
+];
+const ROOF_TOOTH = { width: 10, height: 6 };
+// Scaffold towers: [x, top, width, bottom], braced every SCAFFOLD_BAY_HEIGHT rows.
+const MID_SCAFFOLDS = [
+  [150, 150, 24, 232],
+  [436, 156, 22, 226],
+];
+const SCAFFOLD_BAY_HEIGHT = 12;
+// Pipes: [left x, right x, top y].
+const MID_PIPES = [
+  [96, 200, 206],
+  [230, 332, 214],
+  [458, 484, 208],
+];
+const PIPE_HEIGHT = 3;
+const MID_WINDOWS = [
+  [78, 196, 2, 3],
+  [86, 210, 2, 3],
+  [206, 214, 2, 3],
+  [340, 204, 2, 3],
+  [490, 212, 2, 3],
+];
+const NEAR_BUILDINGS = [
+  [0, 160, 28],
+  [28, 262, 60],
+  [96, 278, 70],
+  [170, 252, 40],
+  [216, 286, 90],
+  [310, 262, 50],
+  [364, 290, 80],
+  [448, 258, 44],
+  [496, 280, 70],
+  [572, 236, 30],
+  [604, 176, 36],
+];
+const NEAR_WINDOWS = [
+  [8, 176, 3, 4],
+  [16, 200, 3, 4],
+  [182, 266, 3, 4],
+  [458, 272, 3, 4],
+  [614, 190, 3, 4],
+  [622, 220, 3, 4],
+];
+// Mist bands: [top y, bottom y, color]. The top half of a band is sparser than the bottom half.
+const MIST_BANDS_OVER_MID = [[232, 268, SKY_COLOR]];
+const MIST_BANDS_OVER_NEAR = [[300, SCREEN_HEIGHT, FAR_COLOR]];
 
 const HOP = { upSpeed: 3.2, sideSpeed: 1.1, gravity: 0.25, restTicks: 16, homeRestTicks: 44 };
 const BUMP = { distance: 26, sideSpeed: 1.6, upSpeed: 2.6 };
@@ -130,119 +126,114 @@ const COMPOSITE_SIZE = 48;
 
 // Each character hops toward its partner.
 const CAST = [
-  {
-    name: 'claude',
-    partner: 'muse',
-    homeX: 96,
-    firstRestTicks: 20,
-  },
-  {
-    name: 'muse',
-    partner: 'claude',
-    homeX: 160,
-    firstRestTicks: 34,
-  },
-  {
-    name: 'chatgpt',
-    partner: 'gemini',
-    homeX: 234,
-    firstRestTicks: 26,
-  },
-  {
-    name: 'gemini',
-    partner: 'chatgpt',
-    homeX: 298,
-    firstRestTicks: 42,
-  },
-  {
-    name: 'grok',
-    partner: 'deepseek',
-    homeX: 384,
-    firstRestTicks: 14,
-  },
-  {
-    name: 'deepseek',
-    partner: 'grok',
-    homeX: 456,
-    firstRestTicks: 30,
-  },
-  {
-    name: 'mistral',
-    partner: 'deepseek',
-    homeX: 528,
-    firstRestTicks: 70,
-  },
+  { name: 'claude', partner: 'muse', homeX: 88, groundY: CLUSTER_TOP_Y, firstRestTicks: 20 },
+  { name: 'muse', partner: 'claude', homeX: 140, groundY: CLUSTER_TOP_Y, firstRestTicks: 34 },
+  { name: 'chatgpt', partner: 'gemini', homeX: 176, groundY: CLUSTER_TOP_Y, firstRestTicks: 26 },
+  { name: 'gemini', partner: 'chatgpt', homeX: 228, groundY: CLUSTER_TOP_Y, firstRestTicks: 42 },
+  { name: 'grok', partner: 'deepseek', homeX: 408, groundY: GIRDER.y, firstRestTicks: 14 },
+  { name: 'deepseek', partner: 'grok', homeX: 472, groundY: GIRDER.y, firstRestTicks: 30 },
+  { name: 'mistral', partner: 'deepseek', homeX: 548, groundY: GIRDER.y, firstRestTicks: 70 },
 ];
 
-function drawCloud(context, { x, y, bumps }) {
-  for (const [offsetX, width, height] of bumps) {
-    const left = x + offsetX;
-    const top = y - height;
-    context.fillStyle = CLOUD_COLOR;
-    context.fillRect(left + 1, top, width - 2, height);
-    context.fillRect(left, top + 1, width, height - 1);
-    context.fillStyle = CLOUD_TOP_COLOR;
-    context.fillRect(left + 1, top, width - 2, 1);
-    context.fillRect(left, top + 1, 1, 1);
+// Half fills every other pixel in a checkerboard, quarter fills one pixel in four.
+function fillDither(context, left, top, width, height, color, density) {
+  context.fillStyle = color;
+  for (let y = top; y < top + height; y++) {
+    for (let x = left; x < left + width; x++) {
+      const filled = density === 'half' ? (x + y) % 2 === 0 : x % 2 === 0 && y % 2 === 0;
+      if (filled) context.fillRect(x, y, 1, 1);
+    }
   }
 }
 
-// Each step is [x, top y] and runs until the next step's x, or endX for the last one.
-function drawSteps(context, steps, endX, color) {
-  context.fillStyle = color;
-  steps.forEach(([x, top], index) => {
-    const nextX = steps[index + 1]?.[0] ?? endX;
-    context.fillRect(x, top, nextX - x, SCREEN_HEIGHT - top);
-  });
+function drawMist(context, bands) {
+  for (const [top, bottom, color] of bands) {
+    const middle = Math.floor((top + bottom) / 2);
+    fillDither(context, 0, top, SCREEN_WIDTH, middle - top, color, 'quarter');
+    fillDither(context, 0, middle, SCREEN_WIDTH, bottom - middle, color, 'half');
+  }
 }
 
+function fillBuildings(context, buildings, color) {
+  context.fillStyle = color;
+  for (const [x, top, width] of buildings) context.fillRect(x, top, width, SCREEN_HEIGHT - top);
+}
+
+function fillRects(context, rects, color) {
+  context.fillStyle = color;
+  for (const [x, y, width, height] of rects) context.fillRect(x, y, width, height);
+}
+
+function drawLine(context, fromX, fromY, toX, toY) {
+  const steps = Math.max(Math.abs(toX - fromX), Math.abs(toY - fromY));
+  for (let step = 0; step <= steps; step++) {
+    const x = Math.round(fromX + ((toX - fromX) * step) / steps);
+    const y = Math.round(fromY + ((toY - fromY) * step) / steps);
+    context.fillRect(x, y, 1, 1);
+  }
+}
+
+function drawScaffold(context, [left, top, width, bottom]) {
+  const right = left + width - 1;
+  context.fillRect(left, top, 1, bottom - top);
+  context.fillRect(right, top, 1, bottom - top);
+  for (let y = top; y + SCAFFOLD_BAY_HEIGHT <= bottom; y += SCAFFOLD_BAY_HEIGHT) {
+    context.fillRect(left, y, width, 1);
+    drawLine(context, left, y, right, y + SCAFFOLD_BAY_HEIGHT);
+  }
+}
+
+function drawSawtoothRoof(context, [left, baseY, toothCount]) {
+  for (let column = 0; column < toothCount * ROOF_TOOTH.width; column++) {
+    const height = ROOF_TOOTH.height - Math.floor(((column % ROOF_TOOTH.width) * ROOF_TOOTH.height) / ROOF_TOOTH.width);
+    context.fillRect(left + column, baseY - height, 1, height);
+  }
+}
+
+// Three layers of city and factory, lightest and mistiest at the back. Far is a dither over the sky.
 function drawBackground(context) {
   context.fillStyle = SKY_COLOR;
-  context.fillRect(0, 0, SCREEN_WIDTH, HORIZON_Y);
-  context.fillStyle = HORIZON_COLOR;
-  context.fillRect(0, HORIZON_Y, SCREEN_WIDTH, SCREEN_HEIGHT - HORIZON_Y);
-  // A two row checker blends the sky into the horizon.
-  for (let x = 0; x < SCREEN_WIDTH; x += 2) {
-    context.fillRect(x, HORIZON_Y - 2, 1, 1);
-    context.fillRect(x + 1, HORIZON_Y - 1, 1, 1);
-  }
-  for (const cloud of CLOUDS) drawCloud(context, cloud);
+  context.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+  for (const [x, top, width] of FAR_BUILDINGS)
+    fillDither(context, x, top, width, SCREEN_HEIGHT - top, FAR_COLOR, 'half');
 
-  drawSteps(context, FAR_CLIFF_STEPS, SCREEN_WIDTH, FAR_CLIFF_COLOR);
-  for (const { x, top, width, height, windowY } of FAR_TOWERS) {
-    context.fillStyle = FAR_CLIFF_COLOR;
-    context.fillRect(x, top + 2, width, height);
-    for (let merlonX = x; merlonX < x + width; merlonX += 4) context.fillRect(merlonX, top, 2, 2);
-    context.fillStyle = FAR_WINDOW_COLOR;
-    context.fillRect(x + Math.floor(width / 2) - 1, windowY, 2, 4);
-  }
+  fillBuildings(context, MID_BUILDINGS, MID_COLOR);
+  for (const roof of MID_ROOFS) drawSawtoothRoof(context, roof);
+  for (const scaffold of MID_SCAFFOLDS) drawScaffold(context, scaffold);
+  for (const [left, right, top] of MID_PIPES) context.fillRect(left, top, right - left, PIPE_HEIGHT);
+  fillRects(context, MID_WINDOWS, WINDOW_COLOR);
+  drawMist(context, MIST_BANDS_OVER_MID);
 
-  for (const { steps, endX } of NEAR_CLIFFS) {
-    drawSteps(context, steps, endX, NEAR_CLIFF_COLOR);
-    context.fillStyle = NEAR_CLIFF_RIM_COLOR;
-    steps.forEach(([x, top], index) => {
-      const nextX = steps[index + 1]?.[0] ?? endX;
-      context.fillRect(x, top, nextX - x, 1);
-      // A step that rises to the right shows its lit left face.
-      const previousTop = steps[index - 1]?.[1];
-      if (previousTop > top) context.fillRect(x, top, 1, previousTop - top);
-    });
-  }
-  context.fillStyle = NEAR_CLIFF_LEDGE_COLOR;
-  for (const [x, y, width] of NEAR_CLIFF_LEDGES) context.fillRect(x, y, width, 1);
+  fillBuildings(context, NEAR_BUILDINGS, NEAR_COLOR);
+  context.fillStyle = NEAR_RIM_COLOR;
+  for (const [x, top, width] of NEAR_BUILDINGS) context.fillRect(x, top, width, 1);
+  fillRects(context, NEAR_WINDOWS, WINDOW_COLOR);
+  drawMist(context, MIST_BANDS_OVER_NEAR);
 }
 
-function platformTileName(row, column) {
-  if (row === 0) return TOP_TILE_BY_COLUMN[column] ?? 'top';
-  return BOTTOM_TILE_BY_COLUMN[column] ?? 'bottom';
+function drawGirder(context, sprites) {
+  const { x, y, middleCount } = GIRDER;
+  const middleWidth = sprites['girder-middle'].width;
+  context.drawImage(sprites['girder-left'], x, y);
+  for (let index = 0; index < middleCount; index++) {
+    context.drawImage(sprites['girder-middle'], x + sprites['girder-left'].width + index * middleWidth, y);
+  }
+  context.drawImage(sprites['girder-right'], x + sprites['girder-left'].width + middleCount * middleWidth, y);
+  // Chains run from the girder's top edge up and off the screen.
+  for (const chainX of CHAIN_XS) {
+    for (let linkY = y - CHAIN_LINK_HEIGHT; linkY > -CHAIN_LINK_HEIGHT; linkY -= CHAIN_LINK_HEIGHT) {
+      context.drawImage(sprites.chain, chainX, linkY);
+    }
+  }
 }
 
 // Hops toward its partner, gets knocked back on a bump, then hops home and rests.
 // State changes only in update(), once per tick, so the dance is the same on every run.
 class HoppingCharacter {
-  constructor({ sprite, homeX, firstRestTicks, eyeFramePositions }) {
+  constructor({ sprite, homeX, groundY, firstRestTicks, eyeFramePositions }) {
     this.sprite = sprite;
     this.homeX = homeX;
+    this.groundY = groundY;
     this.x = homeX;
     this.lift = 0;
     this.velocityX = 0;
@@ -333,11 +324,10 @@ class HoppingCharacter {
       height,
     });
 
-    // The frame's bottom row is the white outline, which overlaps the top row of the tile below.
+    // The frame's bottom row is the white outline, which overlaps the top row of the block or girder below.
     const left = Math.round(this.x) - center;
-    const top = PLATFORM.y + 1 - Math.round(this.lift) - COMPOSITE_SIZE;
+    const top = this.groundY + 1 - Math.round(this.lift) - COMPOSITE_SIZE;
     renderer.gameContext.drawImage(this.composite, left, top);
-    drawFullyLit(renderer.lightContext, this.composite, left, top);
   }
 }
 
@@ -345,15 +335,15 @@ export class StyleTestScene {
   constructor({ sprites }) {
     this.sprites = sprites;
     this.waterLineY = STYLE_TEST_WATER_LINE_Y;
-    this.lighting = { fogStrength: FOG_STRENGTH };
     this.backgroundDrawn = false;
     this.tickCount = 0;
     const characterByName = {};
-    for (const { name, homeX, firstRestTicks } of CAST) {
+    for (const { name, homeX, groundY, firstRestTicks } of CAST) {
       const { spriteName, eyeFramePositions } = findCharacter(name);
       characterByName[name] = new HoppingCharacter({
         sprite: sprites[spriteName].body,
         homeX,
+        groundY,
         firstRestTicks,
         eyeFramePositions,
       });
@@ -384,42 +374,22 @@ export class StyleTestScene {
       renderer.updateBackground(drawBackground);
       this.backgroundDrawn = true;
     }
-    const { tiles, props } = this.sprites;
+    const { blocks, props } = this.sprites;
     const context = renderer.gameContext;
 
     renderer.clearGameLayer();
-    renderer.clearLightLayer();
-    for (let row = 0; row < 2; row++) {
-      for (let column = 0; column < PLATFORM.tileCount; column++) {
-        context.drawImage(
-          tiles[platformTileName(row, column)],
-          PLATFORM.x + column * TILE_SIZE,
-          PLATFORM.y + row * TILE_SIZE,
-        );
-      }
-    }
-    const lampY = PLATFORM.y - props.lamp.height + 1;
-    for (const lampX of LAMP_XS) {
-      context.drawImage(props.lamp, lampX, lampY);
-      drawLightRings(renderer.lightContext, lampX + 5, lampY + 5, LAMP_LIGHT_RADII, this.tickCount);
-    }
+    for (const [spriteName, x, y] of CLUSTER_BLOCKS) context.drawImage(blocks[spriteName], x, y);
+    drawGirder(context, blocks);
     const rocketFrame = props[`rocket-${Math.floor(this.tickCount / ROCKET.flameFlickerTicks) % 2}`];
     const rocketX = ROCKET.startX + Math.floor((this.tickCount * ROCKET.pixelsPerTick) % ROCKET.travelPixels);
     context.drawImage(rocketFrame, rocketX, ROCKET.y);
-    drawLightRings(
-      renderer.lightContext,
-      rocketX + rocketFrame.width / 2,
-      ROCKET.y + rocketFrame.height / 2,
-      ROCKET_LIGHT_RADII,
-      this.tickCount,
-    );
     for (const character of this.characters) character.render(renderer);
 
     renderer.clearUiLayer();
     drawPanel(renderer.uiContext, 16, 16, 140, 76);
     const bodyText = { scale: 1, outlineColor: null, color: '#c0cbdc' };
     drawText(renderer.uiContext, 'Style test', 28, 28, { scale: 2, outlineColor: null });
-    drawText(renderer.uiContext, 'Palette lighting', 28, 50, bodyText);
+    drawText(renderer.uiContext, 'Flat light', 28, 50, bodyText);
     drawText(renderer.uiContext, 'Light from top left', 28, 60, bodyText);
     drawText(renderer.uiContext, 'Selected', 28, 70, { ...bodyText, color: '#feae34' });
   }

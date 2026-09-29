@@ -38,6 +38,7 @@ async function main() {
     mistral,
     tiles,
     props,
+    blocks,
     vertexShaderSource,
     fragmentShaderSource,
   ] = await Promise.all([
@@ -52,6 +53,7 @@ async function main() {
     loadSpriteFile('data/sprites/mistral.json'),
     loadSpriteFile('data/sprites/tiles.json'),
     loadSpriteFile('data/sprites/props.json'),
+    loadSpriteFile('data/sprites/blocks.json'),
     loadText('data/shaders/composite.vert'),
     loadText('data/shaders/composite.frag'),
   ]);
@@ -72,7 +74,7 @@ async function main() {
   const keyboardInput = createKeyboardInput(keyMappings);
   const gamepadInput = createGamepadInput(keyMappings.map((mapping) => mapping.id));
   const sceneManager = new SceneManager();
-  const sprites = { claude, muse, chatgpt, gemini, grok, deepseek, mistral, tiles, props };
+  const sprites = { claude, muse, chatgpt, gemini, grok, deepseek, mistral, tiles, props, blocks };
   if (isDevMode && searchParameters.get('scene') === 'style') {
     sceneManager.setScene(new StyleTestScene({ sprites }));
   } else if (isDevMode) {
