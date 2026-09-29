@@ -8,7 +8,7 @@ const GIRDER = '=';
 const CHAIN_LINK_HEIGHT = 8;
 const CHAIN_OFFSET_X = 6;
 
-function blockName(size, column, rowIndex) {
+export function blockName(size, column, rowIndex) {
   return `block-${size}-${(rowIndex * 7 + column * 3) % 2}`;
 }
 

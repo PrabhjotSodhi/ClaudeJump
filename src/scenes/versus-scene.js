@@ -3,6 +3,7 @@ import { SCREEN_WIDTH, TILE_SIZE } from '../engine/config.js';
 import { EntityGroups } from '../engine/entity-groups.js';
 import { EventEmitter } from '../engine/events.js';
 import { SeededRandom } from '../engine/seeded-random.js';
+import { wrapAroundScreen } from '../engine/wrap-around-screen.js';
 import { Banana, BANANA_WIDTH, BANANA_HEIGHT, BANANA_SLIP_TICKS } from '../entities/banana.js';
 import { Bomb, BOMB_WIDTH, BOMB_HEIGHT } from '../entities/bomb.js';
 import {
@@ -370,7 +371,7 @@ export class VersusScene {
     const platforms = this.entityGroups.get('platforms');
     for (const rocket of this.entityGroups.get('rockets')) {
       rocket.update(this.players, platforms);
-      this.wrapAroundScreen(rocket);
+      wrapAroundScreen(rocket);
       if (rocket.exploded) this.resolveRocketExplosion(rocket);
     }
   }
@@ -411,7 +412,7 @@ export class VersusScene {
     const platforms = this.entityGroups.get('platforms');
     for (const bomb of this.entityGroups.get('bombs')) {
       bomb.update(this.players, platforms, this.waterLineY);
-      this.wrapAroundScreen(bomb);
+      wrapAroundScreen(bomb);
       if (!bomb.exploded) continue;
 
       const blastCenterX = bomb.x + bomb.width / 2;
@@ -547,16 +548,8 @@ export class VersusScene {
     }
   }
 
-  // Only snaps once the entity has fully left the screen; its render draws the crossing itself.
-  wrapAroundScreen(entity) {
-    if (entity.x + entity.width < 0) entity.x += SCREEN_WIDTH;
-    else if (entity.x > SCREEN_WIDTH) entity.x -= SCREEN_WIDTH;
-    else return false;
-    return true;
-  }
-
   wrapPlayerAroundScreen(player) {
-    if (!this.wrapAroundScreen(player)) return;
+    if (!wrapAroundScreen(player)) return;
     this.events.emit('player-wrapped', { playerId: player.id, x: player.x, y: player.y });
   }
 

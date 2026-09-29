@@ -3,6 +3,7 @@ import { PLAYERS } from '../levels/versus-arena.js';
 import { MENU_BACKGROUND_COLOR, NO_WATER_LINE_Y } from '../ui/menu-screen.js';
 import { drawText } from '../ui/text.js';
 import { PlayerSelectScene } from './player-select-scene.js';
+import { SurvivalScene } from './survival-scene.js';
 
 const TITLE_Y = 60;
 const TITLE_SCALE = 6;
@@ -29,8 +30,10 @@ export const FULLSCREEN_BUTTON = {
   height: FULLSCREEN_BUTTON_SIZE,
 };
 
-// Survival goes here once it exists. The menu grows by one entry, nothing else changes.
-export const MENU_OPTIONS = [{ id: 'versus', label: 'Versus' }];
+export const MENU_OPTIONS = [
+  { id: 'versus', label: 'Versus' },
+  { id: 'survival', label: 'Survival' },
+];
 
 export class TitleScene {
   // initialInput seeds the held-key baseline from whatever opened this scene, so an up, down or
@@ -69,6 +72,8 @@ export class TitleScene {
 
   confirmSelection() {
     const option = this.options[this.selectedIndex];
+    if (option.id === 'survival')
+      this.sceneManager.setScene(new SurvivalScene({ sprites: this.sprites, seed: this.seed }));
     if (option.id === 'versus')
       this.sceneManager.setScene(
         new PlayerSelectScene({

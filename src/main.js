@@ -12,6 +12,7 @@ import { createWindow } from './engine/window.js';
 import { PausableMatchScene } from './scenes/pausable-match-scene.js';
 import { StyleTestScene } from './scenes/style-test-scene.js';
 import { FULLSCREEN_BUTTON, TitleScene } from './scenes/title-scene.js';
+import { SurvivalScene } from './scenes/survival-scene.js';
 import { VersusScene } from './scenes/versus-scene.js';
 
 // The order of the level select tiles.
@@ -71,8 +72,12 @@ async function main() {
   const gamepadInput = createGamepadInput(keyMappings.map((mapping) => mapping.id));
   const sceneManager = new SceneManager();
   const sprites = { claude, muse, chatgpt, gemini, grok, deepseek, mistral, props, blocks };
+  // Survival builds its platforms from the Harbor stone, the first level file.
+  sprites.stoneBlocks = levels[0].tileSprites;
   if (isDevMode && searchParameters.get('scene') === 'style') {
     sceneManager.setScene(new StyleTestScene({ sprites }));
+  } else if (isDevMode && searchParameters.get('scene') === 'survival') {
+    sceneManager.setScene(new SurvivalScene({ sprites, seed: 0 }));
   } else if (isDevMode) {
     // ?dev&level=cave starts on that level file. Harbor is the default.
     const levelIndex = Math.max(0, LEVEL_FILE_NAMES.indexOf(searchParameters.get('level')));
@@ -174,6 +179,7 @@ async function main() {
       return {
         phase: scene.phase,
         wins: { ...scene.wins },
+        cameraTopY: scene.cameraTopY,
         players: scene.players.map((player) => ({ id: player.id, x: player.x, y: player.y })),
       };
     };
