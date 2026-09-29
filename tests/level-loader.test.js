@@ -10,7 +10,7 @@ import { harborLevel } from './fixtures/harbor-level.mjs';
 
 function levelWithTiles(tilesByRow) {
   const grid = Array.from({ length: LEVEL_ROWS }, (_, row) => (tilesByRow[row] ?? '').padEnd(LEVEL_COLUMNS, '.'));
-  return { name: 'Test', grid, spawns: [], waterLineY: 300, mood: {} };
+  return { name: 'Test', grid, spawns: [], waterLineY: 300 };
 }
 
 test('a horizontal run of solid tiles becomes one platform', () => {
@@ -99,15 +99,13 @@ test('harbor has a girder above two block islands', () => {
   ]);
 });
 
-test('harbor loads its spawns, sea line and mood', () => {
+test('harbor loads its spawns and sea line', () => {
   assert.equal(harborLevel.name, 'Harbor');
   assert.equal(harborLevel.waterLineY, 328);
   assert.deepEqual(harborLevel.spawns, [
     { id: 'red', x: 152, y: 224, facing: 1 },
     { id: 'blue', x: 488, y: 224, facing: -1 },
   ]);
-  assert.equal(harborLevel.mood.fogStrength, 0.8);
-  assert.equal(harborLevel.mood.lamps.length, 2);
 });
 
 test('open tops leave out tiles that have another tile anywhere above them', () => {

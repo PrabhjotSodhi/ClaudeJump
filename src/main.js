@@ -2,7 +2,6 @@ import { SCREEN_HEIGHT, SCREEN_WIDTH, TICK_RATE } from './engine/config.js';
 import { createGameLoop } from './engine/game-loop.js';
 import { createGamepadInput } from './engine/gamepad-input.js';
 import { combineInputs, createKeyboardInput } from './engine/input.js';
-import { buildLookupTexture } from './engine/palette.js';
 import { Renderer } from './engine/renderer.js';
 import { SceneManager } from './engine/scene-manager.js';
 import { loadSpriteFile } from './engine/sprites.js';
@@ -29,7 +28,6 @@ async function main() {
 
   const [
     keyMappings,
-    palette,
     claude,
     muse,
     chatgpt,
@@ -43,7 +41,6 @@ async function main() {
     fragmentShaderSource,
   ] = await Promise.all([
     fetch('data/config/key-mappings.json').then((response) => response.json()),
-    fetch('data/palette.json').then((response) => response.json()),
     loadSpriteFile('data/sprites/claude.json'),
     loadSpriteFile('data/sprites/muse.json'),
     loadSpriteFile('data/sprites/chatgpt.json'),
@@ -61,7 +58,7 @@ async function main() {
   for (const level of levels) level.thumbnail = createLevelThumbnail(level);
 
   const canvas = document.getElementById('screen');
-  const gameWindow = createWindow(canvas, vertexShaderSource, fragmentShaderSource, buildLookupTexture(palette));
+  const gameWindow = createWindow(canvas, vertexShaderSource, fragmentShaderSource);
   if (!gameWindow) {
     canvas.style.display = 'none';
     document.getElementById('webgl-message').style.display = 'block';
@@ -115,8 +112,6 @@ async function main() {
       backgroundCanvas: renderer.backgroundChanged ? renderer.backgroundCanvas : null,
       gameCanvas: renderer.gameCanvas,
       uiCanvas: renderer.uiCanvas,
-      lightCanvas: sceneManager.currentScene.lighting ? renderer.lightCanvas : null,
-      fogStrength: sceneManager.currentScene.lighting?.fogStrength,
       shakeOffset: renderer.shakeOffset,
       seaRippleBytes: renderer.seaRippleBytes,
       waterLineY: sceneManager.currentScene.waterLineY,
