@@ -1,14 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { SCREEN_WIDTH } from '../src/engine/config.js';
+import { difficultyAt } from '../src/scenes/survival-difficulty.js';
 import { spritesFor } from './fixtures/recording-context.mjs';
-import {
-  ROCKET_INTERVAL_TICKS,
-  ROCKET_MAX_OFFSET_Y,
-  ROCKET_WARNING_TICKS,
-  SurvivalScene,
-} from '../src/scenes/survival-scene.js';
+import { ROCKET_MAX_OFFSET_Y, ROCKET_WARNING_TICKS, SurvivalScene } from '../src/scenes/survival-scene.js';
 
+const ROCKET_INTERVAL_TICKS = difficultyAt(0).rocketIntervalTicks;
 const idle = { red: { left: false, right: false, jump: false } };
 
 // Keeps the sea away so a long run is not cut short by the player drowning.

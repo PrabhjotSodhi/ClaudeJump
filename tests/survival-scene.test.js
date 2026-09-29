@@ -245,7 +245,7 @@ function collectEvents(scene, name) {
   return events;
 }
 
-test('the start floor is stone and about a fifth of the other runs are special', () => {
+test('the start floor is stone and about a tenth of the other runs near the start are special', () => {
   const kinds = { stone: 0, ice: 0, bounce: 0, fire: 0, crumbling: 0 };
   for (let seed = 0; seed < 40; seed++) {
     const scene = new SurvivalScene({ seed });
@@ -254,7 +254,7 @@ test('the start floor is stone and about a fifth of the other runs are special',
   }
   const total = Object.values(kinds).reduce((sum, count) => sum + count, 0);
   const special = total - kinds.stone;
-  assert.ok(special / total > 0.12 && special / total < 0.28);
+  assert.ok(special / total > 0.06 && special / total < 0.16);
   for (const kind of ['ice', 'bounce', 'fire', 'crumbling']) assert.ok(kinds[kind] > 0, kind);
 });
 
