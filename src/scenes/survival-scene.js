@@ -18,6 +18,7 @@ import { drawParticles, Particles } from '../vfx/particles.js';
 import { PlayerEyes } from '../vfx/player-eyes.js';
 import { ScreenShake } from '../vfx/screen-shake.js';
 import { SeaRipple } from '../vfx/sea-ripple.js';
+import { difficultyAt } from './survival-difficulty.js';
 
 const PLAYER_ID = 'red';
 const START_FLOOR_Y = SCREEN_HEIGHT - 2 * TILE_SIZE;
@@ -28,8 +29,6 @@ const RUN_MIN_BLOCKS = 3;
 const RUN_MAX_BLOCKS = 6;
 const SECOND_RUN_CHANCE = 0.5;
 const MAX_REACH_X = 96;
-// The chance that a run is ice, bounce, fire or crumbling instead of plain stone.
-export const SPECIAL_PLATFORM_CHANCE = 0.2;
 const SPECIAL_KINDS = ['ice', 'bounce', 'fire', 'crumbling'];
 export const CRUMBLE_TICKS = 30;
 const FIRE_FLICKER_TICKS = 12;
@@ -44,7 +43,6 @@ export const SEA_GRACE_TICKS = 180;
 export const SEA_RISE_PER_TICK = 0.25;
 // The sea never trails further than this below the bottom of the screen, so a fast climber still feels it.
 export const SEA_MAX_TRAIL_Y = 48;
-export const ROCKET_INTERVAL_TICKS = 300;
 export const ROCKET_WARNING_TICKS = 60;
 // A rocket flies at a height this close to the player's, above or below.
 export const ROCKET_MAX_OFFSET_Y = 60;
@@ -52,8 +50,7 @@ export const ROCKET_MAX_OFFSET_Y = 60;
 const ROCKET_SEED_OFFSET = 0x5f3759df;
 // Crabs draw from their own stream too, so they never change how the rows are laid out.
 const CRAB_SEED_OFFSET = 0x2545f491;
-// The chance that a run at least CRAB_MIN_RUN_BLOCKS wide carries a crab.
-export const CRAB_CHANCE = 0.15;
+// Only a run at least this wide can carry a crab.
 const CRAB_MIN_RUN_BLOCKS = 4;
 export const CRAB_STOMP_VELOCITY_Y = -8;
 export const CRAB_KNOCKBACK_VELOCITY_X = 8;
@@ -143,6 +140,7 @@ export class SurvivalScene {
     this.rocketRandom = new SeededRandom(this.seed + ROCKET_SEED_OFFSET);
     this.crabRandom = new SeededRandom(this.seed + CRAB_SEED_OFFSET);
     this.rocketWarnings = [];
+    this.nextRocketTick = difficultyAt(0).rocketIntervalTicks;
     this.entityGroups.clear('rockets');
     this.entityGroups.clear('crabs');
     this.phase = 'playing';
@@ -197,6 +195,7 @@ export class SurvivalScene {
   // A second run lands anywhere the first one leaves room for.
   generateRow(rowBelow) {
     const gapY = ROW_GAP_MIN_Y + this.randomInteger(0, ROW_GAP_STEP_COUNT - 1) * ROW_GAP_STEP_Y;
+    const { specialPlatformChance } = difficultyAt(START_FLOOR_Y - (rowBelow.y - gapY));
     const anchor = rowBelow.runs[this.randomInteger(0, rowBelow.runs.length - 1)];
     const first = this.randomRun(0);
     const firstBlock = Math.ceil((anchor.x - MAX_REACH_X - first.width) / TILE_SIZE);
@@ -220,7 +219,7 @@ export class SurvivalScene {
     // The first run is the one placed within reach, so it is never fire: a fire run throws the player off and
     // would wall the climb.
     runs.forEach((run, index) => {
-      if (this.random.next() >= SPECIAL_PLATFORM_CHANCE) return;
+      if (this.random.next() >= specialPlatformChance) return;
       const kinds = index === 0 ? SPECIAL_KINDS.filter((kind) => kind !== 'fire') : SPECIAL_KINDS;
       run.kind = kinds[this.randomInteger(0, kinds.length - 1)];
     });
@@ -236,8 +235,9 @@ export class SurvivalScene {
   }
 
   spawnCrabs(row) {
+    const { crabChance } = difficultyAt(START_FLOOR_Y - row.y);
     for (const run of row.runs) {
-      if (run.width < CRAB_MIN_RUN_BLOCKS * TILE_SIZE || this.crabRandom.next() >= CRAB_CHANCE) continue;
+      if (run.width < CRAB_MIN_RUN_BLOCKS * TILE_SIZE || this.crabRandom.next() >= crabChance) continue;
       const maxX = run.x + run.width - CRAB_WIDTH;
       const x = run.x + Math.floor(this.crabRandom.next() * (maxX - run.x + 1));
       const direction = this.crabRandom.next() < 0.5 ? -1 : 1;
@@ -337,7 +337,7 @@ export class SurvivalScene {
 
   // Every rocket is announced ROCKET_WARNING_TICKS before it spawns, and spawns only from that warning.
   updateRockets(player) {
-    if (this.runTicks > 0 && this.runTicks % ROCKET_INTERVAL_TICKS === 0) this.scheduleRocket(player);
+    if (this.runTicks >= this.nextRocketTick) this.scheduleRocket(player);
 
     for (const warning of this.rocketWarnings.filter((candidate) => candidate.spawnTick <= this.runTicks)) {
       const facing = warning.side === 'left' ? 1 : -1;
@@ -365,6 +365,7 @@ export class SurvivalScene {
     const side = this.rocketRandom.next() < 0.5 ? 'left' : 'right';
     const offsetY = this.rocketRandom.next() * (2 * ROCKET_MAX_OFFSET_Y + 1);
     const y = Math.round(player.y + player.height / 2 - ROCKET_HEIGHT / 2) + Math.floor(offsetY) - ROCKET_MAX_OFFSET_Y;
+    this.nextRocketTick = this.runTicks + difficultyAt(this.score).rocketIntervalTicks;
     this.rocketWarnings.push({ side, y, startTick: this.runTicks, spawnTick: this.runTicks + ROCKET_WARNING_TICKS });
   }
 
