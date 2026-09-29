@@ -245,10 +245,14 @@ test('Return to title, then Versus, opens a player select that can run a tick', 
   const readyInputs = () => ({ red: { ...noInput(), jump: true }, blue: { ...noInput(), jump: true } });
   const playerSelectScene = new PlayerSelectScene({ sceneManager, levels: [harborLevel], seed: 0 });
   playerSelectScene.update(neutralInputs());
-  for (let press = 0; press < 3; press++) {
+  for (let press = 0; press < 2; press++) {
     playerSelectScene.update(readyInputs());
     playerSelectScene.update(neutralInputs());
   }
+  const levelSelectScene = currentScene;
+  levelSelectScene.update(neutralInputs());
+  levelSelectScene.update(readyInputs());
+  for (let tick = 0; tick < 120 && currentScene === levelSelectScene; tick++) levelSelectScene.update(neutralInputs());
   assert.equal(currentScene.constructor.name, 'PausableMatchScene');
 
   currentScene.update(inputsWith('red', { pause: true }));

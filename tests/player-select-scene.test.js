@@ -47,13 +47,11 @@ test('holding jump does not join or ready up more than once', () => {
   assert.equal(scene.stateByPlayerId.red, 'picking');
 });
 
-test('each fresh jump press moves a player from picking to voting to ready', () => {
+test('each fresh jump press moves a player from joining to picking to ready', () => {
   const { scene } = sceneWithBaseline();
 
   scene.update(inputsWithJump('red'));
-  scene.update(neutralInputs());
-  scene.update(inputsWithJump('red'));
-  assert.equal(scene.stateByPlayerId.red, 'voting');
+  assert.equal(scene.stateByPlayerId.red, 'picking');
 
   scene.update(neutralInputs());
   scene.update(inputsWithJump('red'));
@@ -77,7 +75,7 @@ test('a press held over from before this scene does not count as a fresh press',
   assert.equal(scene.stateByPlayerId.red, 'picking', 'released and pressed again is a fresh press');
 });
 
-test('the match does not start until both players are ready', () => {
+test('level select does not open until both players are ready', () => {
   const { scene, scenes } = sceneWithBaseline();
 
   readyUp(scene, 'red');
@@ -87,9 +85,8 @@ test('the match does not start until both players are ready', () => {
   readyUp(scene, 'blue');
   assert.equal(scene.stateByPlayerId.blue, 'ready');
 
-  assert.equal(scenes.length, 1, 'the match starts once every player is ready');
-  assert.equal(scenes[0].constructor.name, 'PausableMatchScene');
-  assert.equal(scenes[0].matchScene.constructor.name, 'VersusScene');
+  assert.equal(scenes.length, 1, 'level select opens once every player is ready');
+  assert.equal(scenes[0].constructor.name, 'LevelSelectScene');
 });
 
 function press(scene, playerId, button) {
@@ -100,66 +97,17 @@ function press(scene, playerId, button) {
 // The last press has no release after it, because the scene is replaced the moment everyone is ready.
 function readyUp(scene, playerId) {
   press(scene, playerId, 'jump');
-  press(scene, playerId, 'jump');
   scene.update(inputsWithJump(playerId));
 }
 
-const otherLevel = { ...harborLevel, name: 'Dock' };
-const twoLevels = [harborLevel, otherLevel];
-
-function pickedLevel({ seed, redPresses = [], bluePresses = [] }) {
-  const { scene, scenes } = sceneWithBaseline({ levels: twoLevels, seed });
-  for (const playerId of ['red', 'blue']) {
-    press(scene, playerId, 'jump');
-    press(scene, playerId, 'jump');
-  }
-  for (const button of redPresses) press(scene, 'red', button);
-  for (const button of bluePresses) press(scene, 'blue', button);
+test('left and right do nothing once a player is ready', () => {
+  const { scene } = sceneWithBaseline();
   press(scene, 'red', 'jump');
-  press(scene, 'blue', 'jump');
-  return scenes[0].matchScene.level;
-}
-
-test('the same seed and votes give the same level', () => {
-  for (let seed = 0; seed < 20; seed++) {
-    assert.equal(pickedLevel({ seed }), pickedLevel({ seed }));
-  }
-});
-
-test('a unanimous vote always picks that level', () => {
-  for (let seed = 0; seed < 30; seed++) {
-    assert.equal(pickedLevel({ seed, redPresses: ['left'], bluePresses: ['left'] }), otherLevel);
-    assert.equal(pickedLevel({ seed, redPresses: ['left', 'left'], bluePresses: ['left', 'left'] }), harborLevel);
-  }
-});
-
-test('Random can give any level', () => {
-  const picked = new Set();
-  for (let seed = 0; seed < 50; seed++) picked.add(pickedLevel({ seed }));
-
-  assert.deepEqual([...picked].map((level) => level.name).sort(), ['Dock', 'Harbor']);
-});
-
-test('left and right change the vote only while voting', () => {
-  const { scene } = sceneWithBaseline({ levels: twoLevels });
-  const randomVote = scene.voteByPlayerId.red;
-
-  press(scene, 'red', 'left');
-  assert.equal(scene.voteByPlayerId.red, randomVote, 'unjoined players cannot vote');
-
   press(scene, 'red', 'jump');
-  press(scene, 'red', 'left');
-  assert.equal(scene.voteByPlayerId.red, randomVote, 'picking a character does not change the vote');
 
-  press(scene, 'red', 'jump');
-  press(scene, 'red', 'left');
-  assert.equal(scene.voteByPlayerId.red, 1);
   press(scene, 'red', 'right');
-  assert.equal(scene.voteByPlayerId.red, randomVote);
 
-  press(scene, 'red', 'jump');
-  press(scene, 'red', 'left');
-  assert.equal(scene.voteByPlayerId.red, randomVote, 'ready players cannot vote');
+  assert.equal(hoveredCharacterName(scene, 'red'), 'claude');
 });
 
 function hoveredCharacterName(scene, playerId) {
@@ -195,7 +143,7 @@ test('the picker skips a character the other player has locked in', () => {
 
   press(scene, 'blue', 'left');
 
-  assert.equal(scene.stateByPlayerId.red, 'voting');
+  assert.equal(scene.stateByPlayerId.red, 'ready');
   assert.equal(hoveredCharacterName(scene, 'blue'), CHARACTERS.at(-1).name, 'Claude is locked, so blue steps past it');
 });
 
@@ -213,20 +161,14 @@ test('a player hovering on a character the other player locks in moves to the ne
   assert.equal(scene.stateByPlayerId.blue, 'picking');
 });
 
-test('a match started from player select gives each player the picked character and its tag color', () => {
+test('level select gets the character each player locked in', () => {
   const { scene, scenes } = sceneWithBaseline();
   press(scene, 'blue', 'jump');
   press(scene, 'red', 'jump');
   press(scene, 'red', 'right');
   press(scene, 'red', 'jump');
-  press(scene, 'red', 'jump');
-  press(scene, 'blue', 'jump');
   press(scene, 'blue', 'jump');
 
-  const players = scenes[0].matchScene.players;
-  const red = players.find((player) => player.id === 'red');
-  const blue = players.find((player) => player.id === 'blue');
-
-  assert.deepEqual([red.character.name, red.color], ['muse', '#ead4aa']);
-  assert.deepEqual([blue.character.name, blue.color], ['chatgpt', '#63c74d']);
+  const { characterByPlayerId } = scenes[0];
+  assert.deepEqual([characterByPlayerId.red.name, characterByPlayerId.blue.name], ['muse', 'chatgpt']);
 });

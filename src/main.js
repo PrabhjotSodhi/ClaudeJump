@@ -7,12 +7,13 @@ import { Renderer } from './engine/renderer.js';
 import { SceneManager } from './engine/scene-manager.js';
 import { loadSpriteFile } from './engine/sprites.js';
 import { loadLevel } from './levels/level-loader.js';
+import { createLevelThumbnail } from './levels/level-thumbnail.js';
 import { createWindow } from './engine/window.js';
 import { StyleTestScene } from './scenes/style-test-scene.js';
 import { FULLSCREEN_BUTTON, TitleScene } from './scenes/title-scene.js';
 import { VersusScene } from './scenes/versus-scene.js';
 
-// The order players cycle through when voting for a level.
+// The order of the level select tiles.
 const LEVEL_FILE_NAMES = ['harbor', 'rooftops', 'cave', 'server-farm'];
 
 async function loadText(path) {
@@ -57,6 +58,7 @@ async function main() {
   const levels = await Promise.all(
     LEVEL_FILE_NAMES.map((fileName) => loadLevel(`data/levels/${fileName}.json`, tiles)),
   );
+  for (const level of levels) level.thumbnail = createLevelThumbnail(level);
 
   const canvas = document.getElementById('screen');
   const gameWindow = createWindow(canvas, vertexShaderSource, fragmentShaderSource, buildLookupTexture(palette));
