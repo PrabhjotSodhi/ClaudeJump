@@ -6,7 +6,16 @@ import { VersusScene } from '../src/scenes/versus-scene.js';
 import { harborLevel } from './fixtures/harbor-level.mjs';
 
 function noInput() {
-  return { left: false, right: false, jump: false, down: false, action: false, pause: false };
+  return {
+    left: false,
+    right: false,
+    jump: false,
+    up: false,
+    down: false,
+    action: false,
+    confirm: false,
+    pause: false,
+  };
 }
 
 function neutralInputs() {
@@ -83,7 +92,7 @@ test('Resume closes the menu without returning to the title', () => {
   sceneManager.setScene = (nextScene) => scenes.push(nextScene);
 
   scene.update(inputsWith('red', { pause: true }));
-  scene.update(inputsWith('red', { jump: true })); // Resume is selected by default
+  scene.update(inputsWith('red', { confirm: true })); // Resume is selected by default
 
   assert.equal(scene.paused, false);
   assert.equal(scenes.length, 0);
@@ -94,7 +103,7 @@ test('Return to title switches the scene to a fresh TitleScene', () => {
 
   scene.update(inputsWith('red', { pause: true }));
   scene.update(inputsWith('red', { down: true })); // moves selection to Return to title
-  scene.update(inputsWith('red', { jump: true })); // confirms it
+  scene.update(inputsWith('red', { confirm: true })); // confirms it
 
   assert.equal(scenes.length, 1);
   assert.equal(scenes[0].constructor.name, 'TitleScene');
@@ -108,30 +117,30 @@ test("the title seed is drawn from the match's seeded random, not the clock", ()
 
   scene.update(inputsWith('red', { pause: true }));
   scene.update(inputsWith('red', { down: true }));
-  scene.update(inputsWith('red', { jump: true }));
+  scene.update(inputsWith('red', { confirm: true }));
 
   assert.equal(scenes[0].seed, expectedSeed);
 });
 
-test('a jump held when the menu opens does not immediately confirm Resume', () => {
+test('a confirm held when the menu opens does not immediately confirm Resume', () => {
   const { scene, scenes } = pausedScene();
-  const heldJump = inputsWith('red', { pause: true, jump: true });
+  const heldJump = inputsWith('red', { pause: true, confirm: true });
 
   scene.update(heldJump);
   // Pause consumed the tick; jump is still held on the very next tick with the menu open.
-  scene.update(inputsWith('red', { jump: true }));
+  scene.update(inputsWith('red', { confirm: true }));
 
-  assert.equal(scene.paused, true, 'the held jump must not confirm the menu the instant it opens');
+  assert.equal(scene.paused, true, 'the held confirm must not confirm the menu the instant it opens');
   assert.equal(scenes.length, 0);
 });
 
-test('a jump held to confirm Return to title does not immediately re-confirm the new title screen', () => {
+test('a confirm held to confirm Return to title does not immediately re-confirm the new title screen', () => {
   const { scene, scenes } = pausedScene();
 
   scene.update(inputsWith('red', { pause: true }));
   scene.update(inputsWith('red', { down: true }));
-  const heldJump = inputsWith('red', { jump: true });
-  scene.update(heldJump); // confirms Return to title, jump still held
+  const heldJump = inputsWith('red', { confirm: true });
+  scene.update(heldJump); // confirms Return to title, confirm still held
 
   const titleScene = scenes[0];
   titleScene.update(heldJump); // still held on the title's first tick
@@ -189,4 +198,42 @@ test('losing focus while already paused does not reset the selection', () => {
   scene.pauseForFocusLoss();
 
   assert.equal(scene.selectedIndex, 1);
+});
+
+test('up moves the pause selection up with wrapping, and down moves it down', () => {
+  const { scene } = pausedScene();
+  scene.update(inputsWith('red', { pause: true }));
+
+  scene.update(inputsWith('red', { up: true }));
+  assert.equal(scene.selectedIndex, 1, 'up from the first option wraps to the last');
+
+  scene.update(neutralInputs());
+  scene.update(inputsWith('blue', { down: true }));
+  assert.equal(scene.selectedIndex, 0, 'down from the last option wraps to the first');
+});
+
+test('jump does not select in the pause menu', () => {
+  const { scene, scenes } = pausedScene();
+  scene.update(inputsWith('red', { pause: true }));
+
+  scene.update(inputsWith('red', { jump: true }));
+
+  assert.equal(scene.paused, true);
+  assert.equal(scenes.length, 0);
+});
+
+test('resuming with up, action and confirm held keeps them out of the match until released', () => {
+  const { scene, matchScene } = pausedScene();
+  scene.update(inputsWith('red', { pause: true }));
+  scene.update(neutralInputs());
+  const heldControls = inputsWith('red', { pause: true, confirm: true, action: true, up: true });
+  scene.update(heldControls); // the pause press resumes with all three held
+
+  const forwarded = [];
+  matchScene.update = (inputByPlayerId) => forwarded.push(inputByPlayerId.red);
+  scene.update(heldControls);
+
+  assert.equal(forwarded[0].action, false);
+  assert.equal(forwarded[0].confirm, false);
+  assert.equal(forwarded[0].up, false);
 });

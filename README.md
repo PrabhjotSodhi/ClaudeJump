@@ -8,10 +8,14 @@ Designed and directed by [Prabhjot Sodhi](https://github.com/PrabhjotSodhi). Bui
 
 ## Controls
 
-| Player | Move | Jump |
-| ------ | ---- | ---- |
-| Red    | A D  | W    |
-| Blue   | ← →  | ↑    |
+| Player | Move | Jump | Action |
+| ------ | ---- | ---- | ------ |
+| Red    | A D  | W    | S      |
+| Blue   | ← →  | ↑    | ↓      |
+
+Gamepad: stick or d-pad moves, A jumps, B or the right trigger is the action, Start pauses.
+
+Menus: W S or ↑ ↓ (or stick or d-pad) move the selection, Enter, Space or A selects.
 
 ## Run locally
 
