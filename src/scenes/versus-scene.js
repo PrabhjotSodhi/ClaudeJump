@@ -18,7 +18,7 @@ import { Crate, CRATE_WIDTH, CRATE_HEIGHT, CRATE_WARNING_TICKS } from '../entiti
 import { Platform } from '../entities/platform.js';
 import { Player } from '../entities/player.js';
 import { Rocket, ROCKET_WIDTH, ROCKET_HEIGHT } from '../entities/rocket.js';
-import { drawCityBackground } from '../levels/city-background.js';
+import { drawArenaBackground } from '../levels/arena-backgrounds.js';
 import { solidRuns } from '../levels/level-loader.js';
 import { drawHeldCardIcons } from '../ui/held-card-icons.js';
 import { drawHud } from '../ui/hud.js';
@@ -611,7 +611,7 @@ export class VersusScene {
 
   render(renderer) {
     if (!this.backgroundDrawn) {
-      renderer.updateBackground(drawCityBackground);
+      renderer.updateBackground((context) => drawArenaBackground(context, this.level.background));
       this.backgroundDrawn = true;
     }
 

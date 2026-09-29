@@ -1,5 +1,6 @@
 {
   "name": "Server farm",
+  "background": "server-farm",
   "stone": {
     "light": "#3e8948",
     "mid": "#265c42",

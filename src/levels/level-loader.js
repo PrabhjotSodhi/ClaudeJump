@@ -77,7 +77,7 @@ export function solidRuns(solidCells) {
 // 's' is a small block, a 2x2 square of 'B' is one big block and a run of '=' is a girder hung on chains.
 // blocks lists the breakable ones (girders are not) with the tile that draws each.
 export function buildLevel(levelData, tileSprites = {}) {
-  const { name, stone, grid, spawns, bouncePads = [], waterLineY, suddenDeathLineY, mood } = levelData;
+  const { name, background, stone, grid, spawns, bouncePads = [], waterLineY, suddenDeathLineY, mood } = levelData;
   if (grid.length !== LEVEL_ROWS) throw new Error(`Level ${name} has ${grid.length} rows, expected ${LEVEL_ROWS}`);
   const tiles = [];
   const blocks = [];
@@ -123,6 +123,7 @@ export function buildLevel(levelData, tileSprites = {}) {
   const { platforms, openTops } = solidRuns(solidCells);
   return {
     name,
+    background,
     stone,
     tiles,
     blocks,

@@ -1,5 +1,6 @@
 {
   "name": "Cave",
+  "background": "cave",
   "stone": {
     "light": "#e4a672",
     "mid": "#b86f50",
