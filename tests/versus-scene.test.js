@@ -697,6 +697,35 @@ test('the opponent standing still on a bounce pad trap is thrown away from its c
   }
 });
 
+test('the opponent touching a bounce pad trap emits one trap-sprung with the owner and target', () => {
+  const { scene, red } = sceneWithTrapPad();
+  const trapEvents = [];
+  scene.events.on('trap-sprung', (event) => trapEvents.push(event));
+  standOnMiddlePlatform(red, TRAP_PAD_X - 4);
+
+  for (let tick = 0; tick < 10; tick++) scene.update(neutralInputs());
+
+  assert.deepEqual(trapEvents, [{ ownerId: 'blue', targetId: 'red' }]);
+});
+
+test('landing on a neutral level bounce pad emits no trap-sprung', () => {
+  const scene = new VersusScene({ level: harborLevel });
+  advance(scene, READY_TICKS);
+  const trapEvents = [];
+  scene.events.on('trap-sprung', (event) => trapEvents.push(event));
+  scene.entityGroups.add('bouncePads', new BouncePad({ x: 36, y: 280 }));
+  const red = findPlayer(scene, 'red');
+  red.x = 40;
+  red.y = 248;
+  red.velocityY = 12;
+  red.onGround = false;
+
+  scene.update(neutralInputs());
+
+  assert.ok(red.velocityY < 0, 'the pad launched red');
+  assert.deepEqual(trapEvents, []);
+});
+
 test('a bounce pad trap throw freezes the game like a shove hit', () => {
   const { scene, red } = sceneWithTrapPad();
   standOnMiddlePlatform(red, TRAP_PAD_X - 4);

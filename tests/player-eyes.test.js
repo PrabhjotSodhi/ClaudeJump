@@ -40,6 +40,7 @@ test('a jump sends the pupils of the player who jumped up', () => {
 test('shoves, dash hits and blasts rattle the pupils of the players they hit, and nobody else', () => {
   const hits = [
     ['player-shoved', { shoverId: 'blue', targetId: 'red' }],
+    ['trap-sprung', { ownerId: 'blue', targetId: 'red' }],
     ['dash-hit', { playerIds: ['red'] }],
     ['rocket-exploded', { x: 0, y: 0, playerIds: ['red'] }],
     ['bomb-exploded', { x: 0, y: 0, playerIds: ['red'] }],

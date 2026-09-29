@@ -41,6 +41,11 @@ export class Particles {
       const target = findPlayer(targetId);
       if (shover && target) burst(centerOf(target).x, centerOf(target).y, shover.color, HIT_SPARKS);
     });
+    events.on('trap-sprung', ({ ownerId, targetId }) => {
+      const owner = findPlayer(ownerId);
+      const target = findPlayer(targetId);
+      if (owner && target) burst(centerOf(target).x, centerOf(target).y, owner.color, HIT_SPARKS);
+    });
     events.on('card-played', ({ playerId }) => {
       const player = findPlayer(playerId);
       if (player) burst(centerOf(player).x, centerOf(player).y, player.color, HIT_SPARKS);
