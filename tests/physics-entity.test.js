@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { PhysicsEntity } from '../src/engine/physics-entity.js';
+import { Platform } from '../src/entities/platform.js';
 import { PICKUP_USES } from '../src/cards/card-definitions.js';
 import { Player, SHOVE_ACTIVE_TICKS } from '../src/entities/player.js';
 import { findCharacter } from '../src/entities/characters.js';
@@ -205,4 +206,19 @@ test('a pickup gives 1 use, and once it is played the button shoves again', () =
 
   assert.equal(player.playedCardName, null);
   assert.equal(player.isShoveActive, true, 'the button shoves again once the pickup is spent');
+});
+
+test('a one way platform lets an entity rise through it and catches it on the way down', () => {
+  const entity = makeEntity();
+  const platform = new Platform({ x: 180, y: 180, width: 64, height: 16, oneWay: true });
+  entity.velocityY = -8;
+  for (let tick = 0; tick < 6; tick++) entity.moveAndCollide([platform]);
+  assert.ok(entity.y + entity.height < platform.y, 'it rose above the platform');
+
+  for (let tick = 0; tick < 60 && !entity.onGround; tick++) {
+    entity.applyGravity(0.6, 12);
+    entity.moveAndCollide([platform]);
+  }
+  assert.equal(entity.y + entity.height, platform.y);
+  assert.ok(entity.onGround);
 });

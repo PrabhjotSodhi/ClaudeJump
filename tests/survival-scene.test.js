@@ -6,7 +6,7 @@ import { isRowReachable, SurvivalScene } from '../src/scenes/survival-scene.js';
 
 const idle = { red: { left: false, right: false, jump: false } };
 
-// Jumps up beside the nearest run of the next row, then steps onto it. Holds jump in the air and taps it on the ground.
+// Steers under the nearest run of the next row and jumps up through it. Holds jump in the air and taps it on the ground.
 function makeClimber(scene) {
   let targetRow = null;
   return (tick) => {
@@ -17,7 +17,7 @@ function makeClimber(scene) {
     const isAboveTarget = feetY <= targetRow.y;
     let bestOffset = Infinity;
     for (const run of targetRow.runs) {
-      const aimXs = isAboveTarget ? [run.x + run.width / 2] : [run.x - 16, run.x + run.width + 16];
+      const aimXs = [run.x + run.width / 2];
       for (const aimX of aimXs) {
         for (const shift of [-SCREEN_WIDTH, 0, SCREEN_WIDTH]) {
           const offset = aimX + shift - playerCenter;
@@ -53,12 +53,18 @@ test('every row can be reached from the row below', () => {
   }
 });
 
-test('the camera never moves down', () => {
+test('the camera never moves down during a run', () => {
   const scene = new SurvivalScene({ seed: 3 });
   const climb = makeClimber(scene);
   let lowestSeen = scene.cameraTopY;
+  let player = scene.players[0];
   for (let tick = 0; tick < 900; tick++) {
     scene.update(tick % 200 < 150 ? climb(tick) : idle);
+    if (scene.players[0] !== player) {
+      // A fall starts a new run with a fresh camera.
+      player = scene.players[0];
+      lowestSeen = scene.cameraTopY;
+    }
     assert.ok(scene.cameraTopY <= lowestSeen);
     lowestSeen = scene.cameraTopY;
   }

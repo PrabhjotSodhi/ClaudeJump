@@ -80,7 +80,9 @@ export class SurvivalScene {
   }
 
   addRow({ y, runs }) {
-    const platforms = runs.map((run) => new Platform({ x: run.x, y, width: run.width, height: TILE_SIZE }));
+    const platforms = runs.map(
+      (run) => new Platform({ x: run.x, y, width: run.width, height: TILE_SIZE, oneWay: true }),
+    );
     for (const platform of platforms) this.entityGroups.add('platforms', platform);
     this.rows.push({ index: this.rowCount++, y, runs, platforms });
   }
