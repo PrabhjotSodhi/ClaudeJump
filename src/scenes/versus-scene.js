@@ -17,7 +17,7 @@ import {
 import { DEFAULT_CHARACTER_BY_PLAYER_ID } from '../entities/characters.js';
 import { Crate, CRATE_WIDTH, CRATE_HEIGHT, CRATE_WARNING_TICKS } from '../entities/crate.js';
 import { Platform } from '../entities/platform.js';
-import { Player } from '../entities/player.js';
+import { Player, SHOVE_KNOCKBACK_VELOCITY_X, SHOVE_KNOCKBACK_VELOCITY_Y } from '../entities/player.js';
 import { Rocket, ROCKET_WIDTH, ROCKET_HEIGHT } from '../entities/rocket.js';
 import { drawArenaBackground } from '../levels/arena-backgrounds.js';
 import { solidRuns } from '../levels/level-loader.js';
@@ -47,8 +47,6 @@ const DASH_HEAD_CLEARANCE = 8;
 // Players knocked apart to a gap this small still count as the same contact, so the hit does not refire every tick.
 const DASH_CONTACT_GAP = 6;
 const DASH_KNOCKBACK_VELOCITY_X = 8;
-const SHOVE_KNOCKBACK_VELOCITY_X = 7;
-const SHOVE_KNOCKBACK_VELOCITY_Y = -4;
 // How far a rocket or bomb blast reaches, and how hard it knocks players inside that range.
 const BLAST_RADIUS = 48;
 // Smaller than BLAST_RADIUS so a blast knocks players far but only bites a chunk out of the arena.
@@ -469,7 +467,7 @@ export class VersusScene {
 
   launchPlayersLandingOn(bouncePad) {
     for (const player of this.players) {
-      if (!player.inWater && this.isLandingOnBouncePad(player, bouncePad)) {
+      if (!player.inWater && bouncePad.isLandedOnBy(player)) {
         player.launchUpward(BOUNCE_PAD_LAUNCH_VELOCITY);
       }
     }
@@ -490,16 +488,6 @@ export class VersusScene {
       this.entityGroups.remove('bouncePads', bouncePad);
       return;
     }
-  }
-
-  // Only a fall that crosses the pad's top surface this tick counts as landing on it.
-  // Walking into its side never crosses that surface, so it does nothing.
-  isLandingOnBouncePad(player, bouncePad) {
-    if (player.velocityY <= 0) return false;
-    const previousFeetY = player.previousY + player.height;
-    const feetY = player.y + player.height;
-    if (previousFeetY > bouncePad.y || feetY <= bouncePad.y) return false;
-    return player.x + player.width > bouncePad.x && player.x < bouncePad.x + bouncePad.width;
   }
 
   updateCrates() {

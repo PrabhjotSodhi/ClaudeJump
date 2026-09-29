@@ -4,11 +4,14 @@ import { EventEmitter } from '../engine/events.js';
 import { SeededRandom } from '../engine/seeded-random.js';
 import { wrapAroundScreen } from '../engine/wrap-around-screen.js';
 import { DEFAULT_CHARACTER_BY_PLAYER_ID } from '../entities/characters.js';
+import { BANANA_SLIP_TICKS } from '../entities/banana.js';
+import { BouncePad, BOUNCE_PAD_HEIGHT, BOUNCE_PAD_LAUNCH_VELOCITY, BOUNCE_PAD_WIDTH } from '../entities/bounce-pad.js';
 import { Platform } from '../entities/platform.js';
-import { Player } from '../entities/player.js';
+import { Player, SHOVE_KNOCKBACK_VELOCITY_X, SHOVE_KNOCKBACK_VELOCITY_Y } from '../entities/player.js';
 import { drawArenaBackground } from '../levels/arena-backgrounds.js';
 import { blockName } from '../levels/level-loader.js';
 import { drawSurvivalHud } from '../ui/hud.js';
+import { drawParticles, Particles } from '../vfx/particles.js';
 import { PlayerEyes } from '../vfx/player-eyes.js';
 import { SeaRipple } from '../vfx/sea-ripple.js';
 
@@ -21,6 +24,11 @@ const RUN_MIN_BLOCKS = 3;
 const RUN_MAX_BLOCKS = 6;
 const SECOND_RUN_CHANCE = 0.5;
 const MAX_REACH_X = 96;
+// The chance that a run is ice, bounce, fire or crumbling instead of plain stone.
+export const SPECIAL_PLATFORM_CHANCE = 0.2;
+const SPECIAL_KINDS = ['ice', 'bounce', 'fire', 'crumbling'];
+export const CRUMBLE_TICKS = 30;
+const FIRE_FLICKER_TICKS = 12;
 // How far above the player the top of the screen sits once the camera follows.
 const CAMERA_LEAD_Y = 180;
 // Rows are generated until they reach this far above the top of the screen.
@@ -78,6 +86,12 @@ export class SurvivalScene {
     this.entityGroups = new EntityGroups();
     this.playerEyes = new PlayerEyes();
     this.playerEyes.attach(this.events, () => this.players);
+    this.particles = new Particles();
+    this.particles.attach(this.events, {
+      getPlayers: () => this.players,
+      getWaterLineY: () => this.waterLineY,
+      getTickCount: () => this.runTicks,
+    });
     this.seaRipple = new SeaRipple();
     this.seaRipple.attach(this.events, () => this.players);
     this.bestScore = loadBestScore();
@@ -110,6 +124,7 @@ export class SurvivalScene {
     this.runTicks = 0;
     this.seaY = START_FLOOR_Y + SEA_START_BELOW;
     this.entityGroups.clear('platforms');
+    this.entityGroups.clear('bouncePads');
     this.entityGroups.clear('players');
     this.rows = [];
     this.rowCount = 0;
@@ -130,12 +145,19 @@ export class SurvivalScene {
     this.generateRows();
   }
 
+  // A run without a kind is stone. Each run keeps its platform, and a bounce run its pad.
   addRow({ y, runs }) {
-    const platforms = runs.map(
-      (run) => new Platform({ x: run.x, y, width: run.width, height: TILE_SIZE, oneWay: true }),
-    );
-    for (const platform of platforms) this.entityGroups.add('platforms', platform);
-    this.rows.push({ index: this.rowCount++, y, runs, platforms });
+    for (const run of runs) {
+      run.kind ??= 'stone';
+      run.platform = new Platform({ x: run.x, y, width: run.width, height: TILE_SIZE, oneWay: true });
+      this.entityGroups.add('platforms', run.platform);
+      if (run.kind === 'bounce') {
+        const x = run.x + (run.width - BOUNCE_PAD_WIDTH) / 2;
+        run.pad = new BouncePad({ x, y: y - BOUNCE_PAD_HEIGHT, lifetimeTicks: Infinity });
+        this.entityGroups.add('bouncePads', run.pad);
+      }
+    }
+    this.rows.push({ index: this.rowCount++, y, runs });
   }
 
   randomInteger(minimum, maximum) {
@@ -170,6 +192,13 @@ export class SurvivalScene {
         runs.push(second);
       }
     }
+    // The first run is the one placed within reach, so it is never fire: a fire run throws the player off and
+    // would wall the climb.
+    runs.forEach((run, index) => {
+      if (this.random.next() >= SPECIAL_PLATFORM_CHANCE) return;
+      const kinds = index === 0 ? SPECIAL_KINDS.filter((kind) => kind !== 'fire') : SPECIAL_KINDS;
+      run.kind = kinds[this.randomInteger(0, kinds.length - 1)];
+    });
     return { y: rowBelow.y - gapY, runs: runs.sort((runA, runB) => runA.x - runB.x) };
   }
 
@@ -183,10 +212,62 @@ export class SurvivalScene {
     const survivingRows = this.rows.filter((row) => row.y <= this.cameraTopY + KEEP_BELOW_Y);
     if (survivingRows.length === this.rows.length) return;
     for (const row of this.rows) {
-      if (!survivingRows.includes(row))
-        for (const platform of row.platforms) this.entityGroups.remove('platforms', platform);
+      if (survivingRows.includes(row)) continue;
+      for (const run of row.runs) this.removeRun(run);
     }
     this.rows = survivingRows;
+  }
+
+  removeRun(run) {
+    this.entityGroups.remove('platforms', run.platform);
+    if (run.pad) this.entityGroups.remove('bouncePads', run.pad);
+  }
+
+  runUnderfoot(player) {
+    const feetY = player.y + player.height;
+    for (const row of this.rows) {
+      if (row.y !== feetY) continue;
+      const run = row.runs.find(
+        (candidate) =>
+          !candidate.broken && player.x < candidate.x + candidate.width && player.x + player.width > candidate.x,
+      );
+      if (run) return run;
+    }
+    return null;
+  }
+
+  // A landing on ice slips, on fire burns, and on crumbling starts the countdown.
+  applyLanding(player) {
+    const run = this.runUnderfoot(player);
+    if (run?.kind === 'ice') player.makeSlip(BANANA_SLIP_TICKS);
+    if (run?.kind === 'crumbling' && run.crumbleTicksRemaining === undefined) run.crumbleTicksRemaining = CRUMBLE_TICKS;
+    if (run?.kind === 'fire') {
+      const backDirection = -(Math.sign(player.velocityX + player.knockbackVelocityX) || player.facing);
+      player.applyKnockback(SHOVE_KNOCKBACK_VELOCITY_X * backDirection, SHOVE_KNOCKBACK_VELOCITY_Y);
+      this.events.emit('player-burned', { playerId: player.id });
+    }
+  }
+
+  launchFromBouncePads(player) {
+    for (const pad of this.entityGroups.get('bouncePads')) {
+      if (pad.isLandedOnBy(player)) player.launchUpward(BOUNCE_PAD_LAUNCH_VELOCITY);
+    }
+  }
+
+  // Runs before the landing check, so the tick a countdown starts on is not counted.
+  crumbleRuns() {
+    for (const row of this.rows) {
+      for (const run of row.runs) {
+        if (run.crumbleTicksRemaining === undefined || run.broken) continue;
+        run.crumbleTicksRemaining--;
+        if (run.crumbleTicksRemaining > 0) continue;
+        run.broken = true;
+        this.removeRun(run);
+        for (let block = 0; block < run.width / TILE_SIZE; block++) {
+          this.events.emit('block-broken', { x: run.x + block * TILE_SIZE, y: row.y, size: TILE_SIZE });
+        }
+      }
+    }
   }
 
   update(inputByPlayerId) {
@@ -194,6 +275,7 @@ export class SurvivalScene {
     const freshJump = jumpPressed && !this.jumpHeld;
     this.jumpHeld = jumpPressed;
     this.seaRipple.update();
+    this.particles.update();
 
     if (this.phase === 'over') {
       if (freshJump) {
@@ -204,7 +286,10 @@ export class SurvivalScene {
     }
 
     const player = this.players[0];
+    this.crumbleRuns();
     player.update(inputByPlayerId[PLAYER_ID] ?? null, this.entityGroups.get('platforms'));
+    if (player.ticksSinceLanding === 0) this.applyLanding(player);
+    this.launchFromBouncePads(player);
     if (player.ticksSinceJump === 0) {
       this.events.emit('player-jumped', {
         playerId: player.id,
@@ -230,6 +315,16 @@ export class SurvivalScene {
     }
   }
 
+  // stoneBlocksByKind holds one sprite set per look, built once at load. Bounce runs are stone.
+  blockSpritesFor(run) {
+    const { stoneBlocks, stoneBlocksByKind = {} } = this.sprites;
+    if (run.kind === 'fire') {
+      const flickerFrame = Math.floor(this.runTicks / FIRE_FLICKER_TICKS) % 2;
+      return stoneBlocksByKind[flickerFrame ? 'fire-flicker' : 'fire'] ?? stoneBlocks;
+    }
+    return stoneBlocksByKind[run.kind] ?? stoneBlocks;
+  }
+
   render(renderer) {
     if (!this.backgroundDrawn) {
       renderer.updateBackground((context) => drawArenaBackground(context, 'rooftops'));
@@ -244,19 +339,19 @@ export class SurvivalScene {
     context.translate(0, -this.cameraTopY);
     for (const row of this.rows) {
       for (const run of row.runs) {
+        if (run.broken) continue;
+        const blocks = this.blockSpritesFor(run);
         for (let block = 0; block < run.width / TILE_SIZE; block++) {
           const column = run.x / TILE_SIZE + block;
-          context.drawImage(
-            this.sprites.stoneBlocks[blockName('small', column, row.index)],
-            run.x + block * TILE_SIZE,
-            row.y,
-          );
+          context.drawImage(blocks[blockName('small', column, row.index)], run.x + block * TILE_SIZE, row.y);
         }
+        run.pad?.render(context);
       }
     }
     this.entityGroups
       .get('players')
       .forEach((player) => player.render(context, { sprites: this.sprites, playerEyes: this.playerEyes }));
+    drawParticles(context, this);
     context.restore();
     drawSurvivalHud(renderer.uiContext, this);
   }

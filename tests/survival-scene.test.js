@@ -5,6 +5,7 @@ import { recordingContext, spritesFor } from './fixtures/recording-context.mjs';
 import {
   isRowReachable,
   nextBestScore,
+  CRUMBLE_TICKS,
   SEA_GRACE_TICKS,
   SEA_RISE_PER_TICK,
   SurvivalScene,
@@ -22,7 +23,7 @@ function makeClimber(scene) {
     const playerCenter = player.x + player.width / 2;
     const isAboveTarget = feetY <= targetRow.y;
     let bestOffset = Infinity;
-    for (const run of targetRow.runs) {
+    for (const run of targetRow.runs.filter((candidate) => !candidate.broken)) {
       const aimXs = [run.x + run.width / 2];
       for (const aimX of aimXs) {
         for (const shift of [-SCREEN_WIDTH, 0, SCREEN_WIDTH]) {
@@ -86,7 +87,7 @@ test('rows are generated above the camera and dropped far below it', () => {
   assert.ok(scene.rows.every((row) => row.y <= scene.cameraTopY + 2 * SCREEN_HEIGHT));
   assert.equal(
     scene.entityGroups.get('platforms').length,
-    scene.rows.reduce((sum, row) => sum + row.runs.length, 0),
+    scene.rows.reduce((sum, row) => sum + row.runs.filter((run) => !run.broken).length, 0),
   );
 });
 
@@ -222,4 +223,152 @@ test('the sea catches up when the camera climbs far above it', () => {
   scene.cameraTopY = -2000;
   scene.update(idle);
   assert.ok(scene.seaY <= scene.cameraTopY + SCREEN_HEIGHT + 48);
+});
+
+// Puts the player one tick above the top of a row's first run, falling onto it, and turns that run into the given kind.
+function dropOnto(scene, kind, rowIndex = 1) {
+  const row = scene.rows[rowIndex];
+  const run = row.runs[0];
+  run.kind = kind;
+  const player = scene.players[0];
+  player.x = run.x + run.width / 2 - player.width / 2;
+  player.y = row.y - player.height - 1;
+  player.previousY = player.y;
+  player.velocityY = 2;
+  player.onGround = false;
+  return run;
+}
+
+function collectEvents(scene, name) {
+  const events = [];
+  scene.events.on(name, (event) => events.push(event));
+  return events;
+}
+
+test('the start floor is stone and about a fifth of the other runs are special', () => {
+  const kinds = { stone: 0, ice: 0, bounce: 0, fire: 0, crumbling: 0 };
+  for (let seed = 0; seed < 40; seed++) {
+    const scene = new SurvivalScene({ seed });
+    assert.equal(scene.rows[0].runs[0].kind, 'stone');
+    for (const run of scene.rows.slice(1).flatMap((row) => row.runs)) kinds[run.kind]++;
+  }
+  const total = Object.values(kinds).reduce((sum, count) => sum + count, 0);
+  const special = total - kinds.stone;
+  assert.ok(special / total > 0.12 && special / total < 0.28);
+  for (const kind of ['ice', 'bounce', 'fire', 'crumbling']) assert.ok(kinds[kind] > 0, kind);
+});
+
+test('a crumbling platform is solid for 29 ticks after landing and gone on tick 30', () => {
+  const scene = new SurvivalScene({ seed: 1 });
+  const run = dropOnto(scene, 'crumbling');
+  const broken = collectEvents(scene, 'block-broken');
+  const platforms = () => scene.entityGroups.get('platforms');
+
+  scene.update(idle);
+  assert.ok(scene.players[0].onGround, 'landed');
+  for (let tick = 1; tick < CRUMBLE_TICKS; tick++) {
+    scene.update(idle);
+    assert.ok(platforms().includes(run.platform), 'solid on tick ' + tick);
+    assert.ok(scene.players[0].onGround);
+  }
+  assert.equal(broken.length, 0);
+
+  scene.update(idle);
+  assert.ok(!platforms().includes(run.platform));
+  assert.equal(broken.length, run.width / 16);
+  assert.deepEqual(broken[0], { x: run.x, y: scene.rows[1].y, size: 16 });
+});
+
+test('a crumbling platform waits for a landing before it starts to break', () => {
+  const scene = new SurvivalScene({ seed: 1 });
+  const run = scene.rows[1].runs[0];
+  run.kind = 'crumbling';
+  for (let tick = 0; tick < 60; tick++) scene.update(idle);
+  assert.ok(scene.entityGroups.get('platforms').includes(run.platform));
+});
+
+test('landing on ice slips the player the way they were moving', () => {
+  const scene = new SurvivalScene({ seed: 1 });
+  dropOnto(scene, 'ice');
+  scene.players[0].velocityX = 2;
+
+  scene.update(idle);
+  const player = scene.players[0];
+
+  assert.ok(player.slipTicksRemaining > 0);
+  assert.equal(player.slipDirection, 1);
+});
+
+test('landing on stone does not slip', () => {
+  const scene = new SurvivalScene({ seed: 1 });
+  dropOnto(scene, 'stone');
+  scene.update(idle);
+  assert.equal(scene.players[0].slipTicksRemaining, 0);
+});
+
+test('landing on fire knocks the player up and back, and announces the burn', () => {
+  const scene = new SurvivalScene({ seed: 1 });
+  dropOnto(scene, 'fire');
+  const player = scene.players[0];
+  player.velocityX = 2;
+  const burned = collectEvents(scene, 'player-burned');
+
+  scene.update(idle);
+
+  assert.deepEqual(burned, [{ playerId: 'red' }]);
+  assert.ok(player.knockbackVelocityX < 0, 'thrown back');
+  assert.ok(player.velocityY < 0, 'thrown up');
+});
+
+test('a bounce platform launches a falling player and carries a pad', () => {
+  let scene;
+  for (let seed = 0; !scene; seed++) {
+    const candidate = new SurvivalScene({ seed });
+    if (candidate.rows.slice(1).some((row) => row.runs.some((run) => run.kind === 'bounce'))) scene = candidate;
+  }
+  const row = scene.rows.slice(1).find((candidate) => candidate.runs.some((run) => run.kind === 'bounce'));
+  const run = row.runs.find((candidate) => candidate.kind === 'bounce');
+  assert.equal(run.pad.y + run.pad.height, row.y);
+  const player = scene.players[0];
+  player.x = run.pad.x + 6;
+  player.y = run.pad.y - player.height - 1;
+  player.previousY = player.y;
+  player.velocityY = 4;
+
+  scene.update(idle);
+  scene.update(idle);
+
+  assert.ok(player.velocityY < -10.4, 'launched harder than a jump');
+});
+
+test('the burn rattles the eyes and throws sparks', () => {
+  const scene = new SurvivalScene({ seed: 1 });
+  dropOnto(scene, 'fire');
+  scene.update(idle);
+  assert.ok(scene.particles.list.length > 0);
+  assert.ok(scene.playerEyes.eyesFor('red').some((eye) => eye.offsetX !== 0 || eye.offsetY !== 0));
+});
+
+test('the same seed and inputs give the same special platforms and player path', () => {
+  const runOnce = () => {
+    const scene = new SurvivalScene({ seed: 9 });
+    const climb = makeClimber(scene);
+    for (let tick = 0; tick < 600; tick++) scene.update(climb(tick));
+    return {
+      kinds: scene.rows.flatMap((row) => row.runs.map((run) => run.kind + (run.broken ? 'x' : ''))),
+      x: scene.players[0].x,
+      y: scene.players[0].y,
+    };
+  };
+  assert.deepEqual(runOnce(), runOnce());
+});
+
+test('every row keeps a run within reach that is not fire', () => {
+  for (let seed = 0; seed < 40; seed++) {
+    const scene = new SurvivalScene({ seed });
+    for (let index = 1; index < scene.rows.length; index++) {
+      const safeRuns = scene.rows[index].runs.filter((run) => run.kind !== 'fire');
+      assert.ok(isRowReachable({ runs: safeRuns }, scene.rows[index - 1]), `seed ${seed} row ${index}`);
+    }
+  }
 });
