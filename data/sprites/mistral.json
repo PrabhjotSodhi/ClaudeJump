@@ -1,0 +1,48 @@
+{
+  "colors": {
+    ".": null,
+    "o": "#3e2731",
+    "w": "#ffffff",
+    "y": "#fee761",
+    "a": "#feae34",
+    "f": "#f77622",
+    "r": "#e43b44",
+    "d": "#a22633"
+  },
+  "frames": {
+    "body": [
+      "................................",
+      "................................",
+      "....wwwww...............wwwww...",
+      "...wooooow.............wooooow..",
+      "..woyyyyaow...........woyyyyaow.",
+      "..woyyyyaow...........woyyyyaow.",
+      "..woyyyyaow...........woyyyyaow.",
+      "..woyyyyaowwww.....wwwwoyyyyaow.",
+      "..woyyyyaooooow...woooooyyyyaow.",
+      "..woyaaaayyyyfow.woyyyyyaaaafow.",
+      "..woyaaaaaaaafow.woyaaaaaaaafow.",
+      "..woyaaaaaaaafow.woyaaaaaaaafow.",
+      "..woyaaaaaaaafowwwoyaaaaaaaafow.",
+      "..woyaaaaaaaafoooooyaaaaaaaafow.",
+      "..woafffffffffaaaaafffffffffrow.",
+      "..woafffffffffffffffffffffffrow.",
+      "..woafffffffffffffffffffffffrow.",
+      "..woafffffffffffffffffffffffrow.",
+      "..woaffffrrrrrfffffrrrrrffffrow.",
+      "..wofrrrdooooofrrrdooooofrrrdow.",
+      "..wofrrrdowwwofrrrdowwwofrrrdow.",
+      "..wofrrrdow.wofrrrdow.wofrrrdow.",
+      "..wofrrrdow.wofrrrdow.wofrrrdow.",
+      "..wofrrrdow.wodddddow.wofrrrdow.",
+      "..worddddow..wooooow..worddddow.",
+      "..worddddow...wwwww...worddddow.",
+      "..worddddow...........worddddow.",
+      "..worddddow...........worddddow.",
+      "..wodddddow...........wodddddow.",
+      "...wooooow.............wooooow..",
+      "....wwwww...............wwwww...",
+      "................................"
+    ]
+  }
+}

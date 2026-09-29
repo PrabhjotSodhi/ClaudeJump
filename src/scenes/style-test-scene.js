@@ -6,9 +6,18 @@ import { drawGooglyEye, EYE_SIZE, GooglyEye } from '../vfx/googly-eyes.js';
 import { drawFullyLit, drawLightRings } from '../vfx/light-rings.js';
 
 const TILE_SIZE = 16;
-const PLATFORM = { x: 144, y: 232, tileCount: 22 };
-const TOP_TILE_BY_COLUMN = { 2: 'top-moss', 6: 'top-crack', 10: 'top-moss', 14: 'top-crack', 17: 'top-moss' };
-const BOTTOM_TILE_BY_COLUMN = { 4: 'bottom-crack', 15: 'bottom-crack' };
+const PLATFORM = { x: 64, y: 232, tileCount: 32 };
+const TOP_TILE_BY_COLUMN = {
+  2: 'top-moss',
+  6: 'top-crack',
+  10: 'top-moss',
+  14: 'top-crack',
+  17: 'top-moss',
+  22: 'top-crack',
+  26: 'top-moss',
+  29: 'top-crack',
+};
+const BOTTOM_TILE_BY_COLUMN = { 4: 'bottom-crack', 15: 'bottom-crack', 25: 'bottom-crack' };
 
 // Background colors are drawn bright because the shader darkens everything unlit by two ramp steps.
 const SKY_COLOR = '#8b9bb4';
@@ -104,7 +113,7 @@ const NEAR_CLIFF_LEDGES = [
   [616, 262, 14],
 ];
 
-const LAMP_XS = [150, 480];
+const LAMP_XS = [70, 560];
 const LAMP_LIGHT_RADII = [88, 52];
 const ROCKET_LIGHT_RADII = [44, 24];
 const ROCKET = { y: 104, startX: 60, travelPixels: 460, pixelsPerTick: 1.5, flameFlickerTicks: 6 };
@@ -119,6 +128,81 @@ const FRAME_SIZE = 32;
 const COMPOSITE_SIZE = 48;
 // One per eye. The left eye is a little stiffer, so the pupils drift apart like real googly eyes.
 const PUPIL_STIFFNESS = [0.16, 0.12];
+
+// Each character hops toward its partner. Eyes are the top left of each eye in the 32x32 body frame, placed so they
+// leave the character's signature shape visible.
+const CAST = [
+  {
+    name: 'claude',
+    partner: 'muse',
+    homeX: 96,
+    firstRestTicks: 20,
+    eyeFramePositions: [
+      [7, 8],
+      [16, 8],
+    ],
+  },
+  {
+    name: 'muse',
+    partner: 'claude',
+    homeX: 160,
+    firstRestTicks: 34,
+    eyeFramePositions: [
+      [7, 6],
+      [16, 6],
+    ],
+  },
+  {
+    name: 'chatgpt',
+    partner: 'gemini',
+    homeX: 234,
+    firstRestTicks: 26,
+    eyeFramePositions: [
+      [6, 5],
+      [17, 5],
+    ],
+  },
+  {
+    name: 'gemini',
+    partner: 'chatgpt',
+    homeX: 298,
+    firstRestTicks: 42,
+    eyeFramePositions: [
+      [7, 11],
+      [16, 11],
+    ],
+  },
+  {
+    name: 'grok',
+    partner: 'deepseek',
+    homeX: 384,
+    firstRestTicks: 14,
+    eyeFramePositions: [
+      [4, 8],
+      [12, 5],
+    ],
+  },
+  {
+    name: 'deepseek',
+    partner: 'grok',
+    homeX: 456,
+    firstRestTicks: 30,
+    eyeFramePositions: [
+      [4, 13],
+      [12, 13],
+    ],
+  },
+  {
+    name: 'mistral',
+    partner: 'deepseek',
+    homeX: 528,
+    firstRestTicks: 70,
+    eyeFramePositions: [
+      [7, 12],
+      [18, 12],
+    ],
+  },
+];
 
 function drawCloud(context, { x, y, bumps }) {
   for (const [offsetX, width, height] of bumps) {
@@ -183,7 +267,7 @@ function platformTileName(row, column) {
   return BOTTOM_TILE_BY_COLUMN[column] ?? 'bottom';
 }
 
-// Hops toward the other character, gets knocked back on a bump, then hops home and rests.
+// Hops toward its partner, gets knocked back on a bump, then hops home and rests.
 // State changes only in update(), once per tick, so the dance is the same on every run.
 class HoppingCharacter {
   constructor({ sprite, homeX, firstRestTicks, eyeFramePositions }) {
@@ -217,13 +301,13 @@ class HoppingCharacter {
     for (const eye of this.eyes) eye.hit(directionX);
   }
 
-  update(other) {
+  update() {
     this.ticksSinceLanding++;
     if (this.grounded) {
       this.restTicks--;
       if (this.restTicks <= 0) {
-        const towardOther = Math.sign(other.x - this.x);
-        this.hop(this.mode === 'approach' ? towardOther : -towardOther, HOP.sideSpeed, HOP.upSpeed);
+        const targetX = this.mode === 'approach' ? this.partner.x : this.homeX;
+        this.hop(Math.sign(targetX - this.x), HOP.sideSpeed, HOP.upSpeed);
       }
     } else {
       this.velocityY += HOP.gravity;
@@ -294,24 +378,17 @@ export class StyleTestScene {
     this.lighting = { fogStrength: FOG_STRENGTH };
     this.backgroundDrawn = false;
     this.tickCount = 0;
-    this.claude = new HoppingCharacter({
-      sprite: sprites.claude.body,
-      homeX: 236,
-      firstRestTicks: 20,
-      eyeFramePositions: [
-        [7, 8],
-        [16, 8],
-      ],
-    });
-    this.muse = new HoppingCharacter({
-      sprite: sprites.muse.body,
-      homeX: 404,
-      firstRestTicks: 34,
-      eyeFramePositions: [
-        [7, 6],
-        [16, 6],
-      ],
-    });
+    const characterByName = {};
+    for (const { name, homeX, firstRestTicks, eyeFramePositions } of CAST) {
+      characterByName[name] = new HoppingCharacter({
+        sprite: sprites[name].body,
+        homeX,
+        firstRestTicks,
+        eyeFramePositions,
+      });
+    }
+    for (const { name, partner } of CAST) characterByName[name].partner = characterByName[partner];
+    this.characters = Object.values(characterByName);
     // Dev-mode snapshots read these.
     this.phase = 'style';
     this.wins = {};
@@ -320,13 +397,14 @@ export class StyleTestScene {
 
   update() {
     this.tickCount++;
-    this.claude.update(this.muse);
-    this.muse.update(this.claude);
-    const bothApproaching = this.claude.mode === 'approach' && this.muse.mode === 'approach';
-    if (bothApproaching && Math.abs(this.muse.x - this.claude.x) < BUMP.distance) {
-      const claudeAwayX = Math.sign(this.claude.x - this.muse.x);
-      this.claude.bump(claudeAwayX);
-      this.muse.bump(-claudeAwayX);
+    for (const character of this.characters) character.update();
+    for (const character of this.characters) {
+      const { partner } = character;
+      if (character.mode === 'approach' && Math.abs(partner.x - character.x) < BUMP.distance) {
+        const awayX = Math.sign(character.x - partner.x);
+        character.bump(awayX);
+        partner.bump(-awayX);
+      }
     }
   }
 
@@ -364,8 +442,7 @@ export class StyleTestScene {
       ROCKET_LIGHT_RADII,
       this.tickCount,
     );
-    this.claude.render(renderer);
-    this.muse.render(renderer);
+    for (const character of this.characters) character.render(renderer);
 
     renderer.clearUiLayer();
     drawPanel(renderer.uiContext, 16, 16, 140, 76);

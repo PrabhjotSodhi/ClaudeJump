@@ -24,7 +24,7 @@ test('a grid with an unknown key or a ragged row is rejected', () => {
 test('every shipped sprite frame is a valid grid of palette colors', async () => {
   const palette = JSON.parse(await readFile(new URL('../data/palette.json', import.meta.url), 'utf8'));
   const paletteColors = new Set(Object.values(palette.ramps).flat());
-  for (const file of ['claude', 'muse', 'tiles', 'props']) {
+  for (const file of ['claude', 'muse', 'chatgpt', 'gemini', 'grok', 'deepseek', 'mistral', 'tiles', 'props']) {
     const { colors: colorByKey, frames } = JSON.parse(
       await readFile(new URL(`../data/sprites/${file}.json`, import.meta.url), 'utf8'),
     );
