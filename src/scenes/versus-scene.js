@@ -1,5 +1,6 @@
 import { CARD_NAMES } from '../cards/card-definitions.js';
 import { SCREEN_WIDTH, TILE_SIZE } from '../engine/config.js';
+import { knockBackPlayersInBlast } from '../engine/blast.js';
 import { EntityGroups } from '../engine/entity-groups.js';
 import { EventEmitter } from '../engine/events.js';
 import { SeededRandom } from '../engine/seeded-random.js';
@@ -47,12 +48,8 @@ const DASH_HEAD_CLEARANCE = 8;
 // Players knocked apart to a gap this small still count as the same contact, so the hit does not refire every tick.
 const DASH_CONTACT_GAP = 6;
 const DASH_KNOCKBACK_VELOCITY_X = 8;
-// How far a rocket or bomb blast reaches, and how hard it knocks players inside that range.
-const BLAST_RADIUS = 48;
-// Smaller than BLAST_RADIUS so a blast knocks players far but only bites a chunk out of the arena.
+// Smaller than the blast radius that knocks players back, so a blast knocks players far but only bites a chunk out of the arena.
 const BLOCK_BLAST_RADIUS = 24;
-const BLAST_KNOCKBACK_VELOCITY_X = 8;
-const BLAST_KNOCKBACK_VELOCITY_Y = -4;
 // A dashing player stopped by a wall only touches it, so the body reaches this far sideways to break it.
 const DASH_BREAK_REACH = 1;
 
@@ -384,18 +381,7 @@ export class VersusScene {
 
   resolveBlast(blastCenterX, blastCenterY) {
     this.requestHitPause(BLAST_HIT_PAUSE_TICKS);
-    const knockedPlayerIds = [];
-    for (const player of this.players) {
-      if (player.inWater) continue;
-      const distanceX = player.x + player.width / 2 - blastCenterX;
-      const distanceY = player.y + player.height / 2 - blastCenterY;
-      const distance = Math.hypot(distanceX, distanceY);
-      if (distance > BLAST_RADIUS) continue;
-
-      const knockbackDirectionX = distance === 0 ? 1 : distanceX / distance;
-      player.applyKnockback(knockbackDirectionX * BLAST_KNOCKBACK_VELOCITY_X, BLAST_KNOCKBACK_VELOCITY_Y);
-      knockedPlayerIds.push(player.id);
-    }
+    const knockedPlayerIds = knockBackPlayersInBlast(this.players, blastCenterX, blastCenterY);
     this.breakBlocksWhere((block) => blockIsInBlast(block, blastCenterX, blastCenterY));
     return knockedPlayerIds;
   }
