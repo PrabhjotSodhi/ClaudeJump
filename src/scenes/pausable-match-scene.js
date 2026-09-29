@@ -1,9 +1,18 @@
 import { drawPauseMenu } from '../ui/pause-menu.js';
+import { drawResultsMenu } from '../ui/results-menu.js';
+import { LevelSelectScene } from './level-select-scene.js';
+import { PlayerSelectScene } from './player-select-scene.js';
 import { TitleScene } from './title-scene.js';
 
 export const PAUSE_MENU_OPTIONS = [
   { id: 'resume', label: 'Resume' },
   { id: 'title', label: 'Return to title' },
+];
+
+export const RESULTS_MENU_OPTIONS = [
+  { id: 'rematch', label: 'Rematch' },
+  { id: 'level', label: 'Change level' },
+  { id: 'characters', label: 'Change characters' },
 ];
 
 // Controls masked out of the match's input for a player until they release it, so confirming
@@ -21,15 +30,28 @@ export class PausableMatchScene {
     this.paused = false;
     this.selectedIndex = 0;
     this.previousPauseByPlayerId = {};
-    this.previousMenuControls = { up: {}, down: {}, confirm: {} };
+    this.previousMenuControls = { up: {}, down: {}, confirm: {}, jump: {} };
+    this.resultsMenuOpen = false;
+    this.resultsSelectedIndex = 0;
   }
 
   get waterLineY() {
     return this.matchScene.waterLineY;
   }
 
+  get showingResults() {
+    return this.matchScene.phase === 'match' && this.matchScene.ticksRemaining <= 0;
+  }
+
   update(inputByPlayerId) {
     const pausePressed = this.consumeFreshPress(inputByPlayerId, 'pause', this.previousPauseByPlayerId);
+
+    if (!this.paused && this.showingResults) {
+      this.matchScene.update(inputByPlayerId);
+      this.updateResultsMenu(inputByPlayerId);
+      return;
+    }
+    this.resultsMenuOpen = false;
 
     if (this.paused) {
       if (pausePressed) {
@@ -59,6 +81,57 @@ export class PausableMatchScene {
     if (confirmPressed) this.confirmSelection(inputByPlayerId);
   }
 
+  // The first tick the results show only records what is held, so the jump that ended the last
+  // round never confirms an option. The match keeps ticking underneath so the sinking player finishes falling.
+  updateResultsMenu(inputByPlayerId) {
+    if (!this.resultsMenuOpen) {
+      this.resultsMenuOpen = true;
+      this.resultsSelectedIndex = 0;
+      this.seedMenuBaseline(inputByPlayerId);
+      return;
+    }
+
+    const upPressed = this.consumeFreshPress(inputByPlayerId, 'up', this.previousMenuControls.up);
+    const downPressed = this.consumeFreshPress(inputByPlayerId, 'down', this.previousMenuControls.down);
+    const confirmPressed = this.consumeFreshPress(inputByPlayerId, 'confirm', this.previousMenuControls.confirm);
+    const jumpPressed = this.consumeFreshPress(inputByPlayerId, 'jump', this.previousMenuControls.jump);
+
+    const optionCount = RESULTS_MENU_OPTIONS.length;
+    if (downPressed) this.resultsSelectedIndex = (this.resultsSelectedIndex + 1) % optionCount;
+    if (upPressed) this.resultsSelectedIndex = (this.resultsSelectedIndex + optionCount - 1) % optionCount;
+    if (confirmPressed || jumpPressed) this.confirmResultsOption(inputByPlayerId);
+  }
+
+  confirmResultsOption(inputByPlayerId) {
+    const optionId = RESULTS_MENU_OPTIONS[this.resultsSelectedIndex].id;
+    if (optionId === 'rematch') {
+      this.matchScene.startNewMatch();
+    } else if (optionId === 'level') {
+      this.sceneManager.setScene(
+        new LevelSelectScene({
+          sceneManager: this.sceneManager,
+          levels: this.matchScene.levels,
+          characterByPlayerId: this.matchScene.characterByPlayerId,
+          sprites: this.matchScene.sprites,
+          seed: this.nextSeed(),
+        }),
+      );
+    } else if (optionId === 'characters') {
+      this.sceneManager.setScene(
+        new PlayerSelectScene({
+          sceneManager: this.sceneManager,
+          levels: this.matchScene.levels,
+          sprites: this.matchScene.sprites,
+          seed: this.nextSeed(),
+        }),
+      );
+    }
+  }
+
+  nextSeed() {
+    return Math.floor(this.matchScene.random.next() * 0xffffffff);
+  }
+
   // A control counts as freshly pressed the tick it goes from not held by any player to held by
   // at least one, so either player can drive the menu and a tap shorter than a tick still lands.
   consumeFreshPress(inputByPlayerId, controlName, previousByPlayerId) {
@@ -76,6 +149,10 @@ export class PausableMatchScene {
   openMenu(inputByPlayerId) {
     this.paused = true;
     this.selectedIndex = 0;
+    this.seedMenuBaseline(inputByPlayerId);
+  }
+
+  seedMenuBaseline(inputByPlayerId) {
     for (const control in this.previousMenuControls) {
       this.previousMenuControls[control] = {};
       for (const playerId in inputByPlayerId) {
@@ -129,13 +206,12 @@ export class PausableMatchScene {
     if (option.id === 'resume') {
       this.resume(inputByPlayerId);
     } else if (option.id === 'title') {
-      const seed = Math.floor(this.matchScene.random.next() * 0xffffffff);
       this.sceneManager.setScene(
         new TitleScene({
           sceneManager: this.sceneManager,
           levels: this.matchScene.levels,
           sprites: this.matchScene.sprites,
-          seed,
+          seed: this.nextSeed(),
           initialInput: inputByPlayerId,
         }),
       );
@@ -144,6 +220,8 @@ export class PausableMatchScene {
 
   render(renderer) {
     this.matchScene.render(renderer);
+    if (!this.paused && this.showingResults)
+      drawResultsMenu(renderer.uiContext, { options: RESULTS_MENU_OPTIONS, selectedIndex: this.resultsSelectedIndex });
     if (this.paused)
       drawPauseMenu(renderer.uiContext, { options: PAUSE_MENU_OPTIONS, selectedIndex: this.selectedIndex });
   }

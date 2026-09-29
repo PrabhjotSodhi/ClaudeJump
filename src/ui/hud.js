@@ -49,7 +49,7 @@ function drawSuddenDeathWarning(context, scene) {
   }
 }
 
-// Placeholder layout: each player's column of stats, in their own color, and their readiness for the next match.
+// Placeholder layout: each player's column of stats, in their own color.
 function drawMatchResults(context, scene) {
   const stats = scene.matchStats;
 
@@ -62,11 +62,6 @@ function drawMatchResults(context, scene) {
     drawText(context, `Wins ${scene.wins[player.id]}`, x, y, { align: 'center' });
     y += RESULTS_ROW_HEIGHT;
     drawText(context, `Falls ${stats.fallsIn[player.id]}`, x, y, { align: 'center' });
-    y += RESULTS_ROW_HEIGHT;
-    drawText(context, scene.matchReadyIds.has(player.id) ? 'Ready!' : 'Press jump', x, y, {
-      align: 'center',
-      color: player.color,
-    });
   });
 }
 

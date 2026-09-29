@@ -267,3 +267,102 @@ test('Return to title, then Versus, opens a player select that can run a tick', 
   assert.equal(currentScene.constructor.name, 'PlayerSelectScene');
   assert.doesNotThrow(() => currentScene.update(neutralInputs()));
 });
+
+const READY_TICKS = 60;
+const POINT_PAUSE_TICKS = 90;
+const RESULTS_DELAY_TICKS = 60;
+
+function sceneJustBeforeResults() {
+  const setup = pausedScene();
+  const { scene, matchScene } = setup;
+  matchScene.levels = [harborLevel];
+  matchScene.characterByPlayerId = { red: 'muse', blue: 'claude' };
+  for (let win = 1; win <= 5; win++) {
+    for (let tick = 0; tick < READY_TICKS; tick++) scene.update(neutralInputs());
+    findPlayer(matchScene, 'blue').y = 600;
+    scene.update(neutralInputs());
+    if (win < 5) for (let tick = 0; tick < POINT_PAUSE_TICKS; tick++) scene.update(neutralInputs());
+  }
+  for (let tick = 0; tick < RESULTS_DELAY_TICKS - 1; tick++) scene.update(neutralInputs());
+  return setup;
+}
+
+function sceneShowingResults() {
+  const setup = sceneJustBeforeResults();
+  setup.scene.update(neutralInputs());
+  setup.scene.update(neutralInputs()); // the first tick showing only records what is held
+  assert.equal(setup.matchScene.phase, 'match');
+  return setup;
+}
+
+function choose(scene, optionIndex, confirmInput = { confirm: true }) {
+  for (let step = 0; step < optionIndex; step++) {
+    scene.update(inputsWith('red', { down: true }));
+    scene.update(neutralInputs());
+  }
+  scene.update(inputsWith('red', confirmInput));
+}
+
+test('Rematch keeps the level and characters and starts a fresh match', () => {
+  const { scene, matchScene, scenes } = sceneShowingResults();
+  const level = matchScene.level;
+  const characterByPlayerId = matchScene.characterByPlayerId;
+
+  choose(scene, 0);
+
+  assert.equal(scenes.length, 0, 'a rematch stays in the same scene');
+  assert.equal(matchScene.phase, 'ready');
+  assert.deepEqual(matchScene.wins, { red: 0, blue: 0 });
+  assert.equal(matchScene.level, level);
+  assert.equal(matchScene.characterByPlayerId, characterByPlayerId);
+});
+
+test('Change level opens level select with the same characters', () => {
+  const { scene, matchScene, scenes } = sceneShowingResults();
+
+  choose(scene, 1);
+
+  assert.equal(scenes.length, 1);
+  assert.equal(scenes[0].constructor.name, 'LevelSelectScene');
+  assert.equal(scenes[0].characterByPlayerId, matchScene.characterByPlayerId);
+  assert.equal(scenes[0].levels, matchScene.levels);
+});
+
+test('Change characters opens player select', () => {
+  const { scene, scenes } = sceneShowingResults();
+
+  choose(scene, 2);
+
+  assert.equal(scenes.length, 1);
+  assert.equal(scenes[0].constructor.name, 'PlayerSelectScene');
+});
+
+test('jump confirms the selected results option, and up wraps to the last one', () => {
+  const { scene, scenes } = sceneShowingResults();
+
+  scene.update(inputsWith('blue', { up: true }));
+  scene.update(neutralInputs());
+  scene.update(inputsWith('blue', { jump: true }));
+
+  assert.equal(scenes[0].constructor.name, 'PlayerSelectScene');
+});
+
+test('a jump held from the fight does not choose an option when the results appear', () => {
+  const { scene, scenes } = sceneJustBeforeResults();
+  const heldJump = inputsWith('red', { jump: true });
+
+  scene.update(heldJump);
+  scene.update(heldJump);
+  scene.update(heldJump);
+
+  assert.equal(scenes.length, 0);
+  assert.equal(scene.matchScene.phase, 'match');
+});
+
+test('pause does not open while the results menu is showing', () => {
+  const { scene } = sceneShowingResults();
+
+  scene.update(inputsWith('red', { pause: true }));
+
+  assert.equal(scene.paused, false);
+});
