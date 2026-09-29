@@ -188,22 +188,18 @@ test('a held pickup is played by the action button instead of starting a shove',
   assert.equal(player.isShoveActive, false, 'the button plays the pickup instead of shoving');
 });
 
-test('a pickup gives 3 uses, each press spends one, and at 0 the button shoves again', () => {
+test('a pickup gives 1 use, and once it is played the button shoves again', () => {
   const player = new Player({ id: 'red', character: findCharacter('claude'), spawnX: 200, spawnY: 200, facing: 1 });
   player.onGround = true;
   player.update(actionInput(false), []); // release the action key held from spawn
   player.receiveCard('rocket');
-  assert.equal(PICKUP_USES, 3);
-  assert.equal(player.heldCardUsesRemaining, 3, 'a fresh pickup has 3 uses');
+  assert.equal(PICKUP_USES, 1);
 
-  for (const usesLeft of [2, 1, 0]) {
-    player.update(actionInput(true), []);
-    assert.equal(player.playedCardName, 'rocket');
-    assert.equal(player.heldCardUsesRemaining, usesLeft);
-    assert.equal(player.isShoveActive, false, 'a press with a pickup never shoves');
-    player.update(actionInput(false), []);
-  }
-  assert.equal(player.heldCardName, null, 'the pickup is gone at 0 uses');
+  player.update(actionInput(true), []);
+  assert.equal(player.playedCardName, 'rocket');
+  assert.equal(player.isShoveActive, false, 'a press with a pickup never shoves');
+  assert.equal(player.heldCardName, null, 'the pickup is gone after one use');
+  player.update(actionInput(false), []);
 
   player.update(actionInput(true), []);
 
