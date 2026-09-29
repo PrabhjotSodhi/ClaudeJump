@@ -63,3 +63,18 @@ export function drawHud(context, scene) {
 
   drawSuddenDeathWarning(context, scene);
 }
+
+export function formatScore(label, score) {
+  return `${label}: ${String(score).padStart(10, '0')}`;
+}
+
+export function drawSurvivalHud(context, scene) {
+  drawText(context, formatScore('Score', scene.score), 8, 8);
+  drawText(context, formatScore('Best', Math.max(scene.bestScore, scene.score)), SCREEN_WIDTH - 8, 8, {
+    align: 'right',
+  });
+  if (scene.phase === 'over') {
+    drawText(context, 'Splash!', SCREEN_WIDTH / 2, 60, { scale: 4, align: 'center' });
+    drawText(context, 'Jump to try again', SCREEN_WIDTH / 2, 96, { align: 'center' });
+  }
+}
