@@ -6,6 +6,7 @@ import { buildLookupTexture } from './engine/palette.js';
 import { Renderer } from './engine/renderer.js';
 import { SceneManager } from './engine/scene-manager.js';
 import { loadSpriteFile } from './engine/sprites.js';
+import { loadLevel } from './levels/level-loader.js';
 import { createWindow } from './engine/window.js';
 import { StyleTestScene } from './scenes/style-test-scene.js';
 import { FULLSCREEN_BUTTON, TitleScene } from './scenes/title-scene.js';
@@ -50,6 +51,8 @@ async function main() {
     loadText('data/shaders/composite.frag'),
   ]);
 
+  const level = await loadLevel('data/levels/harbor.json', tiles);
+
   const canvas = document.getElementById('screen');
   const gameWindow = createWindow(canvas, vertexShaderSource, fragmentShaderSource, buildLookupTexture(palette));
   if (!gameWindow) {
@@ -68,9 +71,9 @@ async function main() {
       }),
     );
   } else if (isDevMode) {
-    sceneManager.setScene(new VersusScene({ startInFightPhase: true, seed: 0 }));
+    sceneManager.setScene(new VersusScene({ level, startInFightPhase: true, seed: 0 }));
   } else {
-    sceneManager.setScene(new TitleScene({ sceneManager, seed: Date.now() }));
+    sceneManager.setScene(new TitleScene({ sceneManager, level, seed: Date.now() }));
   }
 
   function renderFrame(timestamp) {

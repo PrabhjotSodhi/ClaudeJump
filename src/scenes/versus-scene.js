@@ -10,7 +10,7 @@ import { Crate, CRATE_WIDTH, CRATE_HEIGHT, CRATE_WARNING_TICKS } from '../entiti
 import { Platform } from '../entities/platform.js';
 import { Player } from '../entities/player.js';
 import { Rocket, ROCKET_WIDTH, ROCKET_HEIGHT } from '../entities/rocket.js';
-import { PLATFORM_LAYOUTS, PLAYER_SPAWNS, WATER_LINE_Y, drawBackground } from '../levels/versus-arena.js';
+import { PLAYERS, drawBackground } from '../levels/versus-arena.js';
 import { drawHeldCardIcons } from '../ui/held-card-icons.js';
 import { drawHud } from '../ui/hud.js';
 import { MatchStats } from '../ui/match-stats.js';
@@ -42,7 +42,6 @@ const SUDDEN_DEATH_ROUND_TICKS = 1800; // 30 seconds; the round timer and the wa
 const SUDDEN_DEATH_WARNING_TICKS = 120; // 2 seconds of flashing markers before the sea rises
 const SUDDEN_DEATH_RISE_TICKS = 1200; // 20 seconds for the sea to reach the middle platform
 const SUDDEN_DEATH_TARGET_Y = 144; // middle platform top
-const SUDDEN_DEATH_RISE_PER_TICK = (WATER_LINE_Y - SUDDEN_DEATH_TARGET_Y) / SUDDEN_DEATH_RISE_TICKS;
 
 // A crate lands this many ticks after the previous one was taken (or lost to the rising sea).
 // The crate itself spends the last CRATE_WARNING_TICKS of that window showing its warning marker.
@@ -50,16 +49,18 @@ const CRATE_RESPAWN_TICKS = 180;
 const CRATE_SPAWN_DELAY_TICKS = CRATE_RESPAWN_TICKS - CRATE_WARNING_TICKS;
 
 export class VersusScene {
-  constructor({ startInFightPhase = false, seed = Date.now() } = {}) {
+  constructor({ level, startInFightPhase = false, seed = Date.now() } = {}) {
     this.events = new EventEmitter();
     this.random = new SeededRandom(seed);
     this.entityGroups = new EntityGroups();
-    for (const layout of PLATFORM_LAYOUTS) this.entityGroups.add('platforms', new Platform(layout));
+    this.level = level;
+    for (const layout of level.platforms) this.entityGroups.add('platforms', new Platform(layout));
+    this.suddenDeathRisePerTick = (level.waterLineY - SUDDEN_DEATH_TARGET_Y) / SUDDEN_DEATH_RISE_TICKS;
 
-    this.waterLineY = WATER_LINE_Y;
+    this.waterLineY = level.waterLineY;
     this.backgroundDrawn = false;
     this.wins = {};
-    for (const spawn of PLAYER_SPAWNS) this.wins[spawn.id] = 0;
+    for (const spawn of level.spawns) this.wins[spawn.id] = 0;
     this.skipNextReadyPhase = startInFightPhase;
     this.bumpingPairIds = new Set();
     this.stompingPairIds = new Set();
@@ -101,7 +102,10 @@ export class VersusScene {
     this.entityGroups.clear('players');
     this.entityGroups.clear('rockets');
     this.entityGroups.clear('bombs');
-    for (const spawn of PLAYER_SPAWNS) this.entityGroups.add('players', new Player(spawn));
+    for (const { id, x, y, facing } of this.level.spawns) {
+      const { color } = PLAYERS.find((player) => player.id === id);
+      this.entityGroups.add('players', new Player({ id, color, spawnX: x, spawnY: y, facing }));
+    }
     this.ticksUntilCrateSpawn = CRATE_SPAWN_DELAY_TICKS;
     if (this.skipNextReadyPhase) {
       this.phase = 'fight';
@@ -115,7 +119,7 @@ export class VersusScene {
     this.bumpingPairIds.clear();
     this.stompingPairIds.clear();
     this.shoveHitIdsByShoverId.clear();
-    this.waterLineY = WATER_LINE_Y;
+    this.waterLineY = this.level.waterLineY;
     this.fightTicks = 0;
     this.suddenDeathPhase = 'none';
   }
@@ -168,7 +172,7 @@ export class VersusScene {
     }
 
     if (this.suddenDeathPhase === 'rising') {
-      this.waterLineY = Math.max(SUDDEN_DEATH_TARGET_Y, this.waterLineY - SUDDEN_DEATH_RISE_PER_TICK);
+      this.waterLineY = Math.max(SUDDEN_DEATH_TARGET_Y, this.waterLineY - this.suddenDeathRisePerTick);
     }
   }
 
@@ -548,6 +552,8 @@ export class VersusScene {
     }
 
     renderer.clearGameLayer();
+    for (const tile of this.level.tiles)
+      renderer.gameContext.drawImage(this.level.tileSprites[tile.name], tile.x, tile.y);
     drawWrapPuffs(renderer.gameContext, this);
     this.entityGroups.renderAll(renderer.gameContext);
     drawHeldCardIcons(renderer.gameContext, this);

@@ -6,6 +6,7 @@ import { Platform } from '../src/entities/platform.js';
 import { Rocket } from '../src/entities/rocket.js';
 import { BouncePad } from '../src/entities/bounce-pad.js';
 import { VersusScene } from '../src/scenes/versus-scene.js';
+import { harborLevel } from './fixtures/harbor-level.mjs';
 
 function noInput() {
   return { left: false, right: false, jump: false };
@@ -27,7 +28,7 @@ const READY_TICKS = 60;
 const BUMP_KNOCKBACK_VELOCITY_X = 3;
 
 test('falling in the sea scores the other player', () => {
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
   assert.equal(scene.phase, 'fight');
 
@@ -45,7 +46,7 @@ test('falling in the sea scores the other player', () => {
 });
 
 test('reaching 5 points ends the match', () => {
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
 
   for (let win = 1; win <= 5; win++) {
     advance(scene, READY_TICKS);
@@ -63,7 +64,7 @@ test('reaching 5 points ends the match', () => {
 });
 
 test('both players falling on the same tick is a draw', () => {
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
 
   findPlayer(scene, 'red').y = 600;
@@ -86,7 +87,7 @@ test('running the same input records twice produces identical game state', () =>
   }
 
   function runToSnapshot() {
-    const scene = new VersusScene();
+    const scene = new VersusScene({ level: harborLevel });
     for (const input of inputRecords) scene.update(input);
     return {
       phase: scene.phase,
@@ -107,7 +108,7 @@ test('running the same input records twice produces identical game state', () =>
 });
 
 test('two players running into each other end up side by side, never overlapping', () => {
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
 
   const red = findPlayer(scene, 'red');
@@ -128,7 +129,7 @@ test('two players running into each other end up side by side, never overlapping
 });
 
 test('a player running into a standing player pushes them', () => {
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
 
   const red = findPlayer(scene, 'red');
@@ -150,7 +151,7 @@ test('a player running into a standing player pushes them', () => {
 });
 
 test('a player jumping over another is not pushed sideways', () => {
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
 
   const red = findPlayer(scene, 'red');
@@ -177,7 +178,7 @@ test('a player jumping over another is not pushed sideways', () => {
 });
 
 test('players-bumped fires once per contact, not every tick', () => {
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
 
   const red = findPlayer(scene, 'red');
@@ -201,7 +202,7 @@ test('players-bumped fires once per contact, not every tick', () => {
 });
 
 test('two players held into each other settle at a gap of zero, not a buzz', () => {
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
 
   const red = findPlayer(scene, 'red');
@@ -229,7 +230,7 @@ test('two players held into each other settle at a gap of zero, not a buzz', () 
 });
 
 test('a stomp bounces the stomper up and knocks the other player sideways, away from the stomper', () => {
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
 
   const red = findPlayer(scene, 'red');
@@ -259,7 +260,7 @@ test('a stomp bounces the stomper up and knocks the other player sideways, away 
 
 test('holding jump during a stomp bounces higher than not holding it', () => {
   function stompAndBounce(jumpHeldDuringStomp) {
-    const scene = new VersusScene();
+    const scene = new VersusScene({ level: harborLevel });
     advance(scene, READY_TICKS);
 
     const red = findPlayer(scene, 'red');
@@ -291,7 +292,7 @@ test('holding jump during a stomp bounces higher than not holding it', () => {
 
 test('a fast fall still lands a stomp at every drop height from 60 to 200 px', () => {
   for (let dropHeight = 60; dropHeight <= 200; dropHeight += 2) {
-    const scene = new VersusScene();
+    const scene = new VersusScene({ level: harborLevel });
     advance(scene, READY_TICKS);
 
     const red = findPlayer(scene, 'red');
@@ -318,7 +319,7 @@ test('a fast fall still lands a stomp at every drop height from 60 to 200 px', (
 });
 
 test('a player moving past the right edge reappears on the left with the same velocity', () => {
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
 
   const red = findPlayer(scene, 'red');
@@ -351,7 +352,7 @@ test('a player moving past the right edge reappears on the left with the same ve
 });
 
 test('a running jump from a side platform lands on the middle platform', () => {
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
 
   const runTicksBeforeJump = 20;
@@ -372,7 +373,7 @@ const SUDDEN_DEATH_ROUND_TICKS = 1800;
 const SUDDEN_DEATH_WARNING_TICKS = 120;
 
 test('the sudden death warning starts exactly 1800 ticks after Go!', () => {
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
   assert.equal(scene.phase, 'fight');
 
@@ -389,7 +390,7 @@ test('the sudden death warning starts exactly 1800 ticks after Go!', () => {
 });
 
 test('the sea rises only after the warning ends, and a player standing below it loses the round', () => {
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
   advance(scene, SUDDEN_DEATH_ROUND_TICKS);
   assert.equal(scene.suddenDeathPhase, 'warning');
@@ -423,7 +424,7 @@ test('the sea rises only after the warning ends, and a player standing below it 
 });
 
 test('the timer and the sea reset for the next round', () => {
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
   advance(scene, SUDDEN_DEATH_ROUND_TICKS);
   assert.equal(scene.suddenDeathPhase, 'warning');
@@ -440,7 +441,7 @@ test('the timer and the sea reset for the next round', () => {
 });
 
 test('a dash into the opponent knocks them away', () => {
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
 
   const red = findPlayer(scene, 'red');
@@ -483,7 +484,7 @@ test('a dash into the opponent knocks them away', () => {
 });
 
 test('a dash into an opponent already being pushed against still lands the dash hit', () => {
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
 
   const red = findPlayer(scene, 'red');
@@ -527,7 +528,7 @@ test('a dash into an opponent already being pushed against still lands the dash 
 });
 
 test('a shove knocks the player in front away and pops them upward', () => {
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
 
   const red = findPlayer(scene, 'red');
@@ -559,7 +560,7 @@ test('a shove knocks the player in front away and pops them upward', () => {
 });
 
 test('a shove never hits a player standing behind the shover', () => {
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
 
   const red = findPlayer(scene, 'red');
@@ -587,7 +588,7 @@ test('a shove never hits a player standing behind the shover', () => {
 });
 
 test('a shove hits an opponent at most once, even while the hit zone stays on them for the whole active window', () => {
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
 
   const red = findPlayer(scene, 'red');
@@ -618,7 +619,7 @@ test('a shove hits an opponent at most once, even while the hit zone stays on th
 });
 
 test('a card pressed on the tick a player falls in the sea emits card-played once, not every sinking tick', () => {
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
 
   const red = findPlayer(scene, 'red');
@@ -639,7 +640,7 @@ test('a card pressed on the tick a player falls in the sea emits card-played onc
 });
 
 test('startInFightPhase skips the Ready countdown for the first round only', () => {
-  const scene = new VersusScene({ startInFightPhase: true });
+  const scene = new VersusScene({ level: harborLevel, startInFightPhase: true });
   assert.equal(scene.phase, 'fight');
 
   findPlayer(scene, 'red').y = 600;
@@ -651,7 +652,7 @@ test('startInFightPhase skips the Ready countdown for the first round only', () 
 });
 
 test('a rocket blast pushes a player away from the blast center and emits rocket-exploded', () => {
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
 
   const red = findPlayer(scene, 'red'); // placed left of the blast center
@@ -679,7 +680,7 @@ test('a rocket blast pushes a player away from the blast center and emits rocket
 });
 
 test('a rocket wraps around the screen edges like a player', () => {
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
 
   const rocket = new Rocket({ x: SCREEN_WIDTH + 2, y: 200, facing: 1, shooterId: 'red' });
@@ -706,7 +707,7 @@ function riseToApex(scene, playerId, input) {
 }
 
 test('landing on a bounce pad launches the player higher than a jump', () => {
-  const jumpScene = new VersusScene();
+  const jumpScene = new VersusScene({ level: harborLevel });
   advance(jumpScene, READY_TICKS);
   jumpScene.update(neutralInputs()); // release the jump key held from spawn
   // Held the whole way up, so the jump reaches its full, uncut height.
@@ -716,7 +717,7 @@ test('landing on a bounce pad launches the player higher than a jump', () => {
   });
   assert.ok(jumpRise > 0, 'a held jump rises above its starting height');
 
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
   // A gap with no platform above or below it, so nothing but gravity shapes either player's arc.
   scene.entityGroups.add('bouncePads', new BouncePad({ x: 236, y: 280 }));
@@ -735,7 +736,7 @@ test('landing on a bounce pad launches the player higher than a jump', () => {
 });
 
 test('walking into the side of a bounce pad does nothing', () => {
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
   // Sitting on top of the middle platform, at the same feet level a standing player already has.
   scene.entityGroups.add('bouncePads', new BouncePad({ x: 300, y: 138 }));
@@ -754,7 +755,7 @@ test('walking into the side of a bounce pad does nothing', () => {
 });
 
 test('a player falling well below a bounce pad, overlapping it only horizontally, is not launched', () => {
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
   // A gap with no platform, so the fall is uninterrupted and stays clear of the water line.
   scene.entityGroups.add('bouncePads', new BouncePad({ x: 236, y: 160 }));
@@ -771,7 +772,7 @@ test('a player falling well below a bounce pad, overlapping it only horizontally
 });
 
 test('a player standing where a bounce pad appears is launched at once', () => {
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
 
   const red = findPlayer(scene, 'red');
@@ -795,7 +796,7 @@ test('a player standing where a bounce pad appears is launched at once', () => {
 });
 
 test('a bounce pad disappears after 300 ticks', () => {
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
 
   const red = findPlayer(scene, 'red');
@@ -824,7 +825,7 @@ function addLandedCrate(scene, { x, y, cardName }) {
 }
 
 test('touching a crate with no card takes the card', () => {
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
 
   const red = findPlayer(scene, 'red');
@@ -843,7 +844,7 @@ test('touching a crate with no card takes the card', () => {
 });
 
 test('a crate gives a pickup with 3 uses', () => {
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
 
   const red = findPlayer(scene, 'red');
@@ -860,7 +861,7 @@ test('a crate gives a pickup with 3 uses', () => {
 test('crates only ever hold a known pickup', () => {
   const allowedCardNames = new Set(['dash', 'rocket', 'bouncePad', 'bomb', 'banana']);
   for (let seed = 1; seed <= 20; seed++) {
-    const scene = new VersusScene({ seed });
+    const scene = new VersusScene({ level: harborLevel, seed });
     for (let tick = 0; tick < 600; tick++) {
       scene.update(neutralInputs());
       for (const crate of scene.entityGroups.get('crates')) {
@@ -871,7 +872,7 @@ test('crates only ever hold a known pickup', () => {
 });
 
 test('a player already holding a card cannot open a crate, and the crate stays', () => {
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
 
   const red = findPlayer(scene, 'red');
@@ -891,7 +892,7 @@ test('a player already holding a card cannot open a crate, and the crate stays',
 });
 
 test('the next crate lands 180 ticks after the previous one is taken', () => {
-  const scene = new VersusScene({ seed: 1 });
+  const scene = new VersusScene({ level: harborLevel, seed: 1 });
   advance(scene, READY_TICKS);
 
   const red = findPlayer(scene, 'red');
@@ -916,7 +917,7 @@ test('the next crate lands 180 ticks after the previous one is taken', () => {
 
 test('the same seed gives the same crate spots and cards', () => {
   function firstCrateAfterSpawn(seed) {
-    const scene = new VersusScene({ seed });
+    const scene = new VersusScene({ level: harborLevel, seed });
     advance(scene, READY_TICKS);
     advance(scene, 130); // past the 120 tick spawn delay, before the crate has landed
     const crate = scene.entityGroups.get('crates')[0];
@@ -928,7 +929,7 @@ test('the same seed gives the same crate spots and cards', () => {
 
 test('while the sea is above the side platforms, every crate lands on the still-dry middle platform', () => {
   for (let seed = 0; seed < 20; seed++) {
-    const scene = new VersusScene({ seed });
+    const scene = new VersusScene({ level: harborLevel, seed });
     advance(scene, READY_TICKS);
     scene.waterLineY = 180; // above the side platforms (top y 224), below the middle platform (top y 144)
     scene.entityGroups.clear('crates');
@@ -941,7 +942,7 @@ test('while the sea is above the side platforms, every crate lands on the still-
 });
 
 test('a crate is removed once the rising sea reaches its platform', () => {
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
   const crate = addLandedCrate(scene, { x: 120, y: 208, cardName: 'dash' }); // side platform, top y 224
 
@@ -955,7 +956,7 @@ test('a crate is removed once the rising sea reaches its platform', () => {
 });
 
 test('a player can take a crate while it is still in the air', () => {
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
 
   const red = findPlayer(scene, 'red');
@@ -980,7 +981,7 @@ test('a player can take a crate while it is still in the air', () => {
 });
 
 test('a player touching where a waiting crate hides above the screen does not take it', () => {
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
 
   const red = findPlayer(scene, 'red');
@@ -1001,7 +1002,7 @@ test('a player touching where a waiting crate hides above the screen does not ta
 });
 
 test('a crate with no platform below it falls into the sea and the next crate is scheduled', () => {
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
 
   // x 0 sits under no platform, so nothing stops the fall.
@@ -1035,7 +1036,7 @@ function reachMatchPhase(scene) {
 }
 
 test('a fall landed after the round is already decided is not counted in match stats', () => {
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
 
   const red = findPlayer(scene, 'red');
@@ -1057,7 +1058,7 @@ test('a fall landed after the round is already decided is not counted in match s
 // (the HUD, which used to own the tracker, never runs). MatchStats has to be attached from the
 // moment the scene is created, or every stomp and fall before the first render is lost.
 test('stats are counted even when a match runs entirely through updates, with no render', () => {
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
 
   const red = findPlayer(scene, 'red');
@@ -1084,7 +1085,7 @@ test('stats are counted even when a match runs entirely through updates, with no
 });
 
 test('a new match starts only once every player is ready', () => {
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
   reachMatchPhase(scene);
   assert.equal(scene.phase, 'match');
 
@@ -1124,7 +1125,7 @@ function playHeldCard(scene, player, cardName) {
 }
 
 test('a bomb lands ahead of the thrower and knocks a nearby player away', () => {
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
   const red = findPlayer(scene, 'red');
   const blue = findPlayer(scene, 'blue');
@@ -1148,7 +1149,7 @@ test('a bomb lands ahead of the thrower and knocks a nearby player away', () => 
 });
 
 test('a bomb explodes in the sea', () => {
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
   const red = findPlayer(scene, 'red');
   red.x = 200;
@@ -1163,7 +1164,7 @@ test('a bomb explodes in the sea', () => {
 });
 
 test('stepping on a banana makes a player slip for the set ticks, then the banana is gone', () => {
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
   const red = findPlayer(scene, 'red');
   const blue = findPlayer(scene, 'blue');
@@ -1192,7 +1193,7 @@ test('stepping on a banana makes a player slip for the set ticks, then the banan
 });
 
 test('the dropper does not slip on their own banana right away', () => {
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
   const red = findPlayer(scene, 'red');
   red.x = 100;
@@ -1210,7 +1211,7 @@ test('the dropper does not slip on their own banana right away', () => {
 });
 
 test('a banana dropped over the sea falls in and disappears', () => {
-  const scene = new VersusScene();
+  const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
   const red = findPlayer(scene, 'red');
   red.x = 300;

@@ -129,7 +129,12 @@ export class PausableMatchScene {
     } else if (option.id === 'title') {
       const seed = Math.floor(this.matchScene.random.next() * 0xffffffff);
       this.sceneManager.setScene(
-        new TitleScene({ sceneManager: this.sceneManager, seed, initialInput: inputByPlayerId }),
+        new TitleScene({
+          sceneManager: this.sceneManager,
+          level: this.matchScene.level,
+          seed,
+          initialInput: inputByPlayerId,
+        }),
       );
     }
   }

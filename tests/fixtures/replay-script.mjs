@@ -94,8 +94,8 @@ function scriptForTick(tick) {
 // Runs the scripted replay against the given VersusScene class (so the same script can drive
 // both the 320x180 and 640x360 versions of the game). Returns the snapshots recorded every
 // REPLAY_RECORD_EVERY_TICKS ticks and every notable event the scene emitted, tagged with its tick.
-export function runScriptedReplay(VersusScene) {
-  const scene = new VersusScene({ startInFightPhase: true, seed: REPLAY_SEED });
+export function runScriptedReplay(VersusScene, level) {
+  const scene = new VersusScene({ level, startInFightPhase: true, seed: REPLAY_SEED });
   const events = [];
   for (const eventName of [
     'players-bumped',
