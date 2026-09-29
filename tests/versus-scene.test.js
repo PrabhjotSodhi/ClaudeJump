@@ -1130,7 +1130,7 @@ test('a dash hit freezes game logic for exactly the dash pause ticks', () => {
 
   const dashHitEvents = [];
   scene.events.on('dash-hit', (event) => dashHitEvents.push(event));
-  while (dashHitEvents.length === 0) scene.update(neutralInputs());
+  for (let tick = 0; tick < 20 && dashHitEvents.length === 0; tick++) scene.update(neutralInputs());
   assert.equal(scene.hitPauseTicksRemaining, DASH_HIT_PAUSE_TICKS);
   const frozenFightTicks = scene.fightTicks;
   const frozenX = red.x;
