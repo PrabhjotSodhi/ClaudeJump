@@ -100,8 +100,8 @@ export class Crate extends Entity {
     if (foldProgress >= 1) return;
     const canopyHeight = Math.max(1, Math.round(CANOPY_HEIGHT * (1 - foldProgress)));
     const canopyWidth = Math.max(4, Math.round(CANOPY_WIDTH * (1 - foldProgress * 0.5)));
-    const canopyX = crateX + (this.width - canopyWidth) / 2;
-    const canopyY = crateY - STRING_LENGTH * (1 - foldProgress) - canopyHeight;
+    const canopyX = crateX + Math.floor((this.width - canopyWidth) / 2);
+    const canopyY = crateY - Math.round(STRING_LENGTH * (1 - foldProgress)) - canopyHeight;
     if (!this.landed) {
       context.fillStyle = STRING_COLOR;
       for (let step = 0; step < STRING_LENGTH; step++) {
