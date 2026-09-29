@@ -2,6 +2,7 @@ import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../engine/config.js';
 import { SeededRandom } from '../engine/seeded-random.js';
 
 const MIST_BAND_HEIGHT = 12;
+const CONTAINER_HEIGHT = 14;
 
 function fillRect(context, color, x, y, width, height) {
   context.fillStyle = color;
@@ -33,27 +34,40 @@ function fillSpike(context, color, centerX, baseY, baseWidth, length, direction)
   }
 }
 
+// A shipping container: a body, vertical ribs and a dark base line.
+function drawContainer(context, x, y, width, bodyColor, ribColor) {
+  fillRect(context, bodyColor, x, y, width, CONTAINER_HEIGHT);
+  for (let ribX = x + 2; ribX < x + width - 1; ribX += 3)
+    fillRect(context, ribColor, ribX, y + 2, 1, CONTAINER_HEIGHT - 4);
+  fillRect(context, ribColor, x, y + CONTAINER_HEIGHT - 1, width, 1);
+}
+
 function drawHarbor(context, random) {
   fillRect(context, '#5a6988', 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-  fillDither(context, '#3a4466', 0, 210, SCREEN_WIDTH, SCREEN_HEIGHT - 210);
+  fillDither(context, '#3a4466', 0, 236, SCREEN_WIDTH, SCREEN_HEIGHT - 236);
   for (const craneX of [60, 250, 470]) {
-    fillDither(context, '#3a4466', craneX, 90, 6, 130);
+    fillDither(context, '#3a4466', craneX, 90, 6, 150);
     fillDither(context, '#3a4466', craneX - 30, 90, 110, 6);
-    fillDither(context, '#3a4466', craneX + 70, 96, 2, 40);
+    fillRect(context, '#3a4466', craneX + 70, 96, 1, 34);
+    fillRect(context, '#3a4466', craneX + 67, 130, 7, 4);
   }
-  for (let x = 0; x < SCREEN_WIDTH; x += 70)
-    fillRect(context, '#3a4466', x, 200 + Math.floor(random.next() * 30), 60, SCREEN_HEIGHT);
-  for (let x = 20; x < SCREEN_WIDTH; x += 34) {
-    const containerCount = 2 + Math.floor(random.next() * 3);
-    for (let index = 0; index < containerCount; index++) {
-      fillRect(context, index % 2 ? '#3a4466' : '#262b44', x, 262 - index * 10, 30, 9);
-    }
+  for (let x = 4; x < SCREEN_WIDTH; x += 52) {
+    const stackHeight = 1 + Math.floor(random.next() * 3);
+    for (let index = 0; index < stackHeight; index++)
+      drawContainer(context, x + (index % 2) * 6, 272 - index * CONTAINER_HEIGHT, 44, '#3a4466', '#262b44');
   }
-  drawMistBand(context, 250, '#5a6988');
+  for (let x = 30; x < SCREEN_WIDTH; x += 96) {
+    const stackHeight = 1 + Math.floor(random.next() * 2);
+    for (let index = 0; index < stackHeight; index++)
+      drawContainer(context, x, 282 - index * CONTAINER_HEIGHT, 44, '#262b44', '#181425');
+  }
+  fillDither(context, '#5a6988', 0, 290, SCREEN_WIDTH, 6, 'quarter');
+  fillRect(context, '#262b44', 0, 296, SCREEN_WIDTH, 4);
+  fillRect(context, '#3a4466', 0, 296, SCREEN_WIDTH, 1);
   fillRect(context, '#262b44', 380, 280, 220, 50);
   fillRect(context, '#262b44', 420, 250, 50, 30);
   fillRect(context, '#3a4466', 380, 280, 220, 1);
-  for (let x = 10; x < SCREEN_WIDTH; x += 58) fillRect(context, '#181425', x, 296, 6, 40);
+  for (let x = 10; x < SCREEN_WIDTH; x += 58) fillRect(context, '#181425', x, 300, 6, 30);
 }
 
 function drawCave(context, random) {
