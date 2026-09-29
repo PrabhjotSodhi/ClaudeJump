@@ -641,15 +641,22 @@ function standOnMiddlePlatform(player, x) {
   player.onGround = true;
 }
 
-test('the owner of a bounce pad trap can stand on it with no effect', () => {
+test('the owner of a bounce pad trap can land and stand on it with no effect', () => {
   const { scene, trap, red, blue } = sceneWithTrapPad();
   standOnMiddlePlatform(red, 100);
   standOnMiddlePlatform(blue, TRAP_PAD_X);
+  blue.y = 100; // feet above the pad's top surface
+  blue.velocityY = 6;
+  blue.onGround = false;
 
-  advance(scene, 10);
+  let highestUpwardSpeed = 0;
+  for (let tick = 0; tick < 20; tick++) {
+    scene.update(neutralInputs());
+    highestUpwardSpeed = Math.max(highestUpwardSpeed, -blue.velocityY);
+  }
 
-  assert.equal(blue.x, TRAP_PAD_X);
-  assert.equal(blue.velocityY, 0);
+  assert.equal(highestUpwardSpeed, 0, 'the owner is never launched');
+  assert.equal(blue.y, 116, 'the owner stands on the platform');
   assert.equal(blue.knockbackVelocityX, 0);
   assert.deepEqual(scene.entityGroups.get('bouncePads'), [trap], 'the trap stays');
 });
