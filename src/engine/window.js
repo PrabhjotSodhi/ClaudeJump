@@ -99,6 +99,7 @@ export function createWindow(canvas, vertexShaderSource, fragmentShaderSource, p
   webglContext.uniform1f(webglContext.getUniformLocation(program, 'u_paletteSize'), paletteLookup.width);
   webglContext.uniform2f(webglContext.getUniformLocation(program, 'u_resolution'), SCREEN_WIDTH, SCREEN_HEIGHT);
   const waterLineUniformLocation = webglContext.getUniformLocation(program, 'u_waterLine');
+  const shakeOffsetUniformLocation = webglContext.getUniformLocation(program, 'u_shakeOffset');
   const timeUniformLocation = webglContext.getUniformLocation(program, 'u_time');
   const lightingEnabledUniformLocation = webglContext.getUniformLocation(program, 'u_lightingEnabled');
   const fogStrengthUniformLocation = webglContext.getUniformLocation(program, 'u_fogStrength');
@@ -123,10 +124,11 @@ export function createWindow(canvas, vertexShaderSource, fragmentShaderSource, p
 
   return {
     // Pass lightCanvas only for scenes that use lighting. Other scenes draw exactly as before.
-    render({ backgroundCanvas, gameCanvas, uiCanvas, lightCanvas, fogStrength, waterLineY, timeSeconds }) {
+    render({ backgroundCanvas, gameCanvas, uiCanvas, lightCanvas, fogStrength, shakeOffset, waterLineY, timeSeconds }) {
       if (backgroundCanvas) uploadLayer('background', backgroundCanvas);
       uploadLayer('game', gameCanvas);
       uploadLayer('ui', uiCanvas);
+      webglContext.uniform2f(shakeOffsetUniformLocation, shakeOffset.x, shakeOffset.y);
       if (lightCanvas) uploadLayer('light', lightCanvas);
       webglContext.uniform1f(lightingEnabledUniformLocation, lightCanvas ? 1 : 0);
       webglContext.uniform1f(fogStrengthUniformLocation, fogStrength ?? 0);
