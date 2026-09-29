@@ -104,25 +104,6 @@ test('a player holding a direction still changes course during knockback', () =>
   assert.ok(idlePlayer.x > idleXBeforeReversal, 'holding nothing keeps drifting right with the knockback');
 });
 
-test('a dizzy player ignores input for exactly 20 ticks', () => {
-  const player = new Player({ id: 'blue', character: findCharacter('claude'), spawnX: 200, spawnY: 200, facing: 1 });
-  player.onGround = true;
-  player.update({ left: false, right: false, jump: false }, []); // release the jump key held from spawn
-
-  const DIZZY_TICKS = 20;
-  player.makeDizzy(DIZZY_TICKS);
-
-  const rightAndJump = { left: false, right: true, jump: true };
-  for (let tick = 0; tick < DIZZY_TICKS; tick++) {
-    player.update(rightAndJump, []);
-    assert.equal(player.velocityX, 0, `steering should be ignored on dizzy tick ${tick}`);
-    assert.ok(player.velocityY >= 0, `jumping should be ignored on dizzy tick ${tick}`);
-  }
-
-  player.update(rightAndJump, []);
-  assert.ok(player.velocityX > 0, 'steering works again once dizziness ends');
-});
-
 test('a player can jump, then jump again in the air, but not a third time', () => {
   const player = new Player({ id: 'red', character: findCharacter('claude'), spawnX: 200, spawnY: 200, facing: 1 });
   player.onGround = true;
@@ -193,17 +174,6 @@ test('a press of the action button during the cooldown after a shove does nothin
 
   player.update(actionInput(true), []); // press again while still on cooldown
   assert.equal(player.isShoveActive, false, 'a press during the cooldown does not start another shove');
-});
-
-test('a dizzy player cannot shove', () => {
-  const player = new Player({ id: 'red', character: findCharacter('claude'), spawnX: 200, spawnY: 200, facing: 1 });
-  player.onGround = true;
-  player.update(actionInput(false), []); // release the action key held from spawn
-  player.makeDizzy(20);
-
-  player.update(actionInput(true), []);
-
-  assert.equal(player.isShoveActive, false, 'a dizzy player cannot start a shove');
 });
 
 test('a held pickup is played by the action button instead of starting a shove', () => {

@@ -26,7 +26,6 @@ import { drawWrapPuffs, WrapPuffTracker } from '../vfx/wrap-puff.js';
 // pause, they never add up.
 const SHOVE_HIT_PAUSE_TICKS = 3;
 const DASH_HIT_PAUSE_TICKS = 4;
-const STOMP_HIT_PAUSE_TICKS = 5;
 const BLAST_HIT_PAUSE_TICKS = 6;
 
 const WINS_NEEDED = 5;
@@ -34,14 +33,10 @@ const READY_TICKS = 60;
 const GO_TICKS = 30;
 const POINT_PAUSE_TICKS = 90;
 const RESTART_DELAY_TICKS = 60;
-const BUMP_KNOCKBACK_VELOCITY_X = 3;
 // How far one player's feet may sit above the other's head and still count as jumping over, not landing on them.
-const BUMP_HEAD_CLEARANCE = 8;
-// Players pushed apart to a gap this small still count as the same contact, so the push does not refire the event every tick.
-const BUMP_CONTACT_GAP = 6;
-const STOMP_KNOCKBACK_VELOCITY_X = 5;
-const STOMP_KNOCKBACK_VELOCITY_Y = 2;
-const DIZZY_TICKS = 20;
+const DASH_HEAD_CLEARANCE = 8;
+// Players knocked apart to a gap this small still count as the same contact, so the hit does not refire every tick.
+const DASH_CONTACT_GAP = 6;
 const DASH_KNOCKBACK_VELOCITY_X = 8;
 const SHOVE_KNOCKBACK_VELOCITY_X = 7;
 const SHOVE_KNOCKBACK_VELOCITY_Y = -4;
@@ -83,8 +78,7 @@ export class VersusScene {
     this.wins = {};
     for (const spawn of level.spawns) this.wins[spawn.id] = 0;
     this.skipNextReadyPhase = startInFightPhase;
-    this.bumpingPairIds = new Set();
-    this.stompingPairIds = new Set();
+    this.dashHitPairIds = new Set();
     // Which opponents each shover has already hit this shove, so one shove lands at most one hit
     // per opponent even while its hit zone stays active for several ticks.
     this.shoveHitIdsByShoverId = new Map();
@@ -156,8 +150,7 @@ export class VersusScene {
       this.ticksRemaining = READY_TICKS;
     }
     this.winnerId = null;
-    this.bumpingPairIds.clear();
-    this.stompingPairIds.clear();
+    this.dashHitPairIds.clear();
     this.shoveHitIdsByShoverId.clear();
     this.waterLineY = this.level.waterLineY;
     this.fightTicks = 0;
@@ -245,7 +238,6 @@ export class VersusScene {
         if (player.playedCardName === 'bouncePad') this.spawnBouncePad(player);
         if (player.playedCardName === 'bomb') this.spawnBomb(player);
         if (player.playedCardName === 'banana') this.spawnBanana(player);
-        if (player.playedCardName === 'dash') this.clearBumpingPairsFor(player.id);
       }
       if (player.shoveJustStarted) this.shoveHitIdsByShoverId.set(player.id, new Set());
       if (player.isShoveActive) this.resolveShoveHit(player);
@@ -256,14 +248,6 @@ export class VersusScene {
       this.wrapPlayerAroundScreen(player);
     }
     this.resolvePlayerCollisions();
-  }
-
-  // Starting a dash counts as a fresh contact, so a dash into an opponent already being pushed
-  // against still lands its knockback once, instead of only continuing the ongoing push.
-  clearBumpingPairsFor(playerId) {
-    for (const pairId of this.bumpingPairIds) {
-      if (pairId.split('-').includes(playerId)) this.bumpingPairIds.delete(pairId);
-    }
   }
 
   // The first opponent touching the shover's hit zone gets knocked away, once per shove. The pop
@@ -395,8 +379,8 @@ export class VersusScene {
     }
   }
 
-  // Only a fall that crosses the pad's top surface this tick counts as landing on it, the way a
-  // stomp is detected. Walking into its side never crosses that surface, so it does nothing.
+  // Only a fall that crosses the pad's top surface this tick counts as landing on it.
+  // Walking into its side never crosses that surface, so it does nothing.
   isLandingOnBouncePad(player, bouncePad) {
     if (player.velocityY <= 0) return false;
     const previousFeetY = player.previousY + player.height;
@@ -474,93 +458,41 @@ export class VersusScene {
     }
   }
 
+  // Players pass through each other. Only a dash hurts: it knocks both players apart once per contact.
   resolvePlayerPair(playerA, playerB) {
     const pairId = [playerA.id, playerB.id].sort().join('-');
-    const inWater = playerA.inWater || playerB.inWater;
-
-    const stomp = !inWater && this.detectStomp(playerA, playerB);
-    if (stomp) {
-      if (!this.stompingPairIds.has(pairId)) {
-        this.stompingPairIds.add(pairId);
-        this.resolveStomp(stomp.stomper, stomp.stomped);
-      }
-      this.bumpingPairIds.delete(pairId);
+    const isDashing = playerA.dashTicksRemaining > 0 || playerB.dashTicksRemaining > 0;
+    if (playerA.inWater || playerB.inWater || !isDashing) {
+      this.dashHitPairIds.delete(pairId);
       return;
     }
-    this.stompingPairIds.delete(pairId);
 
-    const overlapping = !inWater && this.playersAreBumping(playerA, playerB, 0);
-    const stillInContact = !inWater && this.playersAreBumping(playerA, playerB, BUMP_CONTACT_GAP);
-
-    if (overlapping) {
+    if (this.playersAreTouching(playerA, playerB, 0)) {
       const leftPlayer = playerA.x <= playerB.x ? playerA : playerB;
       const rightPlayer = leftPlayer === playerA ? playerB : playerA;
-      const overlapX = leftPlayer.x + leftPlayer.width - rightPlayer.x;
-      const pushApart = overlapX / 2;
-      leftPlayer.x -= pushApart;
-      rightPlayer.x += pushApart;
-
-      // Knockback fires only when the contact starts. Adding it on every overlapping tick made
-      // held-together players buzz: each push added more velocity, bouncing them apart and back in.
-      if (!this.bumpingPairIds.has(pairId)) {
-        this.bumpingPairIds.add(pairId);
-        const isDashHit = playerA.dashTicksRemaining > 0 || playerB.dashTicksRemaining > 0;
-        const knockbackVelocityX = isDashHit ? DASH_KNOCKBACK_VELOCITY_X : BUMP_KNOCKBACK_VELOCITY_X;
-        leftPlayer.applyKnockback(-knockbackVelocityX, 0);
-        rightPlayer.applyKnockback(knockbackVelocityX, 0);
-        if (isDashHit) this.requestHitPause(DASH_HIT_PAUSE_TICKS);
-        this.events.emit('players-bumped', { playerIds: [playerA.id, playerB.id] });
+      if (!this.dashHitPairIds.has(pairId)) {
+        this.dashHitPairIds.add(pairId);
+        leftPlayer.applyKnockback(-DASH_KNOCKBACK_VELOCITY_X, 0);
+        rightPlayer.applyKnockback(DASH_KNOCKBACK_VELOCITY_X, 0);
+        this.requestHitPause(DASH_HIT_PAUSE_TICKS);
+        this.events.emit('dash-hit', { playerIds: [playerA.id, playerB.id] });
       }
     }
 
-    if (!stillInContact) this.bumpingPairIds.delete(pairId);
+    if (!this.playersAreTouching(playerA, playerB, DASH_CONTACT_GAP)) this.dashHitPairIds.delete(pairId);
   }
 
-  // A player whose feet are clearly above the other's head is jumping over them, not bumping into them.
-  // horizontalPadding widens the gap that still counts as touching, so a bump kept apart by a few pixels
+  // A player whose feet are clearly above the other's head is jumping over them, not touching them.
+  // horizontalPadding widens the gap that still counts as touching, so a hit kept apart by a few pixels
   // is still the same contact instead of a fresh one.
-  playersAreBumping(playerA, playerB, horizontalPadding) {
+  playersAreTouching(playerA, playerB, horizontalPadding) {
     const higherPlayer = playerA.y < playerB.y ? playerA : playerB;
     const lowerPlayer = higherPlayer === playerA ? playerB : playerA;
-    if (higherPlayer.y + higherPlayer.height <= lowerPlayer.y + BUMP_HEAD_CLEARANCE) return false;
+    if (higherPlayer.y + higherPlayer.height <= lowerPlayer.y + DASH_HEAD_CLEARANCE) return false;
 
     const leftPlayer = playerA.x <= playerB.x ? playerA : playerB;
     const rightPlayer = leftPlayer === playerA ? playerB : playerA;
     return leftPlayer.x + leftPlayer.width + horizontalPadding > rightPlayer.x;
-  }
-
-  detectStomp(playerA, playerB) {
-    const leftPlayer = playerA.x <= playerB.x ? playerA : playerB;
-    const rightPlayer = leftPlayer === playerA ? playerB : playerA;
-    if (leftPlayer.x + leftPlayer.width <= rightPlayer.x) return null;
-
-    if (this.isStompingHead(playerA, playerB)) return { stomper: playerA, stomped: playerB };
-    if (this.isStompingHead(playerB, playerA)) return { stomper: playerB, stomped: playerA };
-    return null;
-  }
-
-  // A fast fall can cross the whole head band in a single tick, so a snapshot check can miss it.
-  // Detect the crossing instead: the stomper's feet were at or above the target's head before
-  // moving this tick, and are below it now.
-  isStompingHead(stomper, target) {
-    if (stomper.velocityY <= 0) return false;
-    const previousFeetY = stomper.previousY + stomper.height;
-    const feetY = stomper.y + stomper.height;
-    return previousFeetY <= target.y && feetY > target.y;
-  }
-
-  resolveStomp(stomper, stomped) {
-    stomper.bounceFromStomp();
-    stomper.refreshAirJump();
-
-    const stomperCenterX = stomper.x + stomper.width / 2;
-    const stompedCenterX = stomped.x + stomped.width / 2;
-    const knockbackDirection = stompedCenterX >= stomperCenterX ? 1 : -1;
-    stomped.applyKnockback(knockbackDirection * STOMP_KNOCKBACK_VELOCITY_X, STOMP_KNOCKBACK_VELOCITY_Y);
-    stomped.makeDizzy(DIZZY_TICKS);
-    this.requestHitPause(STOMP_HIT_PAUSE_TICKS);
-
-    this.events.emit('player-stomped', { stomperId: stomper.id, stompedId: stomped.id });
   }
 
   checkRoundEnd() {

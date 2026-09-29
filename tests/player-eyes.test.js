@@ -37,11 +37,10 @@ test('a jump sends the pupils of the player who jumped up', () => {
   ]);
 });
 
-test('stomps, shoves, bumps and blasts rattle the pupils of the players they hit, and nobody else', () => {
+test('shoves, dash hits and blasts rattle the pupils of the players they hit, and nobody else', () => {
   const hits = [
-    ['player-stomped', { stomperId: 'blue', stompedId: 'red' }],
     ['player-shoved', { shoverId: 'blue', targetId: 'red' }],
-    ['players-bumped', { playerIds: ['red'] }],
+    ['dash-hit', { playerIds: ['red'] }],
     ['rocket-exploded', { x: 0, y: 0, playerIds: ['red'] }],
     ['bomb-exploded', { x: 0, y: 0, playerIds: ['red'] }],
   ];

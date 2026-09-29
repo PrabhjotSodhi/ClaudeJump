@@ -26,7 +26,8 @@ function findPlayer(scene, id) {
 }
 
 const READY_TICKS = 60;
-const BUMP_KNOCKBACK_VELOCITY_X = 3;
+const DASH_KNOCKBACK_VELOCITY_X = 8;
+const DASH_HIT_PAUSE_TICKS = 4;
 
 test('falling in the sea scores the other player', () => {
   const scene = new VersusScene({ level: harborLevel });
@@ -108,7 +109,7 @@ test('running the same input records twice produces identical game state', () =>
   assert.deepEqual(runToSnapshot(), runToSnapshot());
 });
 
-test('two players running into each other end up side by side, never overlapping', () => {
+test('two players walking into each other pass through and end up overlapping', () => {
   const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
 
@@ -121,15 +122,20 @@ test('two players running into each other end up side by side, never overlapping
   blue.y = 116;
   blue.onGround = true;
 
+  let everOverlapped = false;
   for (let tick = 0; tick < 60; tick++) {
     scene.update({ red: { left: false, right: true, jump: false }, blue: { left: true, right: false, jump: false } });
+    if (red.overlaps(blue)) everOverlapped = true;
   }
 
-  assert.equal(red.overlaps(blue), false);
-  assert.ok(red.x < blue.x, 'red stays on the left, blue stays on the right');
+  assert.equal(everOverlapped, true, 'the players overlap while crossing');
+  assert.ok(red.x > blue.x, 'red walked through blue to the other side');
+  assert.equal(red.knockbackVelocityX, 0);
+  assert.equal(blue.knockbackVelocityX, 0);
+  assert.equal(scene.hitPauseTicksRemaining, 0);
 });
 
-test('a player running into a standing player pushes them', () => {
+test('a player walking into a standing player does not move them', () => {
   const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
 
@@ -143,94 +149,17 @@ test('a player running into a standing player pushes them', () => {
   blue.onGround = true;
   const blueStartX = blue.x;
 
+  let everOverlapped = false;
   for (let tick = 0; tick < 40; tick++) {
     scene.update({ red: { left: false, right: true, jump: false }, blue: noInput() });
+    if (red.overlaps(blue)) everOverlapped = true;
   }
 
-  assert.ok(blue.x > blueStartX, 'the standing player gets shoved away');
-  assert.equal(red.overlaps(blue), false);
+  assert.equal(blue.x, blueStartX);
+  assert.equal(everOverlapped, true, 'red walks inside blue');
 });
 
-test('a player jumping over another is not pushed sideways', () => {
-  const scene = new VersusScene({ level: harborLevel });
-  advance(scene, READY_TICKS);
-
-  const red = findPlayer(scene, 'red');
-  const blue = findPlayer(scene, 'blue');
-  red.x = 264;
-  red.y = 116;
-  red.onGround = true;
-  blue.x = 300;
-  blue.y = 116;
-  blue.onGround = true;
-  const blueStartX = blue.x;
-
-  const bumpEvents = [];
-  scene.events.on('players-bumped', (event) => bumpEvents.push(event));
-
-  scene.update({ red: noInput(), blue: noInput() }); // releases the jump key held from spawn before pressing it fresh
-
-  for (let tick = 0; tick < 35; tick++) {
-    scene.update({ red: { left: false, right: true, jump: tick < 15 }, blue: noInput() });
-  }
-
-  assert.equal(blue.x, blueStartX, 'jumping over does not shove the other player');
-  assert.deepEqual(bumpEvents, []);
-});
-
-test('players-bumped fires once per contact, not every tick', () => {
-  const scene = new VersusScene({ level: harborLevel });
-  advance(scene, READY_TICKS);
-
-  const red = findPlayer(scene, 'red');
-  const blue = findPlayer(scene, 'blue');
-  red.x = 264;
-  red.y = 116;
-  red.onGround = true;
-  blue.x = 356;
-  blue.y = 116;
-  blue.onGround = true;
-
-  const bumpEvents = [];
-  scene.events.on('players-bumped', (event) => bumpEvents.push(event));
-
-  for (let tick = 0; tick < 60; tick++) {
-    scene.update({ red: { left: false, right: true, jump: false }, blue: { left: true, right: false, jump: false } });
-  }
-
-  assert.equal(bumpEvents.length, 1);
-  assert.deepEqual(bumpEvents[0], { playerIds: ['red', 'blue'] });
-});
-
-test('two players held into each other settle at a gap of zero, not a buzz', () => {
-  const scene = new VersusScene({ level: harborLevel });
-  advance(scene, READY_TICKS);
-
-  const red = findPlayer(scene, 'red');
-  const blue = findPlayer(scene, 'blue');
-  red.x = 264;
-  red.y = 116;
-  red.onGround = true;
-  blue.x = 356;
-  blue.y = 116;
-  blue.onGround = true;
-
-  const inputs = { red: { left: false, right: true, jump: false }, blue: { left: true, right: false, jump: false } };
-  let contactStarted = false;
-  for (let tick = 0; tick < 120; tick++) {
-    scene.update(inputs);
-    const gap = blue.x - (red.x + red.width);
-    if (!contactStarted) {
-      if (gap === 0) contactStarted = true;
-      continue;
-    }
-    assert.equal(gap, 0, `gap should stay at 0 once contact starts, tick ${tick}`);
-  }
-
-  assert.ok(contactStarted, 'the players should have made contact');
-});
-
-test('a stomp bounces the stomper up and knocks the other player sideways, away from the stomper', () => {
+test('a player landing on another player passes through, with no bounce, knockback or pause', () => {
   const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
 
@@ -239,84 +168,23 @@ test('a stomp bounces the stomper up and knocks the other player sideways, away 
   blue.x = 300;
   blue.y = 116;
   blue.onGround = true;
-  red.x = 292; // left of blue's center, so a stomp should knock blue further right
+  red.x = 292;
   red.y = 82;
+  red.previousY = red.y;
   red.velocityY = 4;
   red.onGround = false;
-  red.airJumpAvailable = false; // used up already, so a refresh from the stomp is observable
 
-  const stompEvents = [];
-  scene.events.on('player-stomped', (event) => stompEvents.push(event));
-
-  for (let tick = 0; tick < 5; tick++) {
-    scene.update({ red: { left: false, right: false, jump: true }, blue: noInput() });
+  let redPeakUpwardSpeed = 0;
+  for (let tick = 0; tick < 20; tick++) {
+    scene.update(neutralInputs());
+    redPeakUpwardSpeed = Math.max(redPeakUpwardSpeed, -red.velocityY);
+    assert.equal(scene.hitPauseTicksRemaining, 0, `no hit pause on tick ${tick}`);
   }
 
-  assert.deepEqual(stompEvents, [{ stomperId: 'red', stompedId: 'blue' }]);
-  assert.ok(red.velocityY < 0, 'the stomper bounces upward');
-  assert.equal(red.airJumpAvailable, true, 'a successful stomp refreshes the air jump');
-  assert.ok(blue.knockbackVelocityX > 0, 'the stomped player is knocked away from the stomper');
-  assert.ok(blue.dizzyTicksRemaining > 0, 'the stomped player is dizzy');
-});
-
-test('holding jump during a stomp bounces higher than not holding it', () => {
-  function stompAndBounce(jumpHeldDuringStomp) {
-    const scene = new VersusScene({ level: harborLevel });
-    advance(scene, READY_TICKS);
-
-    const red = findPlayer(scene, 'red');
-    const blue = findPlayer(scene, 'blue');
-    blue.x = 300;
-    blue.y = 116;
-    blue.onGround = true;
-    red.x = 300;
-    red.y = 82;
-    red.velocityY = 4;
-    red.onGround = false;
-    scene.update({ red: noInput(), blue: noInput() }); // release the jump key held from spawn
-
-    for (let tick = 0; tick < 5; tick++) {
-      scene.update({ red: { left: false, right: false, jump: jumpHeldDuringStomp }, blue: noInput() });
-      if (red.velocityY < 0) return red.velocityY;
-    }
-    throw new Error('the stomp never bounced the stomper');
-  }
-
-  const bounceHoldingJump = stompAndBounce(true);
-  const bounceWithoutJump = stompAndBounce(false);
-
-  assert.ok(
-    bounceHoldingJump < bounceWithoutJump,
-    'holding jump should launch the stomper higher (a more negative velocity)',
-  );
-});
-
-test('a fast fall still lands a stomp at every drop height from 60 to 200 px', () => {
-  for (let dropHeight = 60; dropHeight <= 200; dropHeight += 2) {
-    const scene = new VersusScene({ level: harborLevel });
-    advance(scene, READY_TICKS);
-
-    const red = findPlayer(scene, 'red');
-    const blue = findPlayer(scene, 'blue');
-    blue.x = 300;
-    blue.y = 116;
-    blue.onGround = true;
-    red.x = 300;
-    red.y = blue.y - dropHeight;
-    red.previousY = red.y;
-    red.velocityY = 12; // already at max fall speed, the fastest a player can fall
-    red.onGround = false;
-
-    const stompEvents = [];
-    scene.events.on('player-stomped', (event) => stompEvents.push(event));
-
-    const ticksToLand = Math.ceil(dropHeight / 12) + 3;
-    for (let tick = 0; tick < ticksToLand; tick++) {
-      scene.update({ red: noInput(), blue: noInput() });
-    }
-
-    assert.equal(stompEvents.length, 1, `drop height ${dropHeight}px should land exactly one stomp`);
-  }
+  assert.equal(redPeakUpwardSpeed, 0, 'the lander never bounces up');
+  assert.equal(blue.knockbackVelocityX, 0, 'the other player is not knocked away');
+  assert.equal(blue.x, 300);
+  assert.equal(red.overlaps(blue), true, 'red came to rest inside blue');
 });
 
 test('a player moving past the right edge reappears on the left with the same velocity', () => {
@@ -466,66 +334,47 @@ test('a dash into the opponent knocks them away', () => {
 
   assert.deepEqual(cardEvents, [{ playerId: 'red', cardName: 'dash' }]);
 
-  const bumpEvents = [];
-  scene.events.on('players-bumped', (event) => bumpEvents.push(event));
+  const dashHitEvents = [];
+  scene.events.on('dash-hit', (event) => dashHitEvents.push(event));
 
-  for (let tick = 0; tick < 10 && bumpEvents.length === 0; tick++) {
+  for (let tick = 0; tick < 10 && dashHitEvents.length === 0; tick++) {
     scene.update({ red: noInput(), blue: noInput() });
   }
 
-  assert.equal(bumpEvents.length, 1, 'the dash carries red into blue');
-  assert.ok(blue.knockbackVelocityX > BUMP_KNOCKBACK_VELOCITY_X, 'a dash hit knocks harder than an ordinary bump');
+  assert.equal(dashHitEvents.length, 1, 'the dash carries red into blue');
+  assert.equal(blue.knockbackVelocityX, DASH_KNOCKBACK_VELOCITY_X);
+  assert.equal(scene.hitPauseTicksRemaining, DASH_HIT_PAUSE_TICKS);
 
   for (let tick = 0; tick < 15; tick++) {
     scene.update({ red: noInput(), blue: noInput() });
   }
 
   assert.ok(blue.x > blueStartX, 'the dashed-into player is knocked away');
-  assert.equal(red.overlaps(blue), false);
 });
 
-test('a dash into an opponent already being pushed against still lands the dash hit', () => {
+test('a dash into an opponent already overlapping them still lands the dash hit', () => {
   const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
 
   const red = findPlayer(scene, 'red');
   const blue = findPlayer(scene, 'blue');
-  red.x = 264;
+  red.x = 290;
   red.y = 116;
   red.onGround = true;
   red.facing = 1;
-  blue.x = 289; // one pixel of gap, so the push closes it within the first tick
+  blue.x = 300;
   blue.y = 116;
   blue.onGround = true;
-
-  const pushInputs = {
-    red: { left: false, right: true, jump: false },
-    blue: { left: true, right: false, jump: false },
-  };
-  for (let tick = 0; tick < 10; tick++) {
-    scene.update(pushInputs);
-  }
-
-  assert.equal(blue.x - (red.x + red.width), 0, 'red is already pushed up against blue before dashing');
-
   red.heldCardName = 'dash';
-  const bumpEvents = [];
-  scene.events.on('players-bumped', (event) => bumpEvents.push(event));
 
-  scene.update({ red: noInput(), blue: noInput() }); // release the jump/action keys held from the push
+  const dashHitEvents = [];
+  scene.events.on('dash-hit', (event) => dashHitEvents.push(event));
+
+  scene.update({ red: noInput(), blue: noInput() }); // release the action key held from spawn
   scene.update({ red: { left: false, right: false, jump: false, action: true }, blue: noInput() });
 
-  assert.equal(bumpEvents.length, 1, 'the dash lands a hit immediately, even though the players were already touching');
-  assert.ok(
-    blue.knockbackVelocityX > BUMP_KNOCKBACK_VELOCITY_X,
-    'a dash into a touching opponent knocks as hard as a dash from range',
-  );
-
-  for (let tick = 0; tick < 19; tick++) {
-    scene.update({ red: noInput(), blue: noInput() });
-  }
-
-  assert.ok(blue.x - (red.x + red.width) > 0, 'blue ends clearly separated from red');
+  assert.equal(dashHitEvents.length, 1, 'the dash lands a hit immediately');
+  assert.equal(blue.knockbackVelocityX, DASH_KNOCKBACK_VELOCITY_X);
 });
 
 test('a shove knocks the player in front away and pops them upward', () => {
@@ -781,8 +630,6 @@ test('a player standing where a bounce pad appears is launched at once', () => {
   blue.heldCardName = 'bouncePad';
   scene.update(neutralInputs()); // release the action key held from spawn
 
-  // Placed on the same tick the card is played, so the two players are not already pushed
-  // apart by the bump resolution a lasting overlap between them would otherwise trigger.
   blue.x = 300;
   blue.y = 116; // standing on the middle platform
   blue.onGround = true;
@@ -1057,31 +904,16 @@ test('a fall landed after the round is already decided is not counted in match s
 
 // Dev mode drives a whole match through scene.update via step() with no render call in between
 // (the HUD, which used to own the tracker, never runs). MatchStats has to be attached from the
-// moment the scene is created, or every stomp and fall before the first render is lost.
+// moment the scene is created, or every fall before the first render is lost.
 test('stats are counted even when a match runs entirely through updates, with no render', () => {
   const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
 
   const red = findPlayer(scene, 'red');
   const blue = findPlayer(scene, 'blue');
-  blue.x = 300;
-  blue.y = 116;
-  blue.onGround = true;
-  red.x = 300;
-  red.y = 60;
-  red.previousY = red.y;
-  red.velocityY = 12;
-  red.onGround = false;
-
-  const stompEvents = [];
-  scene.events.on('player-stomped', (event) => stompEvents.push(event));
-  advance(scene, 10);
-  assert.equal(stompEvents.length, 1, 'the stomp should have landed');
-
   findPlayer(scene, 'red').y = 600;
   scene.update(neutralInputs());
 
-  assert.deepEqual(scene.matchStats.stomps, { red: 1, blue: 0 });
   assert.deepEqual(scene.matchStats.fallsIn, { red: 1, blue: 0 });
 });
 
@@ -1282,40 +1114,36 @@ test('landing on a rooftops fixed bounce pad launches the player', () => {
   assert.ok(red.velocityY < 0, 'the pad launches the player upward');
 });
 
-function setUpStomp(scene) {
+test('a dash hit freezes game logic for exactly the dash pause ticks', () => {
+  const scene = new VersusScene({ level: harborLevel });
+  advance(scene, READY_TICKS);
   const red = findPlayer(scene, 'red');
   const blue = findPlayer(scene, 'blue');
+  red.x = 264;
+  red.y = 116;
+  red.onGround = true;
+  red.facing = 1;
+  red.dashTicksRemaining = 10;
   blue.x = 300;
   blue.y = 116;
   blue.onGround = true;
-  red.x = 292;
-  red.y = 82;
-  red.velocityY = 4;
-  red.onGround = false;
-  return { red, blue };
-}
 
-test('a stomp freezes game logic for exactly the stomp pause ticks', () => {
-  const scene = new VersusScene({ level: harborLevel });
-  advance(scene, READY_TICKS);
-  const { red } = setUpStomp(scene);
-
-  const stompEvents = [];
-  scene.events.on('player-stomped', (event) => stompEvents.push(event));
-  while (stompEvents.length === 0) scene.update(neutralInputs());
-  assert.equal(scene.hitPauseTicksRemaining, 5);
+  const dashHitEvents = [];
+  scene.events.on('dash-hit', (event) => dashHitEvents.push(event));
+  while (dashHitEvents.length === 0) scene.update(neutralInputs());
+  assert.equal(scene.hitPauseTicksRemaining, DASH_HIT_PAUSE_TICKS);
   const frozenFightTicks = scene.fightTicks;
-  const frozenY = red.y;
+  const frozenX = red.x;
   const frozenTickCount = scene.tickCount;
 
-  advance(scene, 5);
-  assert.equal(red.y, frozenY, 'players do not move during the pause');
+  advance(scene, DASH_HIT_PAUSE_TICKS);
+  assert.equal(red.x, frozenX, 'players do not move during the pause');
   assert.equal(scene.fightTicks, frozenFightTicks, 'the round timer stands still');
-  assert.equal(scene.tickCount, frozenTickCount + 5, 'display timing keeps ticking');
+  assert.equal(scene.tickCount, frozenTickCount + DASH_HIT_PAUSE_TICKS, 'display timing keeps ticking');
   assert.equal(scene.hitPauseTicksRemaining, 0);
 
   scene.update(neutralInputs());
-  assert.notEqual(red.y, frozenY, 'players move again on the tick after');
+  assert.notEqual(red.x, frozenX, 'players move again on the tick after');
 });
 
 test('overlapping hits take the longer pause instead of adding up', () => {

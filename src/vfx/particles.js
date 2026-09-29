@@ -28,12 +28,7 @@ export class Particles {
 
     events.on('player-jumped', ({ x, y }) => burst(x, y, DUST_COLOR, JUMP_DUST));
     events.on('player-landed', ({ x, y }) => burst(x, y, DUST_COLOR, LANDING_DUST));
-    events.on('player-stomped', ({ stomperId, stompedId }) => {
-      const stomper = findPlayer(stomperId);
-      const stomped = findPlayer(stompedId);
-      if (stomper && stomped) burst(centerOf(stomped).x, centerOf(stomped).y, stomper.color, HIT_SPARKS);
-    });
-    events.on('players-bumped', ({ playerIds }) => {
+    events.on('dash-hit', ({ playerIds }) => {
       const [playerA, playerB] = playerIds.map(findPlayer);
       if (!playerA || !playerB) return;
       const midpointX = (centerOf(playerA).x + centerOf(playerB).x) / 2;

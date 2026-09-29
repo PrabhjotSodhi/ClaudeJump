@@ -49,7 +49,6 @@ export class Player extends PhysicsEntity {
     // Starts true so a jump key still held from the last round does not auto-jump on spawn.
     this.jumpHeld = true;
     this.inWater = false;
-    this.dizzyTicksRemaining = 0;
     this.slipTicksRemaining = 0;
     this.slipDirection = 0;
     this.airJumpAvailable = false;
@@ -92,28 +91,15 @@ export class Player extends PhysicsEntity {
     this.inWater = true;
   }
 
-  makeDizzy(tickCount) {
-    this.dizzyTicksRemaining = tickCount;
-  }
-
   // Keeps sliding the way they were moving; a player standing still slides the way they face.
   makeSlip(tickCount) {
     this.slipTicksRemaining = tickCount;
     this.slipDirection = Math.sign(this.velocityX + this.knockbackVelocityX) || this.facing;
   }
 
-  refreshAirJump() {
-    this.airJumpAvailable = true;
-  }
-
   launchUpward(velocityY) {
     this.velocityY = velocityY;
     this.onGround = false;
-  }
-
-  // A stomp forces the same rise a jump would give, full height held or a shorter hop not held.
-  bounceFromStomp() {
-    this.velocityY = this.jumpHeld ? JUMP_VELOCITY : JUMP_VELOCITY * JUMP_CUT_MULTIPLIER;
   }
 
   // The action key fires on the press, not while held, so keep tracking held state even when the
@@ -168,12 +154,7 @@ export class Player extends PhysicsEntity {
     }
 
     const slipping = this.slipTicksRemaining > 0;
-    this.handleActionInput(input, this.dizzyTicksRemaining <= 0 && !slipping);
-
-    if (this.dizzyTicksRemaining > 0) {
-      input = null;
-      this.dizzyTicksRemaining--;
-    }
+    this.handleActionInput(input, !slipping);
 
     const moveDirection = input ? input.right - input.left : 0;
     const jumpPressed = input && !slipping ? input.jump : false;

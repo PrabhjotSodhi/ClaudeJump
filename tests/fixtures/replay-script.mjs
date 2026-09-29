@@ -1,5 +1,5 @@
 // The exact scripted input sequence the 320x180 and 640x360 replay fixtures are built from.
-// Moves, jumps, bumps, stomps and plays cards. Cards are handed out by calling receiveCard
+// Moves, jumps, walks through each other and plays cards. Cards are handed out by calling receiveCard
 // directly at fixed ticks (see CARD_GRANTS below) rather than through crates, so the sequence
 // never depends on where a crate's seeded landing spot falls.
 export const REPLAY_SEED = 12345;
@@ -34,8 +34,8 @@ function scriptForTick(tick) {
     }
   }
 
-  // They meet and bump around tick 47. Red shoves blue away with no card held, then both hold
-  // still while blue takes a short hop straight up and back down onto red's head, landing a stomp.
+  // They meet around tick 47. Red shoves blue away with no card held, then both hold
+  // still while blue takes a short hop straight up and back down onto red's head.
   if (tick === 48) red.action = true;
   if (tick >= 55 && tick < 75) {
     red.right = false;
@@ -43,7 +43,7 @@ function scriptForTick(tick) {
     if (tick === 55) blue.jump = true;
   }
 
-  // Resume moving toward each other after the stomp settles.
+  // Resume moving toward each other after the hop settles.
   if (tick >= 75 && tick < 100) {
     red.right = true;
     blue.left = true;
@@ -98,8 +98,7 @@ export function runScriptedReplay(VersusScene, level) {
   const scene = new VersusScene({ level, startInFightPhase: true, seed: REPLAY_SEED });
   const events = [];
   for (const eventName of [
-    'players-bumped',
-    'player-stomped',
+    'dash-hit',
     'card-played',
     'card-picked-up',
     'round-won',
