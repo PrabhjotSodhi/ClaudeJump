@@ -51,7 +51,7 @@ async function main() {
     loadText('data/shaders/composite.frag'),
   ]);
 
-  const level = await loadLevel('data/levels/harbor.json', tiles);
+  const levels = [await loadLevel('data/levels/harbor.json', tiles)];
 
   const canvas = document.getElementById('screen');
   const gameWindow = createWindow(canvas, vertexShaderSource, fragmentShaderSource, buildLookupTexture(palette));
@@ -71,9 +71,9 @@ async function main() {
       }),
     );
   } else if (isDevMode) {
-    sceneManager.setScene(new VersusScene({ level, startInFightPhase: true, seed: 0 }));
+    sceneManager.setScene(new VersusScene({ level: levels[0], startInFightPhase: true, seed: 0 }));
   } else {
-    sceneManager.setScene(new TitleScene({ sceneManager, level, seed: Date.now() }));
+    sceneManager.setScene(new TitleScene({ sceneManager, levels, seed: Date.now() }));
   }
 
   function renderFrame(timestamp) {

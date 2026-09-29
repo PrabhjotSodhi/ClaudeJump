@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { TitleScene } from '../src/scenes/title-scene.js';
+import { harborLevel } from './fixtures/harbor-level.mjs';
 
 function noInput() {
   return { left: false, right: false, jump: false, down: false, action: false };
@@ -71,7 +72,7 @@ test('a fresh jump press confirms the selection and opens player select', () => 
   let scene;
   const scenes = [];
   const sceneManager = { setScene: (nextScene) => scenes.push(nextScene) };
-  scene = new TitleScene({ sceneManager, seed: 0 });
+  scene = new TitleScene({ sceneManager, levels: [harborLevel], seed: 0 });
 
   scene.update(inputsWithJump('red'));
 
@@ -82,7 +83,7 @@ test('a fresh jump press confirms the selection and opens player select', () => 
 test('a held jump does not confirm more than once', () => {
   const scenes = [];
   const sceneManager = { setScene: (nextScene) => scenes.push(nextScene) };
-  const scene = new TitleScene({ sceneManager, seed: 0 });
+  const scene = new TitleScene({ sceneManager, levels: [harborLevel], seed: 0 });
   const heldJump = inputsWithJump('red');
 
   scene.update(heldJump);
