@@ -46,6 +46,12 @@ function drawSuddenDeathWarning(context, scene) {
   }
 }
 
+export function drawPhaseMessage(context, scene) {
+  const [title, subtitle] = phaseMessages(scene);
+  if (title) drawText(context, title, SCREEN_WIDTH / 2, 60, { scale: 4, align: 'center' });
+  if (subtitle) drawText(context, subtitle, SCREEN_WIDTH / 2, 96, { align: 'center' });
+}
+
 export function drawHud(context, scene) {
   drawText(context, `${displayName(scene, 'red')} Wins: ${scene.wins.red}`, 8, 8);
   drawText(context, `${displayName(scene, 'blue')} Wins: ${scene.wins.blue}`, SCREEN_WIDTH - 8, 8, { align: 'right' });
@@ -53,9 +59,7 @@ export function drawHud(context, scene) {
   if (scene.phase === 'fight')
     drawText(context, formatCountdown(scene.suddenDeathCountdownTicks), SCREEN_WIDTH / 2, 8, { align: 'center' });
 
-  const [title, subtitle] = phaseMessages(scene);
-  if (title) drawText(context, title, SCREEN_WIDTH / 2, 60, { scale: 4, align: 'center' });
-  if (subtitle) drawText(context, subtitle, SCREEN_WIDTH / 2, 96, { align: 'center' });
+  drawPhaseMessage(context, scene);
 
   drawSuddenDeathWarning(context, scene);
 }

@@ -1,4 +1,5 @@
 import { SCREEN_WIDTH } from '../engine/config.js';
+import { drawPhaseMessage } from './hud.js';
 import { drawMenuBackdrop, drawMenuOptions } from './menu-options.js';
 import { drawPanel } from './panel.js';
 import { drawText, measureText } from './text.js';
@@ -27,6 +28,7 @@ function drawPlayerStats(context, matchScene) {
 
 export function drawResultsMenu(context, { matchScene, options, selectedIndex }) {
   drawMenuBackdrop(context);
+  drawPhaseMessage(context, matchScene);
   drawPanel(context, (SCREEN_WIDTH - PANEL_WIDTH) / 2, PANEL_TOP_Y, PANEL_WIDTH, PANEL_HEIGHT);
   drawPlayerStats(context, matchScene);
 
