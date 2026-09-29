@@ -27,7 +27,7 @@ const TEXT_SCALE = 2;
 const ARROW_DEPTH = 5;
 const ARROW_GAP = 8;
 
-const READY_COLOR = '#ffdc28';
+const READY_COLOR = '#fee761';
 
 // Each status is split across lines short enough to fit inside CARD_WIDTH with margin to spare.
 const STATUS_LABEL = {

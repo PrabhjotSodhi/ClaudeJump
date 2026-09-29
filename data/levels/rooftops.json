@@ -2,9 +2,9 @@
   "name": "Rooftops",
   "background": "rooftops",
   "stone": {
-    "light": "#d77643",
-    "mid": "#be4a2f",
-    "dark": "#733e39"
+    "light": "#c8c0b8",
+    "mid": "#a09088",
+    "dark": "#585050"
   },
   "grid": [
     "........................................",

@@ -6,7 +6,7 @@ export const CRATE_HEIGHT = 16;
 export const CRATE_WARNING_TICKS = 60;
 
 const MARKER_FLASH_TICKS = 10;
-const MARKER_COLOR = '#ffdc28';
+const MARKER_COLOR = '#fee761';
 const CRATE_SHADOW_COLOR = '#5c3c1e';
 const CRATE_FILL_COLOR = '#a0703c';
 // How many pixels the crate falls each tick. Kept steady so a later sway can be layered on top

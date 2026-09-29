@@ -7,7 +7,7 @@ const TITLE_SCALE = 4;
 const OPTIONS_TOP_Y = 184;
 const OPTIONS_LEFT_X = 290;
 const HINT_Y = 260;
-const SELECTED_OPTION_COLOR = '#ffdc28';
+const SELECTED_OPTION_COLOR = '#feae34';
 
 export function drawPauseMenu(context, { options, selectedIndex }) {
   drawMenuBackdrop(context);

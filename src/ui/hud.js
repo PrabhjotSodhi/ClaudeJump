@@ -4,7 +4,7 @@ import { drawText } from './text.js';
 const WARNING_MARKER_FLASH_TICKS = 20;
 const WARNING_MARKER_SIZE = 12;
 const WARNING_MARKER_GAP = 32;
-const WARNING_MARKER_COLOR = '#ffdc28';
+const WARNING_MARKER_COLOR = '#fee761';
 
 function displayName(scene, playerId) {
   return scene.players.find((player) => player.id === playerId).character.displayName;
