@@ -5,6 +5,7 @@
 const DUST_COLOR = '#c8ccd4';
 const FIRE_COLOR = '#f77622';
 const BLAST_COLOR = '#ffd23c';
+const CRAB_COLOR = '#e43b44';
 const DROPLET_COLOR = '#b8e0ff';
 const PLAYER_HALF_WIDTH = 12;
 const PLAYER_HALF_HEIGHT = 14;
@@ -54,6 +55,11 @@ export class Particles {
     events.on('card-played', ({ playerId }) => {
       const player = findPlayer(playerId);
       if (player) burst(centerOf(player).x, centerOf(player).y, player.color, HIT_SPARKS);
+    });
+    events.on('crab-stomped', ({ x, y }) => burst(x, y, CRAB_COLOR, HIT_SPARKS));
+    events.on('player-pinched', ({ playerId }) => {
+      const player = findPlayer(playerId);
+      if (player) burst(centerOf(player).x, centerOf(player).y, CRAB_COLOR, HIT_SPARKS);
     });
     events.on('block-broken', ({ x, y, size }) => burst(x + size / 2, y + size / 2, DUST_COLOR, LANDING_DUST));
     events.on('rocket-exploded', ({ x, y }) => burst(x, y, BLAST_COLOR, BLAST_SPARKS));
