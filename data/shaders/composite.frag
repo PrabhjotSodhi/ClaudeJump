@@ -77,8 +77,8 @@ vec3 litSceneColor(vec2 pixelPosition) {
   vec3 color = sceneColor(pixelPosition);
   if (u_lightingEnabled < 0.5) return color;
   float lightLevel = floor(samplePixel(u_lightLayer, pixelPosition).r * 3.0 + 0.5);
-  // Open air and the distant background catch one step of light at most, so a light glows instead of cutting a disc.
-  if (samplePixel(u_gameLayer, pixelPosition).a < 0.5) lightLevel = min(lightLevel, 1.0);
+  // The sky only catches the brightest ring, so lights make a small halo there instead of a big pale disc.
+  if (samplePixel(u_gameLayer, pixelPosition).a < 0.5) lightLevel = lightLevel >= 3.0 ? 1.0 : 0.0;
   float extraSteps = floor(max(fogDarkness(pixelPosition) - lightLevel * 0.25, 0.0));
   return stepDownRamp(color, clamp(UNLIT_RAMP_STEPS - lightLevel + extraSteps, 0.0, 3.0));
 }
