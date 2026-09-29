@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { LEVEL_COLUMNS, LEVEL_ROWS } from '../src/engine/config.js';
+import { LEVEL_COLUMNS, LEVEL_ROWS, SCREEN_HEIGHT, SCREEN_WIDTH } from '../src/engine/config.js';
+import { PLAYER_WIDTH } from '../src/entities/player.js';
 import { buildLevel } from '../src/levels/level-loader.js';
+import { arenaLevels } from './fixtures/arena-levels.mjs';
 import { harborLevel } from './fixtures/harbor-level.mjs';
 
 function levelWithTiles(tilesByRow) {
@@ -70,4 +72,52 @@ test('harbor loads its spawns, sea line and mood', () => {
   ]);
   assert.equal(harborLevel.mood.fogStrength, 0.8);
   assert.equal(harborLevel.mood.lamps.length, 2);
+});
+
+test('open tops leave out tiles that have another tile anywhere above them', () => {
+  const level = buildLevel(levelWithTiles({ 2: 'TTTT', 5: '.TT...TT' }));
+
+  assert.deepEqual(level.openTops, [
+    { x: 0, y: 32, width: 64, height: 16 },
+    { x: 96, y: 80, width: 32, height: 16 },
+  ]);
+});
+
+for (const [fileName, level] of Object.entries(arenaLevels)) {
+  test(`${fileName} has fair spawns standing on platforms above the sea`, () => {
+    const [red, blue] = level.spawns;
+    assert.deepEqual([red.id, blue.id], ['red', 'blue']);
+    assert.equal(red.x, SCREEN_WIDTH - blue.x, 'each spawn is the same distance from its edge');
+    assert.equal(red.y, blue.y, 'both spawns are the same height above the sea');
+    assert.deepEqual([red.facing, blue.facing], [1, -1], 'both face the middle');
+    for (const spawn of level.spawns) {
+      const standsOnPlatform = level.platforms.some(
+        (platform) =>
+          platform.y === spawn.y &&
+          platform.x <= spawn.x - PLAYER_WIDTH / 2 &&
+          spawn.x + PLAYER_WIDTH / 2 <= platform.x + platform.width,
+      );
+      assert.ok(standsOnPlatform, `${spawn.id} stands on a platform`);
+    }
+  });
+
+  test(`${fileName} leaves room to fight on a dry platform when the sea stops rising`, () => {
+    assert.ok(level.platforms.length > 0);
+    assert.ok(level.waterLineY < SCREEN_HEIGHT, 'the sea shows on screen');
+    assert.ok(
+      level.spawns.every((spawn) => spawn.y < level.waterLineY),
+      'spawns start above the sea',
+    );
+    assert.ok(level.suddenDeathLineY < level.waterLineY, 'the sea rises in sudden death');
+    const dryTops = level.openTops.filter((openTop) => openTop.y < level.suddenDeathLineY);
+    assert.ok(
+      dryTops.some((openTop) => openTop.width >= 4 * PLAYER_WIDTH),
+      'a platform at least four players wide stays above the sudden death line',
+    );
+  });
+}
+
+test('rooftops has two fixed bounce pads and the other arenas have none', () => {
+  assert.equal(arenaLevels.rooftops.bouncePads.length, 2);
+  for (const fileName of ['harbor', 'cave', 'server-farm']) assert.deepEqual(arenaLevels[fileName].bouncePads, []);
 });

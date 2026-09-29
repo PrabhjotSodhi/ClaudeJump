@@ -3,7 +3,7 @@ import { SeededRandom } from '../engine/seeded-random.js';
 import { Player } from '../entities/player.js';
 import { PLAYERS } from '../levels/versus-arena.js';
 import { MENU_BACKGROUND_COLOR, NO_WATER_LINE_Y } from '../ui/menu-screen.js';
-import { drawText } from '../ui/text.js';
+import { drawText, measureText } from '../ui/text.js';
 import { PausableMatchScene } from './pausable-match-scene.js';
 import { VersusScene } from './versus-scene.js';
 
@@ -22,6 +22,10 @@ const PORTRAIT_TOP_Y = CARD_TOP_Y + 44;
 const STATUS_TEXT_TOP_Y = CARD_TOP_Y + CARD_HEIGHT - 46;
 const STATUS_LINE_HEIGHT = 20;
 const VOTE_TEXT_Y = CARD_TOP_Y + CARD_HEIGHT + 10;
+const VOTE_TEXT_SCALE = 2;
+// Each arrow is a triangle this many pixels deep and twice that minus one tall, about the height of the vote text.
+const VOTE_ARROW_DEPTH = 5;
+const VOTE_ARROW_GAP = 8;
 const RANDOM_LABEL = 'Random';
 
 const READY_COLOR = '#ffdc28';
@@ -135,13 +139,24 @@ function drawPlayerCard(context, spawn, state, voteLabel) {
   if (state !== 'unjoined') drawPlayerPortrait(context, spawn, columnIndex, centerX, PORTRAIT_TOP_Y);
 
   if (state !== 'unjoined') {
-    drawText(context, state === 'joined' ? `< ${voteLabel} >` : voteLabel, centerX, VOTE_TEXT_Y, {
-      align: 'center',
-      color: spawn.color,
-    });
+    drawText(context, voteLabel, centerX, VOTE_TEXT_Y, { scale: VOTE_TEXT_SCALE, align: 'center', color: spawn.color });
   }
+  if (state === 'joined') drawVoteArrows(context, centerX, measureText(voteLabel) * VOTE_TEXT_SCALE, spawn.color);
 
   drawStatus(context, STATUS_LABEL[state], centerX, state === 'ready' ? READY_COLOR : spawn.color);
+}
+
+// Arrows either side of the vote while it can still change, so players know left and right change it.
+function drawVoteArrows(context, centerX, labelWidth, color) {
+  const labelLeftX = centerX - Math.floor(labelWidth / 2);
+  const leftArrowRightX = labelLeftX - VOTE_ARROW_GAP;
+  const rightArrowLeftX = labelLeftX + labelWidth + VOTE_ARROW_GAP;
+  context.fillStyle = color;
+  for (let row = 0; row < VOTE_ARROW_DEPTH * 2 - 1; row++) {
+    const width = VOTE_ARROW_DEPTH - Math.abs(row - (VOTE_ARROW_DEPTH - 1));
+    context.fillRect(leftArrowRightX - width, VOTE_TEXT_Y + row, width, 1);
+    context.fillRect(rightArrowLeftX, VOTE_TEXT_Y + row, width, 1);
+  }
 }
 
 // Centers a single line in the two-line status slot, so READY! sits level with a wrapped status.

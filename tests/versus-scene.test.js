@@ -6,6 +6,7 @@ import { Platform } from '../src/entities/platform.js';
 import { Rocket } from '../src/entities/rocket.js';
 import { BouncePad } from '../src/entities/bounce-pad.js';
 import { VersusScene } from '../src/scenes/versus-scene.js';
+import { arenaLevels } from './fixtures/arena-levels.mjs';
 import { harborLevel } from './fixtures/harbor-level.mjs';
 
 function noInput() {
@@ -1223,4 +1224,60 @@ test('a banana dropped over the sea falls in and disappears', () => {
   advance(scene, 120);
 
   assert.equal(scene.entityGroups.get('bananas').length, 0);
+});
+
+for (const [fileName, level] of Object.entries(arenaLevels)) {
+  test(`in ${fileName} the sea stops at the sudden death line and both players stay dry on the top platform`, () => {
+    const scene = new VersusScene({ level });
+    advance(scene, READY_TICKS);
+    const topPlatform = level.openTops
+      .filter((openTop) => openTop.y < level.suddenDeathLineY)
+      .sort((first, second) => second.width - first.width)[0];
+    const red = findPlayer(scene, 'red');
+    const blue = findPlayer(scene, 'blue');
+    red.x = topPlatform.x + 4;
+    blue.x = topPlatform.x + topPlatform.width - blue.width - 4;
+    for (const player of [red, blue]) {
+      player.y = topPlatform.y - player.height;
+      player.onGround = true;
+    }
+
+    advance(scene, SUDDEN_DEATH_ROUND_TICKS + SUDDEN_DEATH_WARNING_TICKS + 1200 + 60);
+
+    assert.equal(scene.waterLineY, level.suddenDeathLineY);
+    assert.equal(red.inWater, false);
+    assert.equal(blue.inWater, false);
+    assert.equal(scene.phase, 'fight');
+  });
+}
+
+test('rooftops keeps its two fixed bounce pads for the whole match, one set per round', () => {
+  const scene = new VersusScene({ level: arenaLevels.rooftops });
+  advance(scene, READY_TICKS + 400);
+  assert.equal(scene.entityGroups.get('bouncePads').length, 2, 'fixed pads never expire');
+
+  findPlayer(scene, 'red').y = 600;
+  scene.update(neutralInputs());
+  advance(scene, 90); // point pause resolves back to a fresh 'ready' round
+
+  assert.equal(scene.phase, 'ready');
+  assert.deepEqual(
+    scene.entityGroups.get('bouncePads').map(({ x, y }) => ({ x, y })),
+    arenaLevels.rooftops.bouncePads,
+  );
+});
+
+test('landing on a rooftops fixed bounce pad launches the player', () => {
+  const scene = new VersusScene({ level: arenaLevels.rooftops });
+  advance(scene, READY_TICKS);
+  const pad = arenaLevels.rooftops.bouncePads[0];
+  const red = findPlayer(scene, 'red');
+  red.x = pad.x;
+  red.y = pad.y - red.height - 4; // feet just above the pad's top surface
+  red.velocityY = 6;
+  red.onGround = false;
+
+  scene.update(neutralInputs());
+
+  assert.ok(red.velocityY < 0, 'the pad launches the player upward');
 });

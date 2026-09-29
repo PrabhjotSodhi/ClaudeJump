@@ -10,7 +10,7 @@ import { Crate, CRATE_WIDTH, CRATE_HEIGHT, CRATE_WARNING_TICKS } from '../entiti
 import { Platform } from '../entities/platform.js';
 import { Player } from '../entities/player.js';
 import { Rocket, ROCKET_WIDTH, ROCKET_HEIGHT } from '../entities/rocket.js';
-import { PLAYERS, drawBackground } from '../levels/versus-arena.js';
+import { PLAYERS, drawArenaBackground } from '../levels/versus-arena.js';
 import { drawHeldCardIcons } from '../ui/held-card-icons.js';
 import { drawHud } from '../ui/hud.js';
 import { MatchStats } from '../ui/match-stats.js';
@@ -40,8 +40,7 @@ const BLAST_KNOCKBACK_VELOCITY_Y = -4;
 
 const SUDDEN_DEATH_ROUND_TICKS = 1800; // 30 seconds; the round timer and the warning start point
 const SUDDEN_DEATH_WARNING_TICKS = 120; // 2 seconds of flashing markers before the sea rises
-const SUDDEN_DEATH_RISE_TICKS = 1200; // 20 seconds for the sea to reach the middle platform
-const SUDDEN_DEATH_TARGET_Y = 144; // middle platform top
+const SUDDEN_DEATH_RISE_TICKS = 1200; // 20 seconds for the sea to reach the level's sudden death line
 
 // A crate lands this many ticks after the previous one was taken (or lost to the rising sea).
 // The crate itself spends the last CRATE_WARNING_TICKS of that window showing its warning marker.
@@ -55,7 +54,7 @@ export class VersusScene {
     this.entityGroups = new EntityGroups();
     this.level = level;
     for (const layout of level.platforms) this.entityGroups.add('platforms', new Platform(layout));
-    this.suddenDeathRisePerTick = (level.waterLineY - SUDDEN_DEATH_TARGET_Y) / SUDDEN_DEATH_RISE_TICKS;
+    this.suddenDeathRisePerTick = (level.waterLineY - level.suddenDeathLineY) / SUDDEN_DEATH_RISE_TICKS;
 
     this.waterLineY = level.waterLineY;
     this.backgroundDrawn = false;
@@ -102,6 +101,9 @@ export class VersusScene {
     this.entityGroups.clear('players');
     this.entityGroups.clear('rockets');
     this.entityGroups.clear('bombs');
+    for (const { x, y } of this.level.bouncePads) {
+      this.entityGroups.add('bouncePads', new BouncePad({ x, y, lifetimeTicks: Infinity }));
+    }
     for (const { id, x, y, facing } of this.level.spawns) {
       const { color } = PLAYERS.find((player) => player.id === id);
       this.entityGroups.add('players', new Player({ id, color, spawnX: x, spawnY: y, facing }));
@@ -172,7 +174,7 @@ export class VersusScene {
     }
 
     if (this.suddenDeathPhase === 'rising') {
-      this.waterLineY = Math.max(SUDDEN_DEATH_TARGET_Y, this.waterLineY - this.suddenDeathRisePerTick);
+      this.waterLineY = Math.max(this.level.suddenDeathLineY, this.waterLineY - this.suddenDeathRisePerTick);
     }
   }
 
@@ -361,13 +363,13 @@ export class VersusScene {
   // The landing spot and the card both come from the scene's seeded random, so the same seed
   // always drops the same crates in the same places.
   spawnCrate() {
-    const platforms = this.entityGroups.get('platforms').filter((platform) => platform.y < this.waterLineY);
-    if (platforms.length === 0) return; // no dry platform right now; try again next tick
+    const openTops = this.level.openTops.filter((openTop) => openTop.y < this.waterLineY);
+    if (openTops.length === 0) return; // no dry platform right now; try again next tick
 
-    const platform = platforms[Math.floor(this.random.next() * platforms.length)];
+    const openTop = openTops[Math.floor(this.random.next() * openTops.length)];
     const cardName = CARD_NAMES[Math.floor(this.random.next() * CARD_NAMES.length)];
-    const x = platform.x + this.random.next() * (platform.width - CRATE_WIDTH);
-    const y = platform.y - CRATE_HEIGHT;
+    const x = openTop.x + this.random.next() * (openTop.width - CRATE_WIDTH);
+    const y = openTop.y - CRATE_HEIGHT;
     this.entityGroups.add('crates', new Crate({ x, y, cardName }));
   }
 
@@ -545,9 +547,7 @@ export class VersusScene {
 
   render(renderer) {
     if (!this.backgroundDrawn) {
-      renderer.updateBackground((context) =>
-        drawBackground(context, renderer.backgroundCanvas.width, renderer.backgroundCanvas.height),
-      );
+      renderer.updateBackground((context) => drawArenaBackground(context, this.level.background));
       this.backgroundDrawn = true;
     }
 

@@ -64,9 +64,10 @@ function glyphCanvas(character, color) {
   return canvas;
 }
 
-function measureText(text) {
+// Width in pixels of text drawn at scale 1.
+export function measureText(text) {
   let width = 0;
-  for (const character of text)
+  for (const character of text.toUpperCase())
     width += (character in GLYPHS ? GLYPHS[character].split(' ')[0].length : SPACE_WIDTH) + GLYPH_GAP;
   return Math.max(0, width - GLYPH_GAP);
 }
