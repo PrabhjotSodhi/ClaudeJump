@@ -192,9 +192,13 @@ export class SurvivalScene {
         runs.push(second);
       }
     }
-    for (const run of runs) {
-      if (this.random.next() < SPECIAL_PLATFORM_CHANCE) run.kind = SPECIAL_KINDS[this.randomInteger(0, 3)];
-    }
+    // The first run is the one placed within reach, so it is never fire: a fire run throws the player off and
+    // would wall the climb.
+    runs.forEach((run, index) => {
+      if (this.random.next() >= SPECIAL_PLATFORM_CHANCE) return;
+      const kinds = index === 0 ? SPECIAL_KINDS.filter((kind) => kind !== 'fire') : SPECIAL_KINDS;
+      run.kind = kinds[this.randomInteger(0, kinds.length - 1)];
+    });
     return { y: rowBelow.y - gapY, runs: runs.sort((runA, runB) => runA.x - runB.x) };
   }
 

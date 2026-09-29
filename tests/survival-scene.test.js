@@ -362,3 +362,13 @@ test('the same seed and inputs give the same special platforms and player path',
   };
   assert.deepEqual(runOnce(), runOnce());
 });
+
+test('every row keeps a run within reach that is not fire', () => {
+  for (let seed = 0; seed < 40; seed++) {
+    const scene = new SurvivalScene({ seed });
+    for (let index = 1; index < scene.rows.length; index++) {
+      const safeRuns = scene.rows[index].runs.filter((run) => run.kind !== 'fire');
+      assert.ok(isRowReachable({ runs: safeRuns }, scene.rows[index - 1]), `seed ${seed} row ${index}`);
+    }
+  }
+});
