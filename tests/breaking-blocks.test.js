@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { LEVEL_COLUMNS, LEVEL_ROWS } from '../src/engine/config.js';
 import { Bomb } from '../src/entities/bomb.js';
+import { BouncePad } from '../src/entities/bounce-pad.js';
 import { buildLevel } from '../src/levels/level-loader.js';
 import { VersusScene } from '../src/scenes/versus-scene.js';
 
@@ -76,7 +77,8 @@ test('a bomb blast breaks the blocks inside its radius and leaves the rest', () 
   detonateBombAt(scene, 200);
 
   assert.ok(!isSolidAt(scene, 208, FLOOR_Y + 8), 'the block under the bomb broke');
-  assert.ok(!isSolidAt(scene, 168, FLOOR_Y + 8), 'a block inside the radius broke');
+  assert.ok(!isSolidAt(scene, 184, FLOOR_Y + 8), 'a block inside the radius broke');
+  assert.ok(isSolidAt(scene, 152, FLOOR_Y + 8), 'a block just outside the radius stayed');
   assert.ok(isSolidAt(scene, 88, FLOOR_Y + 8), 'a block far to the left stayed');
   assert.ok(isSolidAt(scene, 328, FLOOR_Y + 8), 'a block far to the right stayed');
   assert.ok(events.length > 1);
@@ -104,7 +106,7 @@ test('a dash breaks the blocks in its way', () => {
 });
 
 test('a player standing on a block that breaks falls through', () => {
-  const scene = fightingScene({ [FLOOR_ROW]: '.....ssssssssssssssss' });
+  const scene = fightingScene({ [FLOOR_ROW]: '........sss' });
   const startY = red(scene).y;
 
   detonateBombAt(scene, 148);
@@ -116,7 +118,7 @@ test('a player standing on a block that breaks falls through', () => {
 test('a girder inside a blast stays', () => {
   const scene = fightingScene({ [FLOOR_ROW]: '........====s' });
 
-  detonateBombAt(scene, 150);
+  detonateBombAt(scene, 176);
 
   assert.ok(!isSolidAt(scene, 200, FLOOR_Y + 8), 'the block next to the girder broke');
   assert.ok(isSolidAt(scene, 136, FLOOR_Y + 8), 'the girder stayed');
@@ -156,4 +158,17 @@ test('the same inputs twice give the same arena', () => {
       .map(({ x, y, width, height }) => ({ x, y, width, height })),
   );
   assert.deepEqual(playArena(), first);
+});
+
+test('a bounce pad goes when the block under it breaks, and stays while another block holds it', () => {
+  const scene = fightingScene({ [FLOOR_ROW]: '.....ssssssssssssssss' });
+  const heldPad = new BouncePad({ x: 256, y: FLOOR_Y - 6, lifetimeTicks: Infinity });
+  const droppedPad = new BouncePad({ x: 200, y: FLOOR_Y - 6, lifetimeTicks: Infinity });
+  scene.entityGroups.add('bouncePads', heldPad);
+  scene.entityGroups.add('bouncePads', droppedPad);
+
+  detonateBombAt(scene, 200);
+
+  assert.ok(!scene.entityGroups.get('bouncePads').includes(droppedPad), 'the pad over the blast fell away');
+  assert.ok(scene.entityGroups.get('bouncePads').includes(heldPad), 'the pad on intact blocks stayed');
 });

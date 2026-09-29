@@ -50,6 +50,8 @@ const SHOVE_KNOCKBACK_VELOCITY_X = 7;
 const SHOVE_KNOCKBACK_VELOCITY_Y = -4;
 // How far a rocket or bomb blast reaches, and how hard it knocks players inside that range.
 const BLAST_RADIUS = 48;
+// Smaller than BLAST_RADIUS so a blast knocks players far but only bites a chunk out of the arena.
+const BLOCK_BLAST_RADIUS = 24;
 const BLAST_KNOCKBACK_VELOCITY_X = 8;
 const BLAST_KNOCKBACK_VELOCITY_Y = -4;
 // A dashing player stopped by a wall only touches it, so the body reaches this far sideways to break it.
@@ -67,7 +69,7 @@ function blockOverlaps(block, rectangle) {
 function blockIsInBlast(block, blastCenterX, blastCenterY) {
   const nearestX = Math.max(block.x, Math.min(blastCenterX, block.x + block.size));
   const nearestY = Math.max(block.y, Math.min(blastCenterY, block.y + block.size));
-  return Math.hypot(nearestX - blastCenterX, nearestY - blastCenterY) <= BLAST_RADIUS;
+  return Math.hypot(nearestX - blastCenterX, nearestY - blastCenterY) <= BLOCK_BLAST_RADIUS;
 }
 
 const SUDDEN_DEATH_ROUND_TICKS = 1800; // 30 seconds; the round timer and the warning start point
@@ -216,6 +218,25 @@ export class VersusScene {
       this.events.emit('block-broken', { x: block.x, y: block.y, size: block.size });
     }
     this.rebuildSolids();
+    this.dropUnsupportedBouncePads(brokenBlocks);
+  }
+
+  // A pad that stood on a broken block goes with it, unless another solid cell still holds it up.
+  dropUnsupportedBouncePads(brokenBlocks) {
+    for (const bouncePad of this.entityGroups.get('bouncePads')) {
+      const padBottomY = bouncePad.y + bouncePad.height;
+      const stoodOnBrokenBlock = brokenBlocks.some(
+        (block) =>
+          block.y === padBottomY && block.x < bouncePad.x + bouncePad.width && block.x + block.size > bouncePad.x,
+      );
+      if (!stoodOnBrokenBlock) continue;
+      const row = this.solidCells[padBottomY / TILE_SIZE] ?? [];
+      const firstColumn = Math.floor(bouncePad.x / TILE_SIZE);
+      const lastColumn = Math.floor((bouncePad.x + bouncePad.width - 1) / TILE_SIZE);
+      let supported = false;
+      for (let column = firstColumn; column <= lastColumn; column++) if (row[column]) supported = true;
+      if (!supported) this.entityGroups.remove('bouncePads', bouncePad);
+    }
   }
 
   update(inputByPlayerId) {
