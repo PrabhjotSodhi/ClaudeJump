@@ -110,14 +110,15 @@ export class Crate extends Entity {
         context.fillRect(canopyX + canopyWidth - 2 - inset, canopyY + canopyHeight + step, 1, 1);
       }
     }
-    context.fillStyle = OUTLINE_COLOR;
-    context.fillRect(canopyX, canopyY, canopyWidth, canopyHeight);
-    if (canopyHeight < 3 || canopyWidth < 6) return;
-    context.fillStyle = CANOPY_COLOR;
-    context.fillRect(canopyX + 1, canopyY + 1, canopyWidth - 2, canopyHeight - 2);
-    context.fillStyle = CANOPY_LIGHT_COLOR;
-    context.fillRect(canopyX + 1, canopyY + 1, canopyWidth - 2, 1);
-    context.fillStyle = CANOPY_SHADE_COLOR;
-    context.fillRect(canopyX + 1, canopyY + canopyHeight - 2, canopyWidth - 2, 1);
+    // A dome: the top two rows step in so the canopy reads as round, not as a bar.
+    for (let row = 0; row < canopyHeight; row++) {
+      const inset = canopyHeight >= 3 ? Math.max(0, 2 - row) * 2 : 0;
+      const rowWidth = canopyWidth - inset * 2;
+      context.fillStyle = OUTLINE_COLOR;
+      context.fillRect(canopyX + inset, canopyY + row, rowWidth, 1);
+      if (row === 0 || row === canopyHeight - 1 || rowWidth < 3) continue;
+      context.fillStyle = row === 1 ? CANOPY_LIGHT_COLOR : row === canopyHeight - 2 ? CANOPY_SHADE_COLOR : CANOPY_COLOR;
+      context.fillRect(canopyX + inset + 1, canopyY + row, rowWidth - 2, 1);
+    }
   }
 }
