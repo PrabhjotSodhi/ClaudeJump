@@ -36,9 +36,10 @@ export class TitleScene {
   // initialInput seeds the held-key baseline from whatever opened this scene, so an up, down or
   // confirm press still held over from that moment (such as confirming "Return to title" from the
   // pause menu) does not immediately count as a fresh press here.
-  constructor({ sceneManager, levels, seed = Date.now(), options = MENU_OPTIONS, initialInput = {} } = {}) {
+  constructor({ sceneManager, levels, sprites, seed = Date.now(), options = MENU_OPTIONS, initialInput = {} } = {}) {
     this.sceneManager = sceneManager;
     this.levels = levels;
+    this.sprites = sprites;
     this.seed = seed;
     this.options = options;
     this.selectedIndex = 0;
@@ -70,7 +71,12 @@ export class TitleScene {
     const option = this.options[this.selectedIndex];
     if (option.id === 'versus')
       this.sceneManager.setScene(
-        new PlayerSelectScene({ sceneManager: this.sceneManager, levels: this.levels, seed: this.seed }),
+        new PlayerSelectScene({
+          sceneManager: this.sceneManager,
+          levels: this.levels,
+          sprites: this.sprites,
+          seed: this.seed,
+        }),
       );
   }
 

@@ -1,7 +1,9 @@
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../engine/config.js';
 import { drawPanel } from '../ui/panel.js';
 import { drawText } from '../ui/text.js';
-import { drawGooglyEye, EYE_SIZE, GooglyEye } from '../vfx/googly-eyes.js';
+import { findCharacter } from '../entities/characters.js';
+import { drawCharacterBody, FRAME_SIZE } from '../vfx/character-body.js';
+import { EYE_STIFFNESSES, GooglyEye } from '../vfx/googly-eyes.js';
 import { drawFullyLit, drawLightRings } from '../vfx/light-rings.js';
 
 const TILE_SIZE = 16;
@@ -123,84 +125,52 @@ const HOP = { upSpeed: 3.2, sideSpeed: 1.1, gravity: 0.25, restTicks: 16, homeRe
 const BUMP = { distance: 26, sideSpeed: 1.6, upSpeed: 2.6 };
 const SQUASH = { landingTicks: 8, landing: 0.22, anticipationTicks: 5, anticipation: 0.1, stretchPerSpeed: 0.04 };
 const STRETCH_MAX = 0.14;
-// The body frame is 32x32. The composite canvas leaves room for stretch.
-const FRAME_SIZE = 32;
+// The composite canvas leaves room for stretch around the character's frame.
 const COMPOSITE_SIZE = 48;
-// One per eye. The left eye is a little stiffer, so the pupils drift apart like real googly eyes.
-const PUPIL_STIFFNESS = [0.16, 0.12];
 
-// Each character hops toward its partner. Eyes are the top left of each eye in the 32x32 body frame, placed so they
-// leave the character's signature shape visible.
+// Each character hops toward its partner.
 const CAST = [
   {
     name: 'claude',
     partner: 'muse',
     homeX: 96,
     firstRestTicks: 20,
-    eyeFramePositions: [
-      [7, 8],
-      [16, 8],
-    ],
   },
   {
     name: 'muse',
     partner: 'claude',
     homeX: 160,
     firstRestTicks: 34,
-    eyeFramePositions: [
-      [7, 6],
-      [16, 6],
-    ],
   },
   {
     name: 'chatgpt',
     partner: 'gemini',
     homeX: 234,
     firstRestTicks: 26,
-    eyeFramePositions: [
-      [6, 5],
-      [17, 5],
-    ],
   },
   {
     name: 'gemini',
     partner: 'chatgpt',
     homeX: 298,
     firstRestTicks: 42,
-    eyeFramePositions: [
-      [7, 11],
-      [16, 11],
-    ],
   },
   {
     name: 'grok',
     partner: 'deepseek',
     homeX: 384,
     firstRestTicks: 14,
-    eyeFramePositions: [
-      [4, 8],
-      [12, 5],
-    ],
   },
   {
     name: 'deepseek',
     partner: 'grok',
     homeX: 456,
     firstRestTicks: 30,
-    eyeFramePositions: [
-      [4, 13],
-      [12, 13],
-    ],
   },
   {
     name: 'mistral',
     partner: 'deepseek',
     homeX: 528,
     firstRestTicks: 70,
-    eyeFramePositions: [
-      [7, 12],
-      [18, 12],
-    ],
   },
 ];
 
@@ -282,7 +252,7 @@ class HoppingCharacter {
     this.ticksSinceLanding = SQUASH.landingTicks;
     this.mode = 'approach';
     this.eyeFramePositions = eyeFramePositions;
-    this.eyes = PUPIL_STIFFNESS.map((stiffness) => new GooglyEye(stiffness));
+    this.eyes = EYE_STIFFNESSES.map((stiffness) => new GooglyEye(stiffness));
     this.composite = document.createElement('canvas');
     this.composite.width = COMPOSITE_SIZE;
     this.composite.height = COMPOSITE_SIZE;
@@ -353,14 +323,14 @@ class HoppingCharacter {
     const context = this.composite.getContext('2d');
     context.imageSmoothingEnabled = false;
     context.clearRect(0, 0, COMPOSITE_SIZE, COMPOSITE_SIZE);
-    context.drawImage(this.sprite, center - Math.floor(width / 2), COMPOSITE_SIZE - height, width, height);
-    // Eyes keep their size and ride on the squashed body, measured from the bottom center of the frame.
-    this.eyeFramePositions.forEach(([frameX, frameY], index) => {
-      const eyeCenterX = center + (frameX + EYE_SIZE / 2 - FRAME_SIZE / 2) * scaleX;
-      const eyeCenterY = COMPOSITE_SIZE + (frameY + EYE_SIZE / 2 - FRAME_SIZE) * scaleY;
-      const eyeX = Math.round(eyeCenterX - EYE_SIZE / 2);
-      const eyeY = Math.round(eyeCenterY - EYE_SIZE / 2);
-      drawGooglyEye(context, this.eyes[index], eyeX, eyeY);
+    drawCharacterBody(context, {
+      sprite: this.sprite,
+      eyeFramePositions: this.eyeFramePositions,
+      eyes: this.eyes,
+      centerX: center,
+      bottomY: COMPOSITE_SIZE,
+      width,
+      height,
     });
 
     // The frame's bottom row is the white outline, which overlaps the top row of the tile below.
@@ -379,9 +349,10 @@ export class StyleTestScene {
     this.backgroundDrawn = false;
     this.tickCount = 0;
     const characterByName = {};
-    for (const { name, homeX, firstRestTicks, eyeFramePositions } of CAST) {
+    for (const { name, homeX, firstRestTicks } of CAST) {
+      const { spriteName, eyeFramePositions } = findCharacter(name);
       characterByName[name] = new HoppingCharacter({
-        sprite: sprites[name].body,
+        sprite: sprites[spriteName].body,
         homeX,
         firstRestTicks,
         eyeFramePositions,

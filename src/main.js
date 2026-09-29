@@ -69,18 +69,15 @@ async function main() {
   const keyboardInput = createKeyboardInput(keyMappings);
   const gamepadInput = createGamepadInput(keyMappings.map((mapping) => mapping.id));
   const sceneManager = new SceneManager();
+  const sprites = { claude, muse, chatgpt, gemini, grok, deepseek, mistral, tiles, props };
   if (isDevMode && searchParameters.get('scene') === 'style') {
-    sceneManager.setScene(
-      new StyleTestScene({
-        sprites: { claude, muse, chatgpt, gemini, grok, deepseek, mistral, tiles, props },
-      }),
-    );
+    sceneManager.setScene(new StyleTestScene({ sprites }));
   } else if (isDevMode) {
     // ?dev&level=cave starts on that level file. Harbor is the default.
     const levelIndex = Math.max(0, LEVEL_FILE_NAMES.indexOf(searchParameters.get('level')));
-    sceneManager.setScene(new VersusScene({ level: levels[levelIndex], startInFightPhase: true, seed: 0 }));
+    sceneManager.setScene(new VersusScene({ level: levels[levelIndex], startInFightPhase: true, seed: 0, sprites }));
   } else {
-    sceneManager.setScene(new TitleScene({ sceneManager, levels, seed: Date.now() }));
+    sceneManager.setScene(new TitleScene({ sceneManager, levels, sprites, seed: Date.now() }));
   }
 
   function renderFrame(timestamp) {

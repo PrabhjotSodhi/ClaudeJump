@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { CHARACTERS } from '../src/entities/characters.js';
 import { PlayerSelectScene } from '../src/scenes/player-select-scene.js';
 import { harborLevel } from './fixtures/harbor-level.mjs';
 
@@ -31,7 +32,7 @@ test('a fresh jump press joins a player', () => {
 
   scene.update(inputsWithJump('red'));
 
-  assert.equal(scene.stateByPlayerId.red, 'joined');
+  assert.equal(scene.stateByPlayerId.red, 'picking');
   assert.equal(scene.stateByPlayerId.blue, 'unjoined');
 });
 
@@ -43,16 +44,19 @@ test('holding jump does not join or ready up more than once', () => {
   scene.update(heldJump);
   scene.update(heldJump);
 
-  assert.equal(scene.stateByPlayerId.red, 'joined');
+  assert.equal(scene.stateByPlayerId.red, 'picking');
 });
 
-test('a second fresh press readies up a joined player', () => {
+test('each fresh jump press moves a player from picking to voting to ready', () => {
   const { scene } = sceneWithBaseline();
 
   scene.update(inputsWithJump('red'));
   scene.update(neutralInputs());
   scene.update(inputsWithJump('red'));
+  assert.equal(scene.stateByPlayerId.red, 'voting');
 
+  scene.update(neutralInputs());
+  scene.update(inputsWithJump('red'));
   assert.equal(scene.stateByPlayerId.red, 'ready');
 });
 
@@ -70,21 +74,17 @@ test('a press held over from before this scene does not count as a fresh press',
 
   scene.update(neutralInputs());
   scene.update(inputsWithJump('red'));
-  assert.equal(scene.stateByPlayerId.red, 'joined', 'released and pressed again is a fresh press');
+  assert.equal(scene.stateByPlayerId.red, 'picking', 'released and pressed again is a fresh press');
 });
 
 test('the match does not start until both players are ready', () => {
   const { scene, scenes } = sceneWithBaseline();
 
-  scene.update(inputsWithJump('red'));
-  scene.update(neutralInputs());
-  scene.update(inputsWithJump('red'));
+  readyUp(scene, 'red');
   assert.equal(scene.stateByPlayerId.red, 'ready');
   assert.equal(scenes.length, 0, 'only one player is ready so far');
 
-  scene.update(inputsWithJump('blue'));
-  scene.update(neutralInputs());
-  scene.update(inputsWithJump('blue'));
+  readyUp(scene, 'blue');
   assert.equal(scene.stateByPlayerId.blue, 'ready');
 
   assert.equal(scenes.length, 1, 'the match starts once every player is ready');
@@ -92,18 +92,27 @@ test('the match does not start until both players are ready', () => {
   assert.equal(scenes[0].matchScene.constructor.name, 'VersusScene');
 });
 
-const otherLevel = { ...harborLevel, name: 'Dock' };
-const twoLevels = [harborLevel, otherLevel];
-
 function press(scene, playerId, button) {
   scene.update({ ...neutralInputs(), [playerId]: { ...noInput(), [button]: true } });
   scene.update(neutralInputs());
 }
 
+// The last press has no release after it, because the scene is replaced the moment everyone is ready.
+function readyUp(scene, playerId) {
+  press(scene, playerId, 'jump');
+  press(scene, playerId, 'jump');
+  scene.update(inputsWithJump(playerId));
+}
+
+const otherLevel = { ...harborLevel, name: 'Dock' };
+const twoLevels = [harborLevel, otherLevel];
+
 function pickedLevel({ seed, redPresses = [], bluePresses = [] }) {
   const { scene, scenes } = sceneWithBaseline({ levels: twoLevels, seed });
-  press(scene, 'red', 'jump');
-  press(scene, 'blue', 'jump');
+  for (const playerId of ['red', 'blue']) {
+    press(scene, playerId, 'jump');
+    press(scene, playerId, 'jump');
+  }
   for (const button of redPresses) press(scene, 'red', button);
   for (const button of bluePresses) press(scene, 'blue', button);
   press(scene, 'red', 'jump');
@@ -131,12 +140,16 @@ test('Random can give any level', () => {
   assert.deepEqual([...picked].map((level) => level.name).sort(), ['Dock', 'Harbor']);
 });
 
-test('left and right change the vote only after joining and before readying', () => {
+test('left and right change the vote only while voting', () => {
   const { scene } = sceneWithBaseline({ levels: twoLevels });
   const randomVote = scene.voteByPlayerId.red;
 
   press(scene, 'red', 'left');
   assert.equal(scene.voteByPlayerId.red, randomVote, 'unjoined players cannot vote');
+
+  press(scene, 'red', 'jump');
+  press(scene, 'red', 'left');
+  assert.equal(scene.voteByPlayerId.red, randomVote, 'picking a character does not change the vote');
 
   press(scene, 'red', 'jump');
   press(scene, 'red', 'left');
@@ -147,4 +160,73 @@ test('left and right change the vote only after joining and before readying', ()
   press(scene, 'red', 'jump');
   press(scene, 'red', 'left');
   assert.equal(scene.voteByPlayerId.red, randomVote, 'ready players cannot vote');
+});
+
+function hoveredCharacterName(scene, playerId) {
+  return CHARACTERS[scene.characterIndexByPlayerId[playerId]].name;
+}
+
+test('red starts hovering on Claude and blue on Muse', () => {
+  const { scene } = sceneWithBaseline();
+
+  assert.equal(hoveredCharacterName(scene, 'red'), 'claude');
+  assert.equal(hoveredCharacterName(scene, 'blue'), 'muse');
+});
+
+test('left and right cycle the hovered character while picking', () => {
+  const { scene } = sceneWithBaseline();
+  press(scene, 'red', 'jump');
+
+  press(scene, 'red', 'right');
+  press(scene, 'red', 'right');
+  assert.equal(hoveredCharacterName(scene, 'red'), 'chatgpt');
+
+  press(scene, 'red', 'left');
+  press(scene, 'red', 'left');
+  press(scene, 'red', 'left');
+  assert.equal(hoveredCharacterName(scene, 'red'), CHARACTERS.at(-1).name, 'wraps around the list');
+});
+
+test('the picker skips a character the other player has locked in', () => {
+  const { scene } = sceneWithBaseline();
+  press(scene, 'red', 'jump');
+  press(scene, 'red', 'jump');
+  press(scene, 'blue', 'jump');
+
+  press(scene, 'blue', 'left');
+
+  assert.equal(scene.stateByPlayerId.red, 'voting');
+  assert.equal(hoveredCharacterName(scene, 'blue'), CHARACTERS.at(-1).name, 'Claude is locked, so blue steps past it');
+});
+
+test('a player hovering on a character the other player locks in moves to the next free one', () => {
+  const { scene } = sceneWithBaseline();
+  press(scene, 'blue', 'jump');
+  press(scene, 'red', 'jump');
+  press(scene, 'red', 'right');
+  assert.equal(hoveredCharacterName(scene, 'blue'), 'muse', 'hovering is not locking, so red may hover on Muse too');
+
+  press(scene, 'red', 'jump');
+
+  assert.equal(hoveredCharacterName(scene, 'red'), 'muse');
+  assert.equal(hoveredCharacterName(scene, 'blue'), 'chatgpt');
+  assert.equal(scene.stateByPlayerId.blue, 'picking');
+});
+
+test('a match started from player select gives each player the picked character and its tag color', () => {
+  const { scene, scenes } = sceneWithBaseline();
+  press(scene, 'blue', 'jump');
+  press(scene, 'red', 'jump');
+  press(scene, 'red', 'right');
+  press(scene, 'red', 'jump');
+  press(scene, 'red', 'jump');
+  press(scene, 'blue', 'jump');
+  press(scene, 'blue', 'jump');
+
+  const players = scenes[0].matchScene.players;
+  const red = players.find((player) => player.id === 'red');
+  const blue = players.find((player) => player.id === 'blue');
+
+  assert.deepEqual([red.character.name, red.color], ['muse', '#ead4aa']);
+  assert.deepEqual([blue.character.name, blue.color], ['chatgpt', '#63c74d']);
 });

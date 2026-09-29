@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import { PhysicsEntity } from '../src/engine/physics-entity.js';
 import { PICKUP_USES } from '../src/cards/card-definitions.js';
 import { Player, SHOVE_ACTIVE_TICKS } from '../src/entities/player.js';
+import { findCharacter } from '../src/entities/characters.js';
 
 function makeEntity() {
   return new PhysicsEntity({ x: 200, y: 200, width: 16, height: 24 });
@@ -65,8 +66,20 @@ test('hitting a wall stops horizontal knockback', () => {
 });
 
 test('a player holding a direction still changes course during knockback', () => {
-  const holdLeftPlayer = new Player({ id: 'red', color: '#ff0000', spawnX: 200, spawnY: 200, facing: 1 });
-  const idlePlayer = new Player({ id: 'blue', color: '#0000ff', spawnX: 200, spawnY: 200, facing: 1 });
+  const holdLeftPlayer = new Player({
+    id: 'red',
+    character: findCharacter('claude'),
+    spawnX: 200,
+    spawnY: 200,
+    facing: 1,
+  });
+  const idlePlayer = new Player({
+    id: 'blue',
+    character: findCharacter('claude'),
+    spawnX: 200,
+    spawnY: 200,
+    facing: 1,
+  });
   holdLeftPlayer.applyKnockback(10, 0);
   idlePlayer.applyKnockback(10, 0);
 
@@ -92,7 +105,7 @@ test('a player holding a direction still changes course during knockback', () =>
 });
 
 test('a dizzy player ignores input for exactly 20 ticks', () => {
-  const player = new Player({ id: 'blue', color: '#0000ff', spawnX: 200, spawnY: 200, facing: 1 });
+  const player = new Player({ id: 'blue', character: findCharacter('claude'), spawnX: 200, spawnY: 200, facing: 1 });
   player.onGround = true;
   player.update({ left: false, right: false, jump: false }, []); // release the jump key held from spawn
 
@@ -111,7 +124,7 @@ test('a dizzy player ignores input for exactly 20 ticks', () => {
 });
 
 test('a player can jump, then jump again in the air, but not a third time', () => {
-  const player = new Player({ id: 'red', color: '#ff0000', spawnX: 200, spawnY: 200, facing: 1 });
+  const player = new Player({ id: 'red', character: findCharacter('claude'), spawnX: 200, spawnY: 200, facing: 1 });
   player.onGround = true;
   player.update({ left: false, right: false, jump: false }, []); // release the jump key held from spawn
 
@@ -130,7 +143,7 @@ test('a player can jump, then jump again in the air, but not a third time', () =
 });
 
 test('landing refreshes the air jump', () => {
-  const player = new Player({ id: 'red', color: '#ff0000', spawnX: 200, spawnY: 200, facing: 1 });
+  const player = new Player({ id: 'red', character: findCharacter('claude'), spawnX: 200, spawnY: 200, facing: 1 });
   player.onGround = true;
   player.update({ left: false, right: false, jump: false }, []); // release the jump key held from spawn
 
@@ -150,7 +163,7 @@ function actionInput(action) {
 }
 
 test('a fresh press of the action button starts a shove, but holding it down never fires another one', () => {
-  const player = new Player({ id: 'red', color: '#ff0000', spawnX: 200, spawnY: 200, facing: 1 });
+  const player = new Player({ id: 'red', character: findCharacter('claude'), spawnX: 200, spawnY: 200, facing: 1 });
   player.onGround = true;
   player.update(actionInput(false), []); // release the action key held from spawn
 
@@ -168,7 +181,7 @@ test('a fresh press of the action button starts a shove, but holding it down nev
 });
 
 test('a press of the action button during the cooldown after a shove does nothing', () => {
-  const player = new Player({ id: 'red', color: '#ff0000', spawnX: 200, spawnY: 200, facing: 1 });
+  const player = new Player({ id: 'red', character: findCharacter('claude'), spawnX: 200, spawnY: 200, facing: 1 });
   player.onGround = true;
   player.update(actionInput(false), []); // release the action key held from spawn
 
@@ -183,7 +196,7 @@ test('a press of the action button during the cooldown after a shove does nothin
 });
 
 test('a dizzy player cannot shove', () => {
-  const player = new Player({ id: 'red', color: '#ff0000', spawnX: 200, spawnY: 200, facing: 1 });
+  const player = new Player({ id: 'red', character: findCharacter('claude'), spawnX: 200, spawnY: 200, facing: 1 });
   player.onGround = true;
   player.update(actionInput(false), []); // release the action key held from spawn
   player.makeDizzy(20);
@@ -194,7 +207,7 @@ test('a dizzy player cannot shove', () => {
 });
 
 test('a held pickup is played by the action button instead of starting a shove', () => {
-  const player = new Player({ id: 'red', color: '#ff0000', spawnX: 200, spawnY: 200, facing: 1 });
+  const player = new Player({ id: 'red', character: findCharacter('claude'), spawnX: 200, spawnY: 200, facing: 1 });
   player.onGround = true;
   player.update(actionInput(false), []); // release the action key held from spawn
   player.receiveCard('rocket');
@@ -206,7 +219,7 @@ test('a held pickup is played by the action button instead of starting a shove',
 });
 
 test('a pickup gives 3 uses, each press spends one, and at 0 the button shoves again', () => {
-  const player = new Player({ id: 'red', color: '#ff0000', spawnX: 200, spawnY: 200, facing: 1 });
+  const player = new Player({ id: 'red', character: findCharacter('claude'), spawnX: 200, spawnY: 200, facing: 1 });
   player.onGround = true;
   player.update(actionInput(false), []); // release the action key held from spawn
   player.receiveCard('rocket');

@@ -14,6 +14,9 @@ const WHITE_COLOR = '#ffffff';
 const SHADE_COLOR = '#c0cbdc';
 const PUPIL_COLOR = '#181425';
 
+// One per eye. The left eye is a little stiffer, so the pupils drift apart like real googly eyes.
+export const EYE_STIFFNESSES = [0.16, 0.12];
+
 // The eye is the white disc plus a 1 pixel rim, so it is this wide and tall.
 export const EYE_SIZE = WHITE_DIAMETER + 2;
 

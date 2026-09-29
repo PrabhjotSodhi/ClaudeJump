@@ -10,8 +10,8 @@ const RESULTS_TOP_Y = 124;
 const RESULTS_ROW_HEIGHT = 18;
 const RESULTS_COLUMN_OFFSET_X = 148;
 
-function capitalize(id) {
-  return id[0].toUpperCase() + id.slice(1);
+function displayName(scene, playerId) {
+  return scene.players.find((player) => player.id === playerId).character.displayName;
 }
 
 function formatCountdown(ticksRemaining) {
@@ -22,7 +22,7 @@ function formatCountdown(ticksRemaining) {
 }
 
 function phaseMessages(scene) {
-  const winnerName = scene.winnerId && capitalize(scene.winnerId);
+  const winnerName = scene.winnerId && displayName(scene, scene.winnerId);
   switch (scene.phase) {
     case 'ready': {
       const totalWins = Object.values(scene.wins).reduce((sum, wins) => sum + wins, 0);
@@ -60,7 +60,7 @@ function drawMatchResults(context, scene) {
     const x = SCREEN_WIDTH / 2 + (columnIndex === 0 ? -RESULTS_COLUMN_OFFSET_X : RESULTS_COLUMN_OFFSET_X);
     let y = RESULTS_TOP_Y;
 
-    drawText(context, capitalize(player.id), x, y, { align: 'center', color: player.color });
+    drawText(context, player.character.displayName, x, y, { align: 'center', color: player.color });
     y += RESULTS_ROW_HEIGHT;
     drawText(context, `Wins ${scene.wins[player.id]}`, x, y, { align: 'center' });
     y += RESULTS_ROW_HEIGHT;
@@ -78,8 +78,8 @@ function drawMatchResults(context, scene) {
 }
 
 export function drawHud(context, scene) {
-  drawText(context, `Red Wins: ${scene.wins.red}`, 8, 8);
-  drawText(context, `Blue Wins: ${scene.wins.blue}`, SCREEN_WIDTH - 8, 8, { align: 'right' });
+  drawText(context, `${displayName(scene, 'red')} Wins: ${scene.wins.red}`, 8, 8);
+  drawText(context, `${displayName(scene, 'blue')} Wins: ${scene.wins.blue}`, SCREEN_WIDTH - 8, 8, { align: 'right' });
 
   if (scene.phase === 'fight')
     drawText(context, formatCountdown(scene.suddenDeathCountdownTicks), SCREEN_WIDTH / 2, 8, { align: 'center' });

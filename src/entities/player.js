@@ -1,6 +1,7 @@
 import { SCREEN_WIDTH } from '../engine/config.js';
 import { PICKUP_USES } from '../cards/card-definitions.js';
 import { PhysicsEntity } from '../engine/physics-entity.js';
+import { drawCharacterBody, FRAME_SIZE } from '../vfx/character-body.js';
 
 export const PLAYER_WIDTH = 24;
 export const PLAYER_HEIGHT = 28;
@@ -32,18 +33,16 @@ const STRETCH_PIXELS = 4;
 const SQUASH_TICKS = 6;
 const SQUASH_PIXELS = 4;
 
-const SKIN_COLOR = '#f0c8a0';
-const EYE_COLOR = '#1e1e28';
-
 function clamp(value, minimum, maximum) {
   return Math.max(minimum, Math.min(maximum, value));
 }
 
 export class Player extends PhysicsEntity {
-  constructor({ id, color, spawnX, spawnY, facing }) {
+  constructor({ id, character, spawnX, spawnY, facing }) {
     super({ x: spawnX - PLAYER_WIDTH / 2, y: spawnY - PLAYER_HEIGHT, width: PLAYER_WIDTH, height: PLAYER_HEIGHT });
     this.id = id;
-    this.color = color;
+    this.character = character;
+    this.color = character.tagColor;
     this.facing = facing;
     this.coyoteTicksRemaining = 0;
     this.jumpBufferTicksRemaining = 0;
@@ -222,13 +221,16 @@ export class Player extends PhysicsEntity {
   }
 
   // Drawn a second time offset by a screen width while crossing an edge, so wrapping never shows a gap.
-  render(context) {
-    this.renderAt(context, this.x);
-    if (this.x < 0) this.renderAt(context, this.x + SCREEN_WIDTH);
-    else if (this.x + this.width > SCREEN_WIDTH) this.renderAt(context, this.x - SCREEN_WIDTH);
+  // appearance is { sprites, playerEyes }: the loaded sprite files by name and the display only eyes.
+  render(context, appearance) {
+    this.renderAt(context, this.x, appearance);
+    if (this.x < 0) this.renderAt(context, this.x + SCREEN_WIDTH, appearance);
+    else if (this.x + this.width > SCREEN_WIDTH) this.renderAt(context, this.x - SCREEN_WIDTH, appearance);
   }
 
-  renderAt(context, x) {
+  // The sprite frame sits bottom centered on the hitbox, one pixel lower so its white outline row overlaps the
+  // top row of the platform underfoot.
+  renderAt(context, x, { sprites, playerEyes }) {
     const drawX = Math.round(x);
     const drawY = Math.round(this.y);
     if (this.isShoveActive) {
@@ -237,17 +239,14 @@ export class Player extends PhysicsEntity {
       context.fillRect(Math.round(drawX + (hitZone.x - this.x)), Math.round(hitZone.y), hitZone.width, hitZone.height);
     }
     const squash = this.inWater ? { width: 0, height: 0 } : this.squash;
-    const bodyX = drawX - squash.width / 2;
-    const bodyY = drawY - squash.height;
-    const bodyWidth = this.width + squash.width;
-    const bodyHeight = this.height + squash.height;
-    const headX = bodyX + 4;
-    const headWidth = bodyWidth - 8;
-    context.fillStyle = SKIN_COLOR;
-    context.fillRect(headX, bodyY, headWidth, 14);
-    context.fillStyle = this.color;
-    context.fillRect(bodyX, bodyY + 14, bodyWidth, bodyHeight - 14);
-    context.fillStyle = EYE_COLOR;
-    context.fillRect(headX + (this.facing > 0 ? headWidth - 4 : 2), bodyY + 5, 2, 2);
+    drawCharacterBody(context, {
+      sprite: sprites[this.character.spriteName].body,
+      eyeFramePositions: this.character.eyeFramePositions,
+      eyes: playerEyes.eyesFor(this.id),
+      centerX: drawX + this.width / 2,
+      bottomY: drawY + this.height + 1,
+      width: FRAME_SIZE + squash.width,
+      height: FRAME_SIZE + squash.height,
+    });
   }
 }

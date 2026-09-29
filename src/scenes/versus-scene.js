@@ -6,15 +6,17 @@ import { SeededRandom } from '../engine/seeded-random.js';
 import { Banana, BANANA_WIDTH, BANANA_HEIGHT, BANANA_SLIP_TICKS } from '../entities/banana.js';
 import { Bomb, BOMB_WIDTH, BOMB_HEIGHT } from '../entities/bomb.js';
 import { BouncePad, BOUNCE_PAD_WIDTH, BOUNCE_PAD_HEIGHT, BOUNCE_PAD_LAUNCH_VELOCITY } from '../entities/bounce-pad.js';
+import { DEFAULT_CHARACTER_BY_PLAYER_ID } from '../entities/characters.js';
 import { Crate, CRATE_WIDTH, CRATE_HEIGHT, CRATE_WARNING_TICKS } from '../entities/crate.js';
 import { Platform } from '../entities/platform.js';
 import { Player } from '../entities/player.js';
 import { Rocket, ROCKET_WIDTH, ROCKET_HEIGHT } from '../entities/rocket.js';
-import { PLAYERS, drawArenaBackground } from '../levels/versus-arena.js';
+import { drawArenaBackground } from '../levels/versus-arena.js';
 import { drawHeldCardIcons } from '../ui/held-card-icons.js';
 import { drawHud } from '../ui/hud.js';
 import { MatchStats } from '../ui/match-stats.js';
 import { drawPlayerTags } from '../ui/player-tags.js';
+import { PlayerEyes } from '../vfx/player-eyes.js';
 import { drawParticles, HARD_LANDING_SPEED, Particles } from '../vfx/particles.js';
 import { SeaRipple } from '../vfx/sea-ripple.js';
 import { ScreenShake } from '../vfx/screen-shake.js';
@@ -58,7 +60,15 @@ const CRATE_RESPAWN_TICKS = 180;
 const CRATE_SPAWN_DELAY_TICKS = CRATE_RESPAWN_TICKS - CRATE_WARNING_TICKS;
 
 export class VersusScene {
-  constructor({ level, startInFightPhase = false, seed = Date.now() } = {}) {
+  constructor({
+    level,
+    startInFightPhase = false,
+    seed = Date.now(),
+    characterByPlayerId = DEFAULT_CHARACTER_BY_PLAYER_ID,
+    sprites = {},
+  } = {}) {
+    this.characterByPlayerId = characterByPlayerId;
+    this.sprites = sprites;
     this.events = new EventEmitter();
     this.random = new SeededRandom(seed);
     this.entityGroups = new EntityGroups();
@@ -97,6 +107,8 @@ export class VersusScene {
     this.matchStats = new MatchStats(Object.keys(this.wins));
     this.matchStats.attach(this.events, () => this.phase === 'fight');
     // Display-only, created here for the same reason: it must never miss a player-wrapped event.
+    this.playerEyes = new PlayerEyes();
+    this.playerEyes.attach(this.events, () => this.players);
     this.wrapPuffTracker = new WrapPuffTracker();
     this.wrapPuffTracker.attach(
       this.events,
@@ -127,8 +139,10 @@ export class VersusScene {
       this.entityGroups.add('bouncePads', new BouncePad({ x, y, lifetimeTicks: Infinity }));
     }
     for (const { id, x, y, facing } of this.level.spawns) {
-      const { color } = PLAYERS.find((player) => player.id === id);
-      this.entityGroups.add('players', new Player({ id, color, spawnX: x, spawnY: y, facing }));
+      this.entityGroups.add(
+        'players',
+        new Player({ id, character: this.characterByPlayerId[id], spawnX: x, spawnY: y, facing }),
+      );
     }
     this.ticksUntilCrateSpawn = CRATE_SPAWN_DELAY_TICKS;
     if (this.skipNextReadyPhase) {
@@ -155,6 +169,7 @@ export class VersusScene {
     this.screenShake.update();
     this.seaRipple.update();
     this.particles.update();
+    this.playerEyes.update();
     switch (this.phase) {
       case 'ready':
         if (this.ticksRemaining <= 0) {
@@ -284,13 +299,14 @@ export class VersusScene {
   resolveRocketExplosion(rocket) {
     const blastCenterX = rocket.x + rocket.width / 2;
     const blastCenterY = rocket.y + rocket.height / 2;
-    this.resolveBlast(blastCenterX, blastCenterY);
-    this.events.emit('rocket-exploded', { x: blastCenterX, y: blastCenterY });
+    const playerIds = this.resolveBlast(blastCenterX, blastCenterY);
+    this.events.emit('rocket-exploded', { x: blastCenterX, y: blastCenterY, playerIds });
     this.entityGroups.remove('rockets', rocket);
   }
 
   resolveBlast(blastCenterX, blastCenterY) {
     this.requestHitPause(BLAST_HIT_PAUSE_TICKS);
+    const knockedPlayerIds = [];
     for (const player of this.players) {
       if (player.inWater) continue;
       const distanceX = player.x + player.width / 2 - blastCenterX;
@@ -300,7 +316,9 @@ export class VersusScene {
 
       const knockbackDirectionX = distance === 0 ? 1 : distanceX / distance;
       player.applyKnockback(knockbackDirectionX * BLAST_KNOCKBACK_VELOCITY_X, BLAST_KNOCKBACK_VELOCITY_Y);
+      knockedPlayerIds.push(player.id);
     }
+    return knockedPlayerIds;
   }
 
   spawnBomb(player) {
@@ -318,8 +336,8 @@ export class VersusScene {
 
       const blastCenterX = bomb.x + bomb.width / 2;
       const blastCenterY = bomb.y + bomb.height / 2;
-      this.resolveBlast(blastCenterX, blastCenterY);
-      this.events.emit('bomb-exploded', { x: blastCenterX, y: blastCenterY });
+      const playerIds = this.resolveBlast(blastCenterX, blastCenterY);
+      this.events.emit('bomb-exploded', { x: blastCenterX, y: blastCenterY, playerIds });
       this.entityGroups.remove('bombs', bomb);
     }
   }
@@ -601,7 +619,7 @@ export class VersusScene {
     for (const tile of this.level.tiles)
       renderer.gameContext.drawImage(this.level.tileSprites[tile.name], tile.x, tile.y);
     drawWrapPuffs(renderer.gameContext, this);
-    this.entityGroups.renderAll(renderer.gameContext);
+    this.entityGroups.renderAll(renderer.gameContext, { sprites: this.sprites, playerEyes: this.playerEyes });
     drawParticles(renderer.gameContext, this);
     drawHeldCardIcons(renderer.gameContext, this);
     drawPlayerTags(renderer.gameContext, this);

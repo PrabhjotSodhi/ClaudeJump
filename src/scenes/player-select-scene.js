@@ -1,9 +1,11 @@
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../engine/config.js';
 import { SeededRandom } from '../engine/seeded-random.js';
-import { Player } from '../entities/player.js';
+import { CHARACTERS, DEFAULT_CHARACTER_BY_PLAYER_ID } from '../entities/characters.js';
 import { PLAYERS } from '../levels/versus-arena.js';
 import { MENU_BACKGROUND_COLOR, NO_WATER_LINE_Y } from '../ui/menu-screen.js';
 import { drawText, measureText } from '../ui/text.js';
+import { drawCharacterBody, FRAME_SIZE } from '../vfx/character-body.js';
+import { EYE_STIFFNESSES, GooglyEye } from '../vfx/googly-eyes.js';
 import { PausableMatchScene } from './pausable-match-scene.js';
 import { VersusScene } from './versus-scene.js';
 
@@ -16,16 +18,17 @@ const CARD_HEIGHT = 200;
 const CARD_OFFSET_X = 148;
 const CARD_LABEL_Y = CARD_TOP_Y + 16;
 const PORTRAIT_SCALE = 3;
-const PORTRAIT_TOP_Y = CARD_TOP_Y + 44;
+const PORTRAIT_TOP_Y = CARD_TOP_Y + 34;
+const CHARACTER_NAME_Y = PORTRAIT_TOP_Y + FRAME_SIZE * PORTRAIT_SCALE + 8;
 // The status sits in the last two text rows above the card's bottom edge, so both a wrapped
 // two-line status and the single-line READY! stay inside the card with room to spare.
 const STATUS_TEXT_TOP_Y = CARD_TOP_Y + CARD_HEIGHT - 46;
 const STATUS_LINE_HEIGHT = 20;
 const VOTE_TEXT_Y = CARD_TOP_Y + CARD_HEIGHT + 10;
-const VOTE_TEXT_SCALE = 2;
-// Each arrow is a triangle this many pixels deep and twice that minus one tall, about the height of the vote text.
-const VOTE_ARROW_DEPTH = 5;
-const VOTE_ARROW_GAP = 8;
+const TEXT_SCALE = 2;
+// Each arrow is a triangle this many pixels deep and twice that minus one tall, about the height of the text.
+const ARROW_DEPTH = 5;
+const ARROW_GAP = 8;
 const RANDOM_LABEL = 'Random';
 
 const READY_COLOR = '#ffdc28';
@@ -33,14 +36,23 @@ const READY_COLOR = '#ffdc28';
 // Each status is split across lines short enough to fit inside CARD_WIDTH with margin to spare.
 const STATUS_LABEL = {
   unjoined: ['Press jump', 'to join'],
-  joined: ['Press jump', 'when ready'],
+  picking: ['Press jump', 'to lock in'],
+  voting: ['Press jump', 'when ready'],
   ready: ['READY!'],
 };
 
+// Each card goes through these states in order, one jump press apart.
+const NEXT_STATE = { unjoined: 'picking', picking: 'voting', voting: 'ready' };
+const LOCKED_STATES = ['voting', 'ready'];
+
+// Every card shows the same eyes at rest.
+const PORTRAIT_EYES = EYE_STIFFNESSES.map((stiffness) => new GooglyEye(stiffness));
+
 export class PlayerSelectScene {
-  constructor({ sceneManager, levels, seed = Date.now() } = {}) {
+  constructor({ sceneManager, levels, sprites = {}, seed = Date.now() } = {}) {
     this.sceneManager = sceneManager;
     this.levels = levels;
+    this.sprites = sprites;
     this.seed = seed;
     this.waterLineY = NO_WATER_LINE_Y;
     this.backgroundDrawn = false;
@@ -50,8 +62,11 @@ export class PlayerSelectScene {
     this.stateByPlayerId = {};
     // A vote is an index into levels, or levels.length for Random.
     this.voteByPlayerId = {};
+    // An index into CHARACTERS: the hovered character until the player locks it in, then the chosen one.
+    this.characterIndexByPlayerId = {};
     for (const spawn of PLAYERS) {
       this.stateByPlayerId[spawn.id] = 'unjoined';
+      this.characterIndexByPlayerId[spawn.id] = CHARACTERS.indexOf(DEFAULT_CHARACTER_BY_PLAYER_ID[spawn.id]);
       this.voteByPlayerId[spawn.id] = levels.length;
     }
   }
@@ -66,9 +81,12 @@ export class PlayerSelectScene {
     for (const spawn of PLAYERS) {
       const input = inputByPlayerId[spawn.id] ?? {};
       const previous = this.previousInput[spawn.id];
-      if (this.stateByPlayerId[spawn.id] === 'joined') {
-        if (input.left && !previous.left) this.changeVote(spawn.id, -1);
-        if (input.right && !previous.right) this.changeVote(spawn.id, 1);
+      const state = this.stateByPlayerId[spawn.id];
+      if (state === 'picking' || state === 'voting') {
+        const change = (direction) =>
+          state === 'picking' ? this.changeCharacter(spawn.id, direction) : this.changeVote(spawn.id, direction);
+        if (input.left && !previous.left) change(-1);
+        if (input.right && !previous.right) change(1);
       }
       if (input.jump && !previous.jump) this.advance(spawn.id);
       this.previousInput[spawn.id] = { ...input };
@@ -78,7 +96,12 @@ export class PlayerSelectScene {
       this.sceneManager.setScene(
         new PausableMatchScene({
           sceneManager: this.sceneManager,
-          matchScene: new VersusScene({ level: this.pickLevel(), seed: this.seed }),
+          matchScene: new VersusScene({
+            level: this.pickLevel(),
+            seed: this.seed,
+            characterByPlayerId: this.pickedCharacters(),
+            sprites: this.sprites,
+          }),
         }),
       );
     }
@@ -86,8 +109,47 @@ export class PlayerSelectScene {
 
   advance(playerId) {
     const state = this.stateByPlayerId[playerId];
-    if (state === 'unjoined') this.stateByPlayerId[playerId] = 'joined';
-    else if (state === 'joined') this.stateByPlayerId[playerId] = 'ready';
+    if (!(state in NEXT_STATE)) return;
+    this.stateByPlayerId[playerId] = NEXT_STATE[state];
+    if (this.stateByPlayerId[playerId] === 'voting') this.moveHoveringPlayersOff(playerId);
+  }
+
+  isLockedByOther(playerId, characterIndex) {
+    return PLAYERS.some(
+      (spawn) =>
+        spawn.id !== playerId &&
+        LOCKED_STATES.includes(this.stateByPlayerId[spawn.id]) &&
+        this.characterIndexByPlayerId[spawn.id] === characterIndex,
+    );
+  }
+
+  // The next character in that direction that the other player has not locked in.
+  nextFreeCharacterIndex(playerId, direction) {
+    let index = this.characterIndexByPlayerId[playerId];
+    do {
+      index = (index + direction + CHARACTERS.length) % CHARACTERS.length;
+    } while (this.isLockedByOther(playerId, index));
+    return index;
+  }
+
+  changeCharacter(playerId, direction) {
+    this.characterIndexByPlayerId[playerId] = this.nextFreeCharacterIndex(playerId, direction);
+  }
+
+  // Anyone still hovering on the character that was just locked in moves on to the next free one.
+  moveHoveringPlayersOff(lockedPlayerId) {
+    for (const spawn of PLAYERS) {
+      if (spawn.id === lockedPlayerId || LOCKED_STATES.includes(this.stateByPlayerId[spawn.id])) continue;
+      if (this.characterIndexByPlayerId[spawn.id] === this.characterIndexByPlayerId[lockedPlayerId]) {
+        this.changeCharacter(spawn.id, 1);
+      }
+    }
+  }
+
+  pickedCharacters() {
+    const characterByPlayerId = {};
+    for (const spawn of PLAYERS) characterByPlayerId[spawn.id] = CHARACTERS[this.characterIndexByPlayerId[spawn.id]];
+    return characterByPlayerId;
   }
 
   changeVote(playerId, direction) {
@@ -122,12 +184,14 @@ function drawPlayerSelectBackground(context) {
   context.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 }
 
-function drawPlayerCard(context, spawn, state, voteLabel) {
+function drawPlayerCard(context, spawn, state, character, voteLabel, sprites) {
   const columnIndex = PLAYERS.indexOf(spawn);
   const centerX = SCREEN_WIDTH / 2 + (columnIndex === 0 ? -CARD_OFFSET_X : CARD_OFFSET_X);
   const cardX = Math.round(centerX - CARD_WIDTH / 2);
+  const joined = state !== 'unjoined';
+  const color = joined ? character.tagColor : spawn.color;
 
-  context.strokeStyle = spawn.color;
+  context.strokeStyle = color;
   context.lineWidth = 2;
   context.strokeRect(cardX + 1, CARD_TOP_Y + 1, CARD_WIDTH - 2, CARD_HEIGHT - 2);
 
@@ -136,26 +200,32 @@ function drawPlayerCard(context, spawn, state, voteLabel) {
     color: spawn.color,
   });
 
-  if (state !== 'unjoined') drawPlayerPortrait(context, spawn, columnIndex, centerX, PORTRAIT_TOP_Y);
-
-  if (state !== 'unjoined') {
-    drawText(context, voteLabel, centerX, VOTE_TEXT_Y, { scale: VOTE_TEXT_SCALE, align: 'center', color: spawn.color });
+  if (joined) {
+    drawPortrait(context, character, sprites, centerX);
+    drawText(context, character.displayName, centerX, CHARACTER_NAME_Y, { align: 'center', color });
   }
-  if (state === 'joined') drawVoteArrows(context, centerX, measureText(voteLabel) * VOTE_TEXT_SCALE, spawn.color);
+  if (state === 'picking') {
+    drawArrows(context, centerX, measureText(character.displayName) * TEXT_SCALE, CHARACTER_NAME_Y, color);
+  }
 
-  drawStatus(context, STATUS_LABEL[state], centerX, state === 'ready' ? READY_COLOR : spawn.color);
+  if (state === 'voting' || state === 'ready') {
+    drawText(context, voteLabel, centerX, VOTE_TEXT_Y, { scale: TEXT_SCALE, align: 'center', color });
+  }
+  if (state === 'voting') drawArrows(context, centerX, measureText(voteLabel) * TEXT_SCALE, VOTE_TEXT_Y, color);
+
+  drawStatus(context, STATUS_LABEL[state], centerX, state === 'ready' ? READY_COLOR : color);
 }
 
-// Arrows either side of the vote while it can still change, so players know left and right change it.
-function drawVoteArrows(context, centerX, labelWidth, color) {
+// Arrows either side of a line of text while it can still change, so players know left and right change it.
+function drawArrows(context, centerX, labelWidth, topY, color) {
   const labelLeftX = centerX - Math.floor(labelWidth / 2);
-  const leftArrowRightX = labelLeftX - VOTE_ARROW_GAP;
-  const rightArrowLeftX = labelLeftX + labelWidth + VOTE_ARROW_GAP;
+  const leftArrowRightX = labelLeftX - ARROW_GAP;
+  const rightArrowLeftX = labelLeftX + labelWidth + ARROW_GAP;
   context.fillStyle = color;
-  for (let row = 0; row < VOTE_ARROW_DEPTH * 2 - 1; row++) {
-    const width = VOTE_ARROW_DEPTH - Math.abs(row - (VOTE_ARROW_DEPTH - 1));
-    context.fillRect(leftArrowRightX - width, VOTE_TEXT_Y + row, width, 1);
-    context.fillRect(rightArrowLeftX, VOTE_TEXT_Y + row, width, 1);
+  for (let row = 0; row < ARROW_DEPTH * 2 - 1; row++) {
+    const width = ARROW_DEPTH - Math.abs(row - (ARROW_DEPTH - 1));
+    context.fillRect(leftArrowRightX - width, topY + row, width, 1);
+    context.fillRect(rightArrowLeftX, topY + row, width, 1);
   }
 }
 
@@ -167,14 +237,20 @@ function drawStatus(context, lines, centerX, color) {
   });
 }
 
-// Reuses the player's own in-game drawing, magnified so it reads clearly on the card.
-function drawPlayerPortrait(context, spawn, columnIndex, centerX, topY) {
-  const player = new Player({ ...spawn, spawnX: 0, spawnY: 0, facing: columnIndex === 0 ? 1 : -1 });
-  player.y = 0;
+// The same drawing a match uses, magnified so it reads clearly on the card.
+function drawPortrait(context, character, sprites, centerX) {
   context.save();
-  context.translate(Math.round(centerX - (player.width * PORTRAIT_SCALE) / 2), Math.round(topY));
+  context.translate(Math.round(centerX), PORTRAIT_TOP_Y);
   context.scale(PORTRAIT_SCALE, PORTRAIT_SCALE);
-  player.renderAt(context, 0);
+  drawCharacterBody(context, {
+    sprite: sprites[character.spriteName].body,
+    eyeFramePositions: character.eyeFramePositions,
+    eyes: PORTRAIT_EYES,
+    centerX: 0,
+    bottomY: FRAME_SIZE,
+    width: FRAME_SIZE,
+    height: FRAME_SIZE,
+  });
   context.restore();
 }
 
@@ -184,6 +260,7 @@ function drawPlayerSelectUi(context, scene) {
   for (const spawn of PLAYERS) {
     const vote = scene.voteByPlayerId[spawn.id];
     const voteLabel = vote < scene.levels.length ? scene.levels[vote].name : RANDOM_LABEL;
-    drawPlayerCard(context, spawn, scene.stateByPlayerId[spawn.id], voteLabel);
+    const character = CHARACTERS[scene.characterIndexByPlayerId[spawn.id]];
+    drawPlayerCard(context, spawn, scene.stateByPlayerId[spawn.id], character, voteLabel, scene.sprites);
   }
 }
