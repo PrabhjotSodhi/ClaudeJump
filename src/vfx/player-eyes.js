@@ -10,9 +10,8 @@ export class PlayerEyes {
   attach(events, getPlayers) {
     this.getPlayers = getPlayers;
     events.on('player-jumped', ({ playerId }) => this.jump(playerId));
-    events.on('player-stomped', ({ stompedId }) => this.hit(stompedId));
     events.on('player-shoved', ({ targetId }) => this.hit(targetId));
-    events.on('players-bumped', ({ playerIds = [] }) => playerIds.forEach((playerId) => this.hit(playerId)));
+    events.on('dash-hit', ({ playerIds = [] }) => playerIds.forEach((playerId) => this.hit(playerId)));
     events.on('rocket-exploded', ({ playerIds = [] }) => playerIds.forEach((playerId) => this.hit(playerId)));
     events.on('bomb-exploded', ({ playerIds = [] }) => playerIds.forEach((playerId) => this.hit(playerId)));
   }

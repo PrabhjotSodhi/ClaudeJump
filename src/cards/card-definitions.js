@@ -1,5 +1,5 @@
 // Every card a player can hold and play. Dash is a fast burst in the facing direction,
-// knocking the opponent back through the same knockback path a bump uses (see versus-scene.js).
+// knocking the opponent back on contact.
 // Rocket fires a projectile that explodes on impact, knocking back any player caught in the blast.
 // Bomb is lobbed in an arc and explodes on contact or when its fuse runs out, with the rocket's blast.
 // Banana is dropped behind the player and makes the first other player who steps on it slide.

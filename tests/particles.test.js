@@ -27,19 +27,18 @@ test('jumps and landings kick up pale grey dust', () => {
   assert.ok(particles.list.every((particle) => particle.color === '#c8ccd4'));
 });
 
-test('stomps, shoves and card plays throw sparks in the hitting player color', () => {
+test('shoves and card plays throw sparks in the hitting player color', () => {
   const { events, particles } = setUp();
-  events.emit('player-stomped', { stomperId: 'red', stompedId: 'blue' });
   events.emit('player-shoved', { shoverId: 'blue', targetId: 'red' });
   events.emit('card-played', { playerId: 'red', cardName: 'dash' });
-  assert.equal(particles.list.length, 24, 'three events, eight sparks each');
+  assert.equal(particles.list.length, 16, 'two events, eight sparks each');
   const colors = new Set(particles.list.map((particle) => particle.color));
   assert.deepEqual([...colors].sort(), ['#2864dc', '#dc2828']);
 });
 
-test('a bump throws sparks in both players colors, and blasts throw sparks', () => {
+test('a dash hit throws sparks in both players colors, and blasts throw sparks', () => {
   const { events, particles } = setUp();
-  events.emit('players-bumped', { playerIds: ['red', 'blue'] });
+  events.emit('dash-hit', { playerIds: ['red', 'blue'] });
   assert.deepEqual([...new Set(particles.list.map((particle) => particle.color))].sort(), ['#2864dc', '#dc2828']);
   particles.list = [];
   events.emit('rocket-exploded', { x: 50, y: 50 });
