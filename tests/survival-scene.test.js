@@ -216,3 +216,10 @@ test('render draws every block of every row shifted by the camera', () => {
   assert.equal(blockDraws.length, blockCount);
   assert.deepEqual(translations, [[0, -scene.cameraTopY]]);
 });
+
+test('the sea catches up when the camera climbs far above it', () => {
+  const scene = new SurvivalScene({ seed: 2 });
+  scene.cameraTopY = -2000;
+  scene.update(idle);
+  assert.ok(scene.seaY <= scene.cameraTopY + SCREEN_HEIGHT + 48);
+});

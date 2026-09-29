@@ -30,6 +30,8 @@ const KEEP_BELOW_Y = 2 * SCREEN_HEIGHT;
 export const SEA_START_BELOW = 48;
 export const SEA_GRACE_TICKS = 180;
 export const SEA_RISE_PER_TICK = 0.25;
+// The sea never trails further than this below the bottom of the screen, so a fast climber still feels it.
+export const SEA_MAX_TRAIL_Y = 48;
 export const BEST_SCORE_STORAGE_KEY = 'claudejump.survival.best';
 
 // The horizontal gap between two runs, taking the shortest way round the screen edge. 0 when they overlap.
@@ -220,6 +222,7 @@ export class SurvivalScene {
     this.lowestPlayerY = Math.min(this.lowestPlayerY, Math.round(player.y));
     this.runTicks++;
     if (this.runTicks > SEA_GRACE_TICKS) this.seaY -= SEA_RISE_PER_TICK;
+    this.seaY = Math.min(this.seaY, this.cameraTopY + SCREEN_HEIGHT + SEA_MAX_TRAIL_Y);
     if (player.y + player.height >= this.seaY) {
       this.phase = 'over';
       this.events.emit('player-fell-in-water', { playerId: player.id });
