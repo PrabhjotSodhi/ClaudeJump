@@ -1,4 +1,5 @@
 import { SCREEN_HEIGHT, SCREEN_WIDTH, TILE_SIZE } from '../engine/config.js';
+import { knockBackPlayersInBlast } from '../engine/blast.js';
 import { EntityGroups } from '../engine/entity-groups.js';
 import { EventEmitter } from '../engine/events.js';
 import { SeededRandom } from '../engine/seeded-random.js';
@@ -8,11 +9,13 @@ import { BANANA_SLIP_TICKS } from '../entities/banana.js';
 import { BouncePad, BOUNCE_PAD_HEIGHT, BOUNCE_PAD_LAUNCH_VELOCITY, BOUNCE_PAD_WIDTH } from '../entities/bounce-pad.js';
 import { Platform } from '../entities/platform.js';
 import { Player, SHOVE_KNOCKBACK_VELOCITY_X, SHOVE_KNOCKBACK_VELOCITY_Y } from '../entities/player.js';
+import { Rocket, ROCKET_HEIGHT, ROCKET_WIDTH } from '../entities/rocket.js';
 import { drawArenaBackground } from '../levels/arena-backgrounds.js';
 import { blockName } from '../levels/level-loader.js';
 import { drawSurvivalHud } from '../ui/hud.js';
 import { drawParticles, Particles } from '../vfx/particles.js';
 import { PlayerEyes } from '../vfx/player-eyes.js';
+import { ScreenShake } from '../vfx/screen-shake.js';
 import { SeaRipple } from '../vfx/sea-ripple.js';
 
 const PLAYER_ID = 'red';
@@ -40,6 +43,12 @@ export const SEA_GRACE_TICKS = 180;
 export const SEA_RISE_PER_TICK = 0.25;
 // The sea never trails further than this below the bottom of the screen, so a fast climber still feels it.
 export const SEA_MAX_TRAIL_Y = 48;
+export const ROCKET_INTERVAL_TICKS = 300;
+export const ROCKET_WARNING_TICKS = 60;
+// A rocket flies at a height this close to the player's, above or below.
+export const ROCKET_MAX_OFFSET_Y = 60;
+// Rockets draw from their own stream so they never change how the rows are laid out.
+const ROCKET_SEED_OFFSET = 0x5f3759df;
 export const BEST_SCORE_STORAGE_KEY = 'claudejump.survival.best';
 
 // The horizontal gap between two runs, taking the shortest way round the screen edge. 0 when they overlap.
@@ -92,6 +101,8 @@ export class SurvivalScene {
       getWaterLineY: () => this.waterLineY,
       getTickCount: () => this.runTicks,
     });
+    this.screenShake = new ScreenShake();
+    this.screenShake.attach(this.events);
     this.seaRipple = new SeaRipple();
     this.seaRipple.attach(this.events, () => this.players);
     this.bestScore = loadBestScore();
@@ -120,6 +131,9 @@ export class SurvivalScene {
 
   startRun() {
     this.random = new SeededRandom(this.seed);
+    this.rocketRandom = new SeededRandom(this.seed + ROCKET_SEED_OFFSET);
+    this.rocketWarnings = [];
+    this.entityGroups.clear('rockets');
     this.phase = 'playing';
     this.runTicks = 0;
     this.seaY = START_FLOOR_Y + SEA_START_BELOW;
@@ -270,12 +284,46 @@ export class SurvivalScene {
     }
   }
 
+  // Every rocket is announced ROCKET_WARNING_TICKS before it spawns, and spawns only from that warning.
+  updateRockets(player) {
+    if (this.runTicks > 0 && this.runTicks % ROCKET_INTERVAL_TICKS === 0) this.scheduleRocket(player);
+
+    for (const warning of this.rocketWarnings.filter((candidate) => candidate.spawnTick <= this.runTicks)) {
+      const facing = warning.side === 'left' ? 1 : -1;
+      const x = warning.side === 'left' ? -ROCKET_WIDTH : SCREEN_WIDTH;
+      this.entityGroups.add('rockets', new Rocket({ x, y: warning.y, facing, shooterId: null }));
+    }
+    this.rocketWarnings = this.rocketWarnings.filter((warning) => warning.spawnTick > this.runTicks);
+
+    // Survival rockets fly through blocks, so they get no platforms to hit.
+    for (const rocket of this.entityGroups.get('rockets')) {
+      rocket.update(this.players, []);
+      if (rocket.exploded) {
+        const blastCenterX = rocket.x + rocket.width / 2;
+        const blastCenterY = rocket.y + rocket.height / 2;
+        const playerIds = knockBackPlayersInBlast(this.players, blastCenterX, blastCenterY);
+        this.events.emit('rocket-exploded', { x: blastCenterX, y: blastCenterY, playerIds });
+        this.entityGroups.remove('rockets', rocket);
+      } else if (rocket.x > SCREEN_WIDTH || rocket.x + rocket.width < 0) {
+        this.entityGroups.remove('rockets', rocket);
+      }
+    }
+  }
+
+  scheduleRocket(player) {
+    const side = this.rocketRandom.next() < 0.5 ? 'left' : 'right';
+    const offsetY = this.rocketRandom.next() * (2 * ROCKET_MAX_OFFSET_Y + 1);
+    const y = Math.round(player.y + player.height / 2 - ROCKET_HEIGHT / 2) + Math.floor(offsetY) - ROCKET_MAX_OFFSET_Y;
+    this.rocketWarnings.push({ side, y, startTick: this.runTicks, spawnTick: this.runTicks + ROCKET_WARNING_TICKS });
+  }
+
   update(inputByPlayerId) {
     const jumpPressed = inputByPlayerId[PLAYER_ID]?.jump ?? false;
     const freshJump = jumpPressed && !this.jumpHeld;
     this.jumpHeld = jumpPressed;
     this.seaRipple.update();
     this.particles.update();
+    this.screenShake.update();
 
     if (this.phase === 'over') {
       if (freshJump) {
@@ -290,6 +338,7 @@ export class SurvivalScene {
     player.update(inputByPlayerId[PLAYER_ID] ?? null, this.entityGroups.get('platforms'));
     if (player.ticksSinceLanding === 0) this.applyLanding(player);
     this.launchFromBouncePads(player);
+    this.updateRockets(player);
     if (player.ticksSinceJump === 0) {
       this.events.emit('player-jumped', {
         playerId: player.id,
@@ -331,6 +380,7 @@ export class SurvivalScene {
       this.backgroundDrawn = true;
     }
 
+    renderer.shakeOffset = this.screenShake.offset;
     renderer.seaRippleBytes = this.seaRipple.toBytes();
     renderer.clearGameLayer();
     renderer.clearUiLayer();
@@ -351,6 +401,7 @@ export class SurvivalScene {
     this.entityGroups
       .get('players')
       .forEach((player) => player.render(context, { sprites: this.sprites, playerEyes: this.playerEyes }));
+    this.entityGroups.get('rockets').forEach((rocket) => rocket.render(context));
     drawParticles(context, this);
     context.restore();
     drawSurvivalHud(renderer.uiContext, this);

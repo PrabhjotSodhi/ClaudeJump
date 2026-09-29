@@ -1,4 +1,5 @@
 import { SCREEN_HEIGHT, SCREEN_WIDTH, TICK_RATE } from '../engine/config.js';
+import { ROCKET_HEIGHT } from '../entities/rocket.js';
 import { drawText } from './text.js';
 
 const WARNING_MARKER_FLASH_TICKS = 20;
@@ -68,7 +69,19 @@ export function formatScore(label, score) {
   return `${label}: ${String(score).padStart(10, '0')}`;
 }
 
+// Flashes at the edge and height a rocket is about to enter from. The height is a world y, so it follows the camera.
+function drawRocketWarnings(context, scene) {
+  context.fillStyle = WARNING_MARKER_COLOR;
+  for (const warning of scene.rocketWarnings) {
+    if (Math.floor((scene.runTicks - warning.startTick) / WARNING_MARKER_FLASH_TICKS) % 2 !== 0) continue;
+    const x = warning.side === 'left' ? 0 : SCREEN_WIDTH - WARNING_MARKER_SIZE;
+    const y = warning.y + ROCKET_HEIGHT / 2 - WARNING_MARKER_SIZE / 2 - scene.cameraTopY;
+    context.fillRect(x, Math.round(y), WARNING_MARKER_SIZE, WARNING_MARKER_SIZE);
+  }
+}
+
 export function drawSurvivalHud(context, scene) {
+  drawRocketWarnings(context, scene);
   drawText(context, formatScore('Score', scene.score), 8, 8);
   drawText(context, formatScore('Best', Math.max(scene.bestScore, scene.score)), SCREEN_WIDTH - 8, 8, {
     align: 'right',
