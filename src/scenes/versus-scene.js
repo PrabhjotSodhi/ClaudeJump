@@ -298,8 +298,8 @@ export class VersusScene {
         if (player.playedCardName === 'bomb') this.spawnBomb(player);
         if (player.playedCardName === 'banana') this.spawnBanana(player);
       }
-      if (player.shoveJustStarted) this.shoveHitIdsByShoverId.set(player.id, new Set());
       if (player.shoveJustStarted) {
+        this.shoveHitIdsByShoverId.set(player.id, new Set());
         const hitZone = player.shoveHitZone;
         this.breakBlocksWhere((block) => blockOverlaps(block, hitZone));
       }
