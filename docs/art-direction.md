@@ -45,7 +45,7 @@ The palette is [Endesga 32](https://lospec.com/palette-list/endesga-32) plus thr
 - Arenas are loose clusters of stone blocks, big 32x32 and small 16x16, with small gaps and offsets. Never one smooth slab. Each block reads as its own object because each one can break on its own.
 - Blocks use the warm grey ramp with a `#3e2731` outline, a light top left edge, a dark bottom right edge and one or two chips. No moss, no noise. Two variants per size so clusters do not look tiled.
 - Steel girders hang on chains that run off the top of the screen. They use the cool grey ramp with a few rivets and never break, so they must read as a different material from stone at a glance.
-- The background is three layers of city and factory silhouettes in the cool grey ramp, with checker dither between layers for mist. The far layer is lightest, the near layer darkest. It stays low contrast and never competes with the characters.
+- Each arena has its own background of three layers (far, mid, near) in the cool grey ramp, with checker dither for mist: harbor cranes and containers, cave spikes, a night skyline, cooling towers and data halls. The far layer is lightest, the near layer darkest. A few small lit windows or lights are fine. It stays low contrast and never competes with the characters.
 - Arenas use flat, overcast light.
 
 ## Effects

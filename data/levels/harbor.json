@@ -1,5 +1,6 @@
 {
   "name": "Harbor",
+  "background": "harbor",
   "stone": {
     "light": "#c8c0b8",
     "mid": "#a09088",
