@@ -5,7 +5,14 @@ import { EventEmitter } from '../engine/events.js';
 import { SeededRandom } from '../engine/seeded-random.js';
 import { Banana, BANANA_WIDTH, BANANA_HEIGHT, BANANA_SLIP_TICKS } from '../entities/banana.js';
 import { Bomb, BOMB_WIDTH, BOMB_HEIGHT } from '../entities/bomb.js';
-import { BouncePad, BOUNCE_PAD_WIDTH, BOUNCE_PAD_HEIGHT, BOUNCE_PAD_LAUNCH_VELOCITY } from '../entities/bounce-pad.js';
+import {
+  BouncePad,
+  BOUNCE_PAD_WIDTH,
+  BOUNCE_PAD_HEIGHT,
+  BOUNCE_PAD_LAUNCH_VELOCITY,
+  BOUNCE_PAD_FLING_VELOCITY_X,
+  BOUNCE_PAD_FLING_VELOCITY_Y,
+} from '../entities/bounce-pad.js';
 import { DEFAULT_CHARACTER_BY_PLAYER_ID } from '../entities/characters.js';
 import { Crate, CRATE_WIDTH, CRATE_HEIGHT, CRATE_WARNING_TICKS } from '../entities/crate.js';
 import { Platform } from '../entities/platform.js';
@@ -352,16 +359,12 @@ export class VersusScene {
     }
   }
 
-  // Placed under the player's feet wherever they are, even in midair over the sea, so it doubles
-  // as a rescue move. Anyone already standing on that spot is launched immediately.
+  // Placed under the player's feet wherever they are, even in midair over the sea. It only ever
+  // affects the other players.
   spawnBouncePad(player) {
     const x = player.x + player.width / 2 - BOUNCE_PAD_WIDTH / 2;
     const y = player.y + player.height - BOUNCE_PAD_HEIGHT;
-    const bouncePad = new BouncePad({ x, y });
-    this.entityGroups.add('bouncePads', bouncePad);
-    for (const otherPlayer of this.players) {
-      if (!otherPlayer.inWater && otherPlayer.overlaps(bouncePad)) otherPlayer.launchUpward(BOUNCE_PAD_LAUNCH_VELOCITY);
-    }
+    this.entityGroups.add('bouncePads', new BouncePad({ x, y, ownerId: player.id }));
   }
 
   updateBouncePads() {
@@ -371,11 +374,32 @@ export class VersusScene {
         this.entityGroups.remove('bouncePads', bouncePad);
         continue;
       }
-      for (const player of this.players) {
-        if (!player.inWater && this.isLandingOnBouncePad(player, bouncePad)) {
-          player.launchUpward(BOUNCE_PAD_LAUNCH_VELOCITY);
-        }
+      if (bouncePad.ownerId === null) this.launchPlayersLandingOn(bouncePad);
+      else this.flingFirstOpponentTouching(bouncePad);
+    }
+  }
+
+  launchPlayersLandingOn(bouncePad) {
+    for (const player of this.players) {
+      if (!player.inWater && this.isLandingOnBouncePad(player, bouncePad)) {
+        player.launchUpward(BOUNCE_PAD_LAUNCH_VELOCITY);
       }
+    }
+  }
+
+  // The trap throws the opponent back the way they came, or away from its center if they stood
+  // still, then breaks.
+  flingFirstOpponentTouching(bouncePad) {
+    for (const player of this.players) {
+      if (player.id === bouncePad.ownerId || player.inWater || !player.overlaps(bouncePad)) continue;
+
+      const movingDirection = Math.sign(player.velocityX + player.knockbackVelocityX);
+      const awayFromCenterDirection = player.x + player.width / 2 < bouncePad.x + bouncePad.width / 2 ? -1 : 1;
+      const flingDirection = movingDirection === 0 ? awayFromCenterDirection : -movingDirection;
+      player.applyKnockback(BOUNCE_PAD_FLING_VELOCITY_X * flingDirection, BOUNCE_PAD_FLING_VELOCITY_Y);
+      this.requestHitPause(SHOVE_HIT_PAUSE_TICKS);
+      this.entityGroups.remove('bouncePads', bouncePad);
+      return;
     }
   }
 

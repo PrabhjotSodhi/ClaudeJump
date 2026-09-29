@@ -28,6 +28,7 @@ function findPlayer(scene, id) {
 const READY_TICKS = 60;
 const DASH_KNOCKBACK_VELOCITY_X = 8;
 const DASH_HIT_PAUSE_TICKS = 4;
+const SHOVE_HIT_PAUSE_TICKS = 3;
 
 test('falling in the sea scores the other player', () => {
   const scene = new VersusScene({ level: harborLevel });
@@ -621,26 +622,103 @@ test('a player falling well below a bounce pad, overlapping it only horizontally
   assert.ok(red.velocityY > 0, 'still falling, never launched, despite the horizontal overlap');
 });
 
-test('a player standing where a bounce pad appears is launched at once', () => {
+const TRAP_PAD_X = 300;
+const TRAP_PAD_Y = 138; // sitting on top of the middle platform
+
+function sceneWithTrapPad() {
   const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
+  const trap = new BouncePad({ x: TRAP_PAD_X, y: TRAP_PAD_Y, ownerId: 'blue' });
+  scene.entityGroups.add('bouncePads', trap);
+  return { scene, trap, red: findPlayer(scene, 'red'), blue: findPlayer(scene, 'blue') };
+}
 
+function standOnMiddlePlatform(player, x) {
+  player.x = x;
+  player.y = 116;
+  player.velocityX = 0;
+  player.velocityY = 0;
+  player.onGround = true;
+}
+
+test('the owner of a bounce pad trap can stand on it with no effect', () => {
+  const { scene, trap, red, blue } = sceneWithTrapPad();
+  standOnMiddlePlatform(red, 100);
+  standOnMiddlePlatform(blue, TRAP_PAD_X);
+
+  advance(scene, 10);
+
+  assert.equal(blue.x, TRAP_PAD_X);
+  assert.equal(blue.velocityY, 0);
+  assert.equal(blue.knockbackVelocityX, 0);
+  assert.deepEqual(scene.entityGroups.get('bouncePads'), [trap], 'the trap stays');
+});
+
+function walkIntoTrap(startX, direction) {
+  const { scene, red } = sceneWithTrapPad();
+  standOnMiddlePlatform(red, startX);
+  const walking = { red: { ...noInput(), left: direction < 0, right: direction > 0 }, blue: noInput() };
+  for (let tick = 0; tick < 60 && scene.entityGroups.get('bouncePads').length > 0; tick++) scene.update(walking);
+  return { scene, red };
+}
+
+test('the opponent walking into a bounce pad trap from the left is thrown back left, and the trap breaks', () => {
+  const { scene, red } = walkIntoTrap(TRAP_PAD_X - 40, 1);
+
+  assert.ok(red.knockbackVelocityX < 0, 'thrown left');
+  assert.ok(red.velocityY < 0, 'with a small hop');
+  assert.equal(scene.entityGroups.get('bouncePads').length, 0, 'the trap breaks after one throw');
+});
+
+test('the opponent walking into a bounce pad trap from the right is thrown back right', () => {
+  const { red } = walkIntoTrap(TRAP_PAD_X + 60, -1);
+
+  assert.ok(red.knockbackVelocityX > 0, 'thrown right');
+});
+
+test('the opponent standing still on a bounce pad trap is thrown away from its center', () => {
+  for (const [standX, expectedSign] of [
+    [TRAP_PAD_X - 4, -1],
+    [TRAP_PAD_X + 4, 1],
+  ]) {
+    const { scene, red } = sceneWithTrapPad();
+    standOnMiddlePlatform(red, standX);
+
+    scene.update(neutralInputs());
+
+    assert.equal(Math.sign(red.knockbackVelocityX), expectedSign);
+  }
+});
+
+test('a bounce pad trap throw freezes the game like a shove hit', () => {
+  const { scene, red } = sceneWithTrapPad();
+  standOnMiddlePlatform(red, TRAP_PAD_X - 4);
+
+  scene.update(neutralInputs());
+
+  assert.equal(scene.hitPauseTicksRemaining, SHOVE_HIT_PAUSE_TICKS);
+});
+
+test('a bounce pad trap throws the opponent about 120 px on flat ground', () => {
+  const scene = new VersusScene({ level: harborLevel });
+  advance(scene, READY_TICKS);
+  const platforms = scene.entityGroups.get('platforms');
+  platforms.length = 0;
+  scene.entityGroups.add('platforms', new Platform({ x: -2000, y: 224, width: 5000, height: 16 }));
+  scene.entityGroups.add('bouncePads', new BouncePad({ x: 320, y: 218, ownerId: 'blue' }));
   const red = findPlayer(scene, 'red');
-  const blue = findPlayer(scene, 'blue');
-  blue.heldCardName = 'bouncePad';
-  scene.update(neutralInputs()); // release the action key held from spawn
-
-  blue.x = 300;
-  blue.y = 116; // standing on the middle platform
-  blue.onGround = true;
-  red.x = blue.x;
-  red.y = blue.y;
+  red.x = 250;
+  red.y = 224 - red.height;
   red.onGround = true;
   red.velocityY = 0;
+  while (scene.entityGroups.get('bouncePads').length > 0) {
+    scene.update({ red: { ...noInput(), right: true }, blue: noInput() });
+  }
+  const throwStartX = red.x;
 
-  scene.update({ red: noInput(), blue: { left: false, right: false, jump: false, action: true } });
+  advance(scene, 200);
 
-  assert.ok(red.velocityY < 0, 'a player already standing on the spot is launched immediately');
+  assert.ok(Math.abs(throwStartX - red.x - 120) <= 5, `thrown ${throwStartX - red.x} px`);
 });
 
 test('a bounce pad disappears after 300 ticks', () => {
@@ -703,7 +781,7 @@ test('a crate gives a pickup with 3 uses', () => {
   scene.update(neutralInputs());
 
   assert.equal(red.heldCardName, 'rocket');
-  assert.equal(red.heldCardUsesRemaining, 3);
+  assert.equal(red.heldCardUsesRemaining, 1);
 });
 
 test('crates only ever hold a known pickup', () => {
@@ -1111,7 +1189,7 @@ test('landing on a rooftops fixed bounce pad launches the player', () => {
 
   scene.update(neutralInputs());
 
-  assert.ok(red.velocityY < 0, 'the pad launches the player upward');
+  assert.equal(red.velocityY, -12.5, 'the pad launches the player upward at the neutral pad speed');
 });
 
 test('a dash hit freezes game logic for exactly the dash pause ticks', () => {

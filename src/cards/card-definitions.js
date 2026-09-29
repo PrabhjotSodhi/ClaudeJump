@@ -23,6 +23,6 @@ export const CARD_DEFINITIONS = {
 };
 
 // Every pickup can be played this many times before it is gone.
-export const PICKUP_USES = 3;
+export const PICKUP_USES = 1;
 
 export const CARD_NAMES = Object.keys(CARD_DEFINITIONS);

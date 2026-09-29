@@ -3,17 +3,21 @@ import { Entity } from '../engine/entity.js';
 export const BOUNCE_PAD_WIDTH = 24;
 export const BOUNCE_PAD_HEIGHT = 6;
 export const BOUNCE_PAD_LIFETIME_TICKS = 300; // 5 seconds
-export const BOUNCE_PAD_LAUNCH_VELOCITY = -15; // stronger than a full jump's -10.4
+export const BOUNCE_PAD_LAUNCH_VELOCITY = -12.5; // stronger than a full jump's -10.4
+export const BOUNCE_PAD_FLING_VELOCITY_X = 12.3;
+export const BOUNCE_PAD_FLING_VELOCITY_Y = -4;
 
 const PAD_COLOR = '#3898c8';
 const PAD_HIGHLIGHT_COLOR = '#78d8f0';
 
-// A launch pad. One dropped at a player's feet disappears after BOUNCE_PAD_LIFETIME_TICKS. A level's
-// fixed pads pass a lifetime of Infinity so they never do.
+// With no owner it is a neutral jump pad for everyone. With an owner it is a trap that flings the
+// other players and breaks. A trap disappears after BOUNCE_PAD_LIFETIME_TICKS. A level's fixed pads
+// pass a lifetime of Infinity so they never do.
 // Placeholder shape only.
 export class BouncePad extends Entity {
-  constructor({ x, y, lifetimeTicks = BOUNCE_PAD_LIFETIME_TICKS }) {
+  constructor({ x, y, lifetimeTicks = BOUNCE_PAD_LIFETIME_TICKS, ownerId = null }) {
     super({ x, y, width: BOUNCE_PAD_WIDTH, height: BOUNCE_PAD_HEIGHT });
+    this.ownerId = ownerId;
     this.ticksRemaining = lifetimeTicks;
     this.expired = false;
   }
