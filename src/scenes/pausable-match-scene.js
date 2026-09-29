@@ -134,6 +134,7 @@ export class PausableMatchScene {
         new TitleScene({
           sceneManager: this.sceneManager,
           level: this.matchScene.level,
+          sprites: this.matchScene.sprites,
           seed,
           initialInput: inputByPlayerId,
         }),

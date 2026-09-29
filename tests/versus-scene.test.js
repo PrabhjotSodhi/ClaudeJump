@@ -1347,3 +1347,23 @@ test('falling in the sea shakes the picture', () => {
   scene.update(neutralInputs());
   assert.ok(scene.screenShake.ticksRemaining > 0);
 });
+
+test('a blast names the players it knocked back, and only them', () => {
+  const scene = new VersusScene({ level: harborLevel });
+  advance(scene, READY_TICKS);
+  const red = findPlayer(scene, 'red');
+  red.x = 280;
+  red.y = 200;
+  const blue = findPlayer(scene, 'blue');
+  blue.x = 560;
+  blue.y = 200;
+  const rocket = new Rocket({ x: 300, y: 200, facing: 1, shooterId: 'blue' });
+  rocket.ticksRemaining = 1;
+  scene.entityGroups.add('rockets', rocket);
+  const explosionEvents = [];
+  scene.events.on('rocket-exploded', (event) => explosionEvents.push(event));
+
+  scene.update(neutralInputs());
+
+  assert.deepEqual(explosionEvents[0].playerIds, ['red']);
+});
