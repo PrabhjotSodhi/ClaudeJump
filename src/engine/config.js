@@ -16,9 +16,20 @@ export const IMPACT_EFFECTS = {
   medium: { shakePixels: 3, shakeTicks: 10, sparkCount: 10, sparkSpeed: 4 },
   heavy: { shakePixels: 4, shakeTicks: 12, sparkCount: 16, sparkSpeed: 5 },
 };
+// A fully charged shove throws this many more sparks, and faster ones, than a tap.
+export const CHARGED_SHOVE_EXTRA_SPARKS = 6;
+export const CHARGED_SHOVE_EXTRA_SPARK_SPEED = 2;
 // Medium and heavy hits leave a trail behind the player until their knockback drops below this speed.
 export const LAUNCH_TRAIL_STRENGTHS = ['medium', 'heavy'];
 export const LAUNCH_TRAIL_MIN_SPEED = 2.5;
+
+// The shove. A press winds up for at least SHOVE_WINDUP_TICKS, so a tap lands a few ticks after the press. Holding
+// the button charges up to SHOVE_MAX_CHARGE_TICKS, and the release fires. Knockback grows from the tap value to
+// SHOVE_MAX_KNOCKBACK_MULTIPLIER times it at full charge. Walking is slower while charging.
+export const SHOVE_WINDUP_TICKS = 2;
+export const SHOVE_MAX_CHARGE_TICKS = 30;
+export const SHOVE_MAX_KNOCKBACK_MULTIPLIER = 1.6;
+export const SHOVE_CHARGE_WALK_MULTIPLIER = 0.4;
 
 // Online matches. A press is scheduled this many ticks ahead so it can cross the network before it is needed.
 export const INPUT_DELAY_TICKS = 4;

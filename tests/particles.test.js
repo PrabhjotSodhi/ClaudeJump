@@ -206,3 +206,30 @@ test('light hits leave no launch trail', () => {
   particles.update();
   assert.equal(particles.list.length, 0);
 });
+
+test('a fully charged shove throws more and faster sparks than a tap', () => {
+  const sparksFor = (charge) => {
+    const { events, particles } = setUp();
+    events.emit('player-shoved', {
+      shoverId: 'blue',
+      targetId: 'red',
+      directionX: 1,
+      directionY: 0,
+      strength: 'light',
+      charge,
+    });
+    return particles.list;
+  };
+  const tapSparks = sparksFor(0);
+  const chargedSparks = sparksFor(1);
+  assert.ok(chargedSparks.length > tapSparks.length);
+  const fastest = (sparks) => Math.max(...sparks.map((spark) => Math.hypot(spark.velocityX, spark.velocityY)));
+  assert.ok(fastest(chargedSparks) > fastest(tapSparks));
+});
+
+test('a shove reaching full charge sparkles around the player', () => {
+  const { events, particles } = setUp();
+  events.emit('shove-fully-charged', { playerId: 'red' });
+  assert.ok(particles.list.length > 0);
+  assert.ok(particles.list.every((particle) => particle.color === '#fee761'));
+});

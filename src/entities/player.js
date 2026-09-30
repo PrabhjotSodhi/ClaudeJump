@@ -1,4 +1,11 @@
-import { HITSTOP_TICKS, SCREEN_WIDTH } from '../engine/config.js';
+import {
+  HITSTOP_TICKS,
+  SCREEN_WIDTH,
+  SHOVE_CHARGE_WALK_MULTIPLIER,
+  SHOVE_MAX_CHARGE_TICKS,
+  SHOVE_MAX_KNOCKBACK_MULTIPLIER,
+  SHOVE_WINDUP_TICKS,
+} from '../engine/config.js';
 import { PICKUP_USES } from '../cards/card-definitions.js';
 import { PhysicsEntity } from '../engine/physics-entity.js';
 import { drawCharacterBody, FRAME_SIZE } from '../vfx/character-body.js';
@@ -30,10 +37,34 @@ export const SHOVE_KNOCKBACK_VELOCITY_Y = -4;
 
 // Display only: how long, and by how many pixels, a player stretches after a jump and squashes
 // after a landing. The hitbox never changes.
+// A player winding up or charging a shove leans back and crouches. Full charge flashes white.
+const WINDUP_LEAN_PIXELS = 2;
+const CHARGE_LEAN_PIXELS = 4;
+const CHARGE_CROUCH_PIXELS = 2;
+const FULL_CHARGE_FLASH_TICKS = 3;
 const STRETCH_TICKS = 6;
 const STRETCH_PIXELS = 4;
 const SQUASH_TICKS = 6;
 const SQUASH_PIXELS = 4;
+
+const whiteBodies = new WeakMap();
+
+// An all white copy of a body sprite, made once per sprite.
+function whiteBodyOf(sprite) {
+  let whiteBody = whiteBodies.get(sprite);
+  if (!whiteBody) {
+    whiteBody = document.createElement('canvas');
+    whiteBody.width = sprite.width;
+    whiteBody.height = sprite.height;
+    const bodyContext = whiteBody.getContext('2d');
+    bodyContext.drawImage(sprite, 0, 0);
+    bodyContext.globalCompositeOperation = 'source-in';
+    bodyContext.fillStyle = '#ffffff';
+    bodyContext.fillRect(0, 0, sprite.width, sprite.height);
+    whiteBodies.set(sprite, whiteBody);
+  }
+  return whiteBody;
+}
 
 function clamp(value, minimum, maximum) {
   return Math.max(minimum, Math.min(maximum, value));
@@ -62,6 +93,11 @@ export class Player extends PhysicsEntity {
     this.shoveActiveTicksRemaining = 0;
     this.shoveCooldownTicksRemaining = 0;
     this.shoveJustStarted = false;
+    this.shoveCharging = false;
+    this.shoveChargeTicks = 0;
+    this.shoveFullChargeTicks = 0;
+    this.shoveJustFullyCharged = false;
+    this.shoveCharge = 0;
     this.hitstopTicksRemaining = 0;
     this.pendingKnockbackVelocityX = 0;
     this.pendingKnockbackVelocityY = 0;
@@ -82,6 +118,15 @@ export class Player extends PhysicsEntity {
 
   get isShoveActive() {
     return this.shoveActiveTicksRemaining > 0;
+  }
+
+  // How much of the way to a full charge the current or last shove got, from 0 to 1. A tap is 0.
+  get shoveKnockbackMultiplier() {
+    return 1 + (SHOVE_MAX_KNOCKBACK_MULTIPLIER - 1) * this.shoveCharge;
+  }
+
+  get isShoveFullyCharged() {
+    return this.shoveCharging && this.shoveChargeTicks >= SHOVE_MAX_CHARGE_TICKS;
   }
 
   // Sits just in front of the player, facing the way they are facing, so an opponent behind them
@@ -130,16 +175,45 @@ export class Player extends PhysicsEntity {
     this.onGround = false;
   }
 
-  // The action key fires on the press, not while held, so keep tracking held state even when the
-  // player cannot act, so a key already down does not fire the moment it becomes able to again.
-  // A held pickup takes over the button; with nothing held, it shoves instead.
+  // The action key is tracked even when the player cannot act, so a key already down does not fire the moment
+  // it becomes able to again. A held pickup takes over the press; with nothing held, the press winds up a
+  // shove, and the release fires it. Being unable to act cancels a charge.
   handleActionInput(input, canAct) {
     const pressed = input ? input.action : false;
     const justPressed = pressed && !this.actionKeyHeldPrevious;
     this.actionKeyHeldPrevious = pressed;
-    if (!justPressed || !canAct) return;
+    if (!canAct) {
+      this.shoveCharging = false;
+      return;
+    }
+    if (this.shoveCharging) {
+      this.chargeShove(pressed);
+      return;
+    }
+    if (!justPressed) return;
     if (this.heldCardName) this.playCard();
-    else this.startShove();
+    else this.startShoveCharge();
+  }
+
+  startShoveCharge() {
+    if (this.shoveActiveTicksRemaining > 0 || this.shoveCooldownTicksRemaining > 0) return;
+    this.shoveCharging = true;
+    this.shoveChargeTicks = 0;
+    this.shoveFullChargeTicks = 0;
+  }
+
+  // A release fires once the wind-up is done; until then the shove keeps winding up even with the button up.
+  chargeShove(pressed) {
+    if (!pressed && this.shoveChargeTicks >= SHOVE_WINDUP_TICKS) {
+      this.startShove();
+      return;
+    }
+    if (this.shoveChargeTicks < SHOVE_MAX_CHARGE_TICKS) {
+      this.shoveChargeTicks++;
+      this.shoveJustFullyCharged = this.shoveChargeTicks === SHOVE_MAX_CHARGE_TICKS;
+    } else {
+      this.shoveFullChargeTicks++;
+    }
   }
 
   receiveCard(cardName) {
@@ -164,7 +238,12 @@ export class Player extends PhysicsEntity {
 
   // The cooldown covers the active ticks too, so it is the whole gap between one shove and the next.
   startShove() {
-    if (this.shoveActiveTicksRemaining > 0 || this.shoveCooldownTicksRemaining > 0) return;
+    this.shoveCharge = clamp(
+      (this.shoveChargeTicks - SHOVE_WINDUP_TICKS) / (SHOVE_MAX_CHARGE_TICKS - SHOVE_WINDUP_TICKS),
+      0,
+      1,
+    );
+    this.shoveCharging = false;
     this.shoveActiveTicksRemaining = SHOVE_ACTIVE_TICKS;
     this.shoveCooldownTicksRemaining = SHOVE_COOLDOWN_TICKS;
     this.shoveJustStarted = true;
@@ -173,6 +252,7 @@ export class Player extends PhysicsEntity {
   update(input, platforms) {
     this.playedCardName = null;
     this.shoveJustStarted = false;
+    this.shoveJustFullyCharged = false;
     this.ticksSinceJump = Math.min(this.ticksSinceJump + 1, STRETCH_TICKS);
     this.ticksSinceLanding = Math.min(this.ticksSinceLanding + 1, SQUASH_TICKS);
     const wasOnGround = this.onGround;
@@ -203,7 +283,8 @@ export class Player extends PhysicsEntity {
       this.slipTicksRemaining--;
     } else {
       const acceleration = this.onGround ? GROUND_ACCELERATION : AIR_ACCELERATION;
-      this.velocityX += clamp(moveDirection * RUN_SPEED - this.velocityX, -acceleration, acceleration);
+      const runSpeed = this.shoveCharging ? RUN_SPEED * SHOVE_CHARGE_WALK_MULTIPLIER : RUN_SPEED;
+      this.velocityX += clamp(moveDirection * runSpeed - this.velocityX, -acceleration, acceleration);
     }
 
     if (this.shoveActiveTicksRemaining > 0) this.shoveActiveTicksRemaining--;
@@ -252,14 +333,22 @@ export class Player extends PhysicsEntity {
       context.fillRect(Math.round(drawX + (hitZone.x - this.x)), Math.round(hitZone.y), hitZone.width, hitZone.height);
     }
     const squash = this.inWater ? { width: 0, height: 0 } : this.squash;
+    const charging = this.shoveCharging && !this.inWater;
+    const leanPixels = this.shoveChargeTicks > SHOVE_WINDUP_TICKS ? CHARGE_LEAN_PIXELS : WINDUP_LEAN_PIXELS;
+    const bodyCenterX = drawX + this.width / 2 - (charging ? this.facing * leanPixels : 0);
+    const crouch = charging && this.shoveChargeTicks > SHOVE_WINDUP_TICKS ? CHARGE_CROUCH_PIXELS : 0;
+    const sprite = sprites[this.character.spriteName].body;
+    const flashing =
+      this.isShoveFullyCharged && Math.floor(this.shoveFullChargeTicks / FULL_CHARGE_FLASH_TICKS) % 2 === 0;
     drawCharacterBody(context, {
-      sprite: sprites[this.character.spriteName].body,
+      sprite,
+      flashSprite: flashing ? whiteBodyOf(sprite) : null,
       eyeFramePositions: this.character.eyeFramePositions,
       eyes: playerEyes.eyesFor(this.id),
-      centerX: drawX + this.width / 2,
+      centerX: bodyCenterX,
       bottomY: drawY + this.height + 1,
       width: FRAME_SIZE + squash.width,
-      height: FRAME_SIZE + squash.height,
+      height: FRAME_SIZE + squash.height - crouch,
     });
   }
 }

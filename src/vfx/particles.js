@@ -3,7 +3,13 @@
 // spaced angles, and the small offsets come from the tick count, so the same events always
 // throw the same particles. Hit sparks fly in a cone along the direction the hit went, and a
 // player launched by a medium or heavy hit leaves a trail until their knockback slows down.
-import { IMPACT_EFFECTS, LAUNCH_TRAIL_MIN_SPEED, LAUNCH_TRAIL_STRENGTHS } from '../engine/config.js';
+import {
+  CHARGED_SHOVE_EXTRA_SPARK_SPEED,
+  CHARGED_SHOVE_EXTRA_SPARKS,
+  IMPACT_EFFECTS,
+  LAUNCH_TRAIL_MIN_SPEED,
+  LAUNCH_TRAIL_STRENGTHS,
+} from '../engine/config.js';
 
 const DUST_COLOR = '#c8ccd4';
 const FIRE_COLOR = '#f77622';
@@ -16,6 +22,8 @@ const PLAYER_HALF_HEIGHT = 14;
 const JUMP_DUST = { count: 6, speed: 1.2, ticks: 16, size: 2, gravity: 0.05, arcStart: Math.PI, arcSize: Math.PI };
 const LANDING_DUST = { count: 10, speed: 1.8, ticks: 20, size: 3, gravity: 0.05, arcStart: Math.PI, arcSize: Math.PI };
 const HIT_SPARKS = { count: 8, speed: 3, ticks: 14, size: 2, gravity: 0.12, arcStart: 0, arcSize: 2 * Math.PI };
+const SPARKLE_COLOR = '#fee761';
+const FULL_CHARGE_SPARKLE = { count: 6, speed: 1.5, ticks: 12, size: 2, gravity: 0, arcStart: 0, arcSize: 2 * Math.PI };
 const HIT_SPARK_CONE = Math.PI / 2;
 const LAUNCH_TRAIL = { size: 8, ticks: 10 };
 const BLAST_SPARKS = { count: 20, speed: 4.5, ticks: 22, size: 3, gravity: 0.12, arcStart: 0, arcSize: 2 * Math.PI };
@@ -23,13 +31,13 @@ const SPLASH_DROPLETS = { count: 12, speed: 4, ticks: 30, size: 2, gravity: 0.22
 
 export const HARD_LANDING_SPEED = 9;
 
-function hitSparkStyle(strength, directionX, directionY) {
+function hitSparkStyle(strength, directionX, directionY, charge) {
   const { sparkCount, sparkSpeed } = IMPACT_EFFECTS[strength];
   const angle = Math.atan2(directionY, directionX);
   return {
     ...HIT_SPARKS,
-    count: sparkCount,
-    speed: sparkSpeed,
+    count: sparkCount + Math.round(charge * CHARGED_SHOVE_EXTRA_SPARKS),
+    speed: sparkSpeed + charge * CHARGED_SHOVE_EXTRA_SPARK_SPEED,
     arcStart: angle - HIT_SPARK_CONE / 2,
     arcSize: HIT_SPARK_CONE,
   };
@@ -47,8 +55,8 @@ export class Particles {
     const findPlayer = (playerId) => getPlayers().find((candidate) => candidate.id === playerId);
     const centerOf = (player) => ({ x: player.x + PLAYER_HALF_WIDTH, y: player.y + PLAYER_HALF_HEIGHT });
     const burst = (x, y, color, style) => this.burst(x, y, color, style, getTickCount());
-    const hitBurst = (x, y, color, { strength = 'light', directionX = 0, directionY = -1 }) =>
-      burst(x, y, color, hitSparkStyle(strength, directionX, directionY));
+    const hitBurst = (x, y, color, { strength = 'light', directionX = 0, directionY = -1, charge = 0 }) =>
+      burst(x, y, color, hitSparkStyle(strength, directionX, directionY, charge));
 
     events.on('player-jumped', ({ x, y }) => burst(x, y, DUST_COLOR, JUMP_DUST));
     events.on('player-landed', ({ x, y }) => burst(x, y, DUST_COLOR, LANDING_DUST));
@@ -67,6 +75,10 @@ export class Particles {
       const target = findPlayer(hit.targetId);
       if (shover && target) hitBurst(centerOf(target).x, centerOf(target).y, shover.color, hit);
       this.markLaunched([hit.targetId], hit.strength);
+    });
+    events.on('shove-fully-charged', ({ playerId }) => {
+      const player = findPlayer(playerId);
+      if (player) burst(centerOf(player).x, centerOf(player).y, SPARKLE_COLOR, FULL_CHARGE_SPARKLE);
     });
     events.on('trap-sprung', (hit) => {
       const owner = findPlayer(hit.ownerId);

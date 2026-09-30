@@ -1,5 +1,5 @@
 import { SCREEN_HEIGHT, SCREEN_WIDTH, SEA_COLUMN_COUNT } from './config.js';
-import { pickScale } from './screen-fit.js';
+import { fitScreen } from './screen-fit.js';
 
 const TEXTURE_UNIT_BY_LAYER_NAME = { background: 0, game: 1, ui: 2 };
 const SEA_TEXTURE_UNIT = 3;
@@ -35,17 +35,20 @@ export function readSafeAreaInsets() {
 }
 
 function resizeToFitWindow(canvas, webglContext) {
-  const devicePixelRatio = window.devicePixelRatio || 1;
-  const scale = pickScale({
+  const fit = fitScreen({
     width: innerWidth,
     height: innerHeight,
-    devicePixelRatio,
+    devicePixelRatio: window.devicePixelRatio || 1,
     insets: document.fullscreenElement ? undefined : readSafeAreaInsets(),
   });
-  canvas.width = SCREEN_WIDTH * scale;
-  canvas.height = SCREEN_HEIGHT * scale;
-  canvas.style.width = `${canvas.width / devicePixelRatio}px`;
-  canvas.style.height = `${canvas.height / devicePixelRatio}px`;
+  canvas.width = fit.deviceWidth;
+  canvas.height = fit.deviceHeight;
+  canvas.style.width = `${fit.cssWidth}px`;
+  canvas.style.height = `${fit.cssHeight}px`;
+  canvas.style.left = `${fit.cssLeft}px`;
+  canvas.style.top = `${fit.cssTop}px`;
+  // One game pixel in CSS pixels, for page decoration that has to line up with the game's pixels.
+  document.documentElement.style.setProperty('--game-pixel', `${fit.cssWidth / SCREEN_WIDTH}px`);
   webglContext.viewport(0, 0, canvas.width, canvas.height);
 }
 

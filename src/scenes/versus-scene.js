@@ -305,6 +305,7 @@ export class VersusScene {
         if (player.playedCardName === 'bomb') this.spawnBomb(player);
         if (player.playedCardName === 'banana') this.spawnBanana(player);
       }
+      if (player.shoveJustFullyCharged) this.events.emit('shove-fully-charged', { playerId: player.id });
       if (player.shoveJustStarted) {
         this.shoveHitIdsByShoverId.set(player.id, new Set());
         const hitZone = player.shoveHitZone;
@@ -340,14 +341,21 @@ export class VersusScene {
       if (!opponent.overlaps(hitZone)) continue;
 
       alreadyHitIds.add(opponent.id);
-      opponent.freeze('light', SHOVE_KNOCKBACK_VELOCITY_X * shover.facing, SHOVE_KNOCKBACK_VELOCITY_Y);
-      shover.freeze('light');
+      const strength = shover.shoveCharge >= 1 ? 'medium' : 'light';
+      const multiplier = shover.shoveKnockbackMultiplier;
+      opponent.freeze(
+        strength,
+        SHOVE_KNOCKBACK_VELOCITY_X * multiplier * shover.facing,
+        SHOVE_KNOCKBACK_VELOCITY_Y * multiplier,
+      );
+      shover.freeze(strength);
       this.events.emit('player-shoved', {
         shoverId: shover.id,
         targetId: opponent.id,
         directionX: shover.facing,
         directionY: 0,
-        strength: 'light',
+        strength,
+        charge: shover.shoveCharge,
       });
     }
   }
