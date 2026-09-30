@@ -3,6 +3,7 @@ import { ROCKET_HEIGHT } from '../entities/rocket.js';
 import { drawPanel } from './panel.js';
 import { drawPlayerPanel, PLAYER_PANEL_BOTTOM } from './player-panel.js';
 import { drawKeyHints, drawMenuTitle, menuPanelSize } from './menu-kit.js';
+import { drawMenuBackdrop } from './menu-options.js';
 import { drawText, measureText } from './text.js';
 
 const WARNING_MARKER_FLASH_TICKS = 20;
@@ -26,13 +27,15 @@ const SCORE_NUMBER_COLOR = '#ffffff';
 const NEW_BEST_COLOR = '#feae34';
 const NEW_BEST_FLASH_TICKS = 120;
 const NEW_BEST_BLINK_TICKS = 10;
-const METER_WIDTH = 6;
-const METER_TOP = SCORE_PANEL_MARGIN + SCORE_PANEL_HEIGHT + SCORE_PANEL_MARGIN;
-const METER_BORDER_COLOR = '#3e2731';
-const METER_TRACK_COLOR = '#262b44';
-const METER_FILL_COLOR = '#63c74d';
+const METER_PANEL_WIDTH = 56;
+const METER_PANEL_HEIGHT = 12;
+const METER_PANEL_Y = SCORE_PANEL_MARGIN + SCORE_PANEL_HEIGHT + 4;
+const METER_PADDING_X = 5;
+const METER_BAR_HEIGHT = 4;
+const METER_TICK_WIDTH = 2;
+const METER_TICK_HEIGHT = 8;
+const METER_TRACK_COLOR = '#3a4466';
 const METER_MARKER_COLOR = '#feae34';
-const METER_MARKER_OVERHANG = 2;
 const OVER_TITLE_Y = 96;
 const OVER_PANEL_Y = 120;
 const OVER_FIRST_ROW_OFFSET_Y = 12;
@@ -159,23 +162,23 @@ function drawScorePanel(context, { label, value, side, labelColor }) {
   });
 }
 
-function drawHeightMeter(context, score, best) {
-  const x = SCREEN_WIDTH - SCORE_PANEL_MARGIN - METER_WIDTH;
-  const height = SCREEN_HEIGHT - SCORE_PANEL_MARGIN - METER_TOP;
-  const innerHeight = height - 2;
-  context.fillStyle = METER_BORDER_COLOR;
-  context.fillRect(x, METER_TOP, METER_WIDTH, height);
+function drawHeightMeter(context, scene) {
+  const panelX = SCREEN_WIDTH - SCORE_PANEL_MARGIN - METER_PANEL_WIDTH;
+  drawPanel(context, panelX, METER_PANEL_Y, METER_PANEL_WIDTH, METER_PANEL_HEIGHT);
+  const barX = panelX + METER_PADDING_X;
+  const barY = METER_PANEL_Y + Math.floor((METER_PANEL_HEIGHT - METER_BAR_HEIGHT) / 2);
+  const barWidth = METER_PANEL_WIDTH - 2 * METER_PADDING_X;
   context.fillStyle = METER_TRACK_COLOR;
-  context.fillRect(x + 1, METER_TOP + 1, METER_WIDTH - 2, innerHeight);
+  context.fillRect(barX, barY, barWidth, METER_BAR_HEIGHT);
 
-  const { fill, marker } = heightMeterFractions(score, best);
-  const fillHeight = Math.round(fill * innerHeight);
-  context.fillStyle = METER_FILL_COLOR;
-  context.fillRect(x + 1, METER_TOP + 1 + innerHeight - fillHeight, METER_WIDTH - 2, fillHeight);
+  const { fill, marker } = heightMeterFractions(scene.score, scene.bestScore);
+  context.fillStyle = scene.players[0].color;
+  context.fillRect(barX, barY, Math.round(fill * barWidth), METER_BAR_HEIGHT);
   if (marker === null) return;
-  const markerY = METER_TOP + 1 + innerHeight - Math.round(marker * innerHeight);
+  const tickX = barX + Math.min(barWidth - METER_TICK_WIDTH, Math.round(marker * barWidth));
+  const tickY = barY - Math.floor((METER_TICK_HEIGHT - METER_BAR_HEIGHT) / 2);
   context.fillStyle = METER_MARKER_COLOR;
-  context.fillRect(x - METER_MARKER_OVERHANG, markerY - 1, METER_WIDTH + 2 * METER_MARKER_OVERHANG, 2);
+  context.fillRect(tickX, tickY, METER_TICK_WIDTH, METER_TICK_HEIGHT);
 }
 
 function drawRunOver(context, scene) {
@@ -197,6 +200,7 @@ function drawRunOver(context, scene) {
 
 export function drawSurvivalHud(context, scene) {
   drawRocketWarnings(context, scene);
+  if (scene.phase === 'over') drawMenuBackdrop(context);
   const flashing = isNewBestFlashing(scene);
   const blinkOn = flashing && Math.floor(scene.runTicks / NEW_BEST_BLINK_TICKS) % 2 === 0;
   drawScorePanel(context, { label: 'Score', value: scene.score, side: 'left', labelColor: SCORE_LABEL_COLOR });
@@ -206,6 +210,6 @@ export function drawSurvivalHud(context, scene) {
     side: 'right',
     labelColor: blinkOn ? NEW_BEST_COLOR : SCORE_LABEL_COLOR,
   });
-  drawHeightMeter(context, scene.score, scene.bestScore);
+  drawHeightMeter(context, scene);
   if (scene.phase === 'over') drawRunOver(context, scene);
 }
