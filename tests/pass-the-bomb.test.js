@@ -128,6 +128,24 @@ test('the fuse spark flickers faster near the end', () => {
   assert.ok(sparkFlickerTicks(80) < sparkFlickerTicks(400));
 });
 
+test('a player blown up by the fuse goes out in a blast cloud with a callout', () => {
+  const scene = bombScene(3);
+  const blownUp = holder(scene);
+  const others = scene.players.filter((player) => player !== blownUp);
+  standAt(blownUp, 100);
+  standAt(others[0], 180);
+  standAt(others[1], 240);
+  scene.modeRules.fuseTicksRemaining = 1;
+  advance(scene, 1);
+
+  assert.equal(blownUp.blownUp, true);
+  assert.equal(scene.callouts.current.text, 'Boom!');
+  const [cloud] = scene.blastClouds.activeClouds(scene.tickCount);
+  assert.equal(cloud.x, Math.round(blownUp.x + blownUp.width / 2));
+  advance(scene, 60);
+  assert.equal(scene.blastClouds.activeClouds(scene.tickCount).length, 0);
+});
+
 test('the same inputs give the same bomb state', () => {
   function run() {
     const scene = bombScene(4, 11);

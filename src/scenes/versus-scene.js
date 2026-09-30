@@ -67,6 +67,7 @@ import { drawRoundIntro, isMatchPoint } from '../ui/round-intro.js';
 import { MatchStats } from '../ui/match-stats.js';
 import { drawPlayerTags } from '../ui/player-tags.js';
 import { WinPips } from '../ui/win-pips.js';
+import { BlastClouds, drawBlastClouds } from '../vfx/blast-cloud.js';
 import { ClashSparks, drawClashSparks } from '../vfx/clash-sparks.js';
 import { knockoutZoom } from '../vfx/knockout-zoom.js';
 import { drawHeldBomb } from '../vfx/held-bomb.js';
@@ -224,6 +225,12 @@ export class VersusScene {
     this.confetti.attach(this.events, () => this.players);
     this.crateOpenings = new CrateOpenings();
     this.crateOpenings.attach(this.events, () => this.players);
+    this.blastClouds = new BlastClouds();
+    this.blastClouds.attach(
+      this.events,
+      () => this.players,
+      () => this.tickCount,
+    );
     this.clashSparks = new ClashSparks();
     this.clashSparks.attach(
       this.events,
@@ -1100,6 +1107,7 @@ export class VersusScene {
     drawMagnetField(renderer.gameContext, this);
     drawSplashes(renderer.gameContext, this);
     drawParticles(renderer.gameContext, this);
+    drawBlastClouds(renderer.gameContext, this);
     drawClashSparks(renderer.gameContext, this);
     drawHeldCardIcons(renderer.gameContext, this);
     drawPlayerTags(renderer.gameContext, this);
