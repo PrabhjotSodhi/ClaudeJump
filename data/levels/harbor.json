@@ -57,6 +57,7 @@
       "facing": -1
     }
   ],
+  "hazard": "crane",
   "waterLineY": 328,
   "suddenDeathLineY": 160
 }
