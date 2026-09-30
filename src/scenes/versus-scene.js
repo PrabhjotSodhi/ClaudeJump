@@ -26,6 +26,7 @@ import { drawHeldCardIcons } from '../ui/held-card-icons.js';
 import { drawHud } from '../ui/hud.js';
 import { MatchStats } from '../ui/match-stats.js';
 import { drawPlayerTags } from '../ui/player-tags.js';
+import { WinPips } from '../ui/win-pips.js';
 import { PlayerEyes } from '../vfx/player-eyes.js';
 import { drawParticles, HARD_LANDING_SPEED, Particles } from '../vfx/particles.js';
 import { SeaRipple } from '../vfx/sea-ripple.js';
@@ -97,6 +98,7 @@ export class VersusScene {
 
     this.waterLineY = level.waterLineY;
     this.backgroundDrawn = false;
+    this.winsNeeded = WINS_NEEDED;
     this.wins = {};
     for (const spawn of level.spawns) this.wins[spawn.id] = 0;
     this.skipNextReadyPhase = startInFightPhase;
@@ -124,6 +126,8 @@ export class VersusScene {
     // step() with no render call in between. Game logic never reads it, only the HUD does.
     this.matchStats = new MatchStats(Object.keys(this.wins));
     this.matchStats.attach(this.events, () => this.phase === 'fight');
+    this.winPips = new WinPips();
+    this.winPips.attach(this.events, () => this.tickCount);
     // Display-only, created here for the same reason: it must never miss a player-wrapped event.
     this.playerEyes = new PlayerEyes();
     this.playerEyes.attach(this.events, () => this.players);
@@ -585,7 +589,7 @@ export class VersusScene {
     this.winnerId = standingPlayers[0].id;
     this.wins[this.winnerId]++;
     this.events.emit('round-won', { playerId: this.winnerId, wins: this.wins[this.winnerId] });
-    if (this.wins[this.winnerId] >= WINS_NEEDED) {
+    if (this.wins[this.winnerId] >= this.winsNeeded) {
       this.phase = 'match';
       this.ticksRemaining = RESTART_DELAY_TICKS;
     }
