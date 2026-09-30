@@ -16,7 +16,7 @@ async function readBody(request) {
 }
 
 /**
- * Routes `.../create`, `.../join`, `.../signal` (POST) and `.../poll` (GET)
+ * Routes `.../create`, `.../join`, `.../leave`, `.../signal` (POST) and `.../poll` (GET)
  * to the room service. Errors become `{ error: code }` with the error's status.
  */
 export async function handleRoomRequest(service, request) {
@@ -35,7 +35,7 @@ export async function handleRoomRequest(service, request) {
     if (request.method === 'POST' && action === 'create') {
       return jsonResponse(await service.create());
     }
-    if (request.method === 'POST' && (action === 'join' || action === 'signal')) {
+    if (request.method === 'POST' && (action === 'join' || action === 'leave' || action === 'signal')) {
       return jsonResponse(await service[action](await readBody(request)));
     }
     throw new RoomError('not-found', 404);
