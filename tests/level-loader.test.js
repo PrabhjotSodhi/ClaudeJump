@@ -155,6 +155,6 @@ for (const [fileName, level] of Object.entries(arenaLevels)) {
 
 test('rooftops has two fixed bounce pads and the other arenas have none', () => {
   assert.equal(arenaLevels.rooftops.bouncePads.length, 2);
-  for (const fileName of ['harbor', 'cave', 'server-farm', 'cooling-towers', 'bridge', 'quarry'])
+  for (const fileName of ['harbor', 'cave', 'server-farm', 'cooling-towers', 'bridge', 'quarry', 'lighthouse'])
     assert.deepEqual(arenaLevels[fileName].bouncePads, []);
 });

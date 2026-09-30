@@ -65,6 +65,10 @@ const CANOPY_STRIPES_BY_ARENA = {
     { color: '#e43b44', shade: '#a22633' },
     { color: '#feae34', shade: '#d77643' },
   ],
+  lighthouse: [
+    { color: '#ffffff', shade: '#c0cbdc' },
+    { color: '#a22633', shade: '#3e2731' },
+  ],
 };
 const GOLDEN_CANOPY_STRIPES = [
   { color: '#fee761', shade: '#feae34' },

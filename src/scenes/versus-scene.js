@@ -55,7 +55,7 @@ import { Rocket, ROCKET_WIDTH, ROCKET_HEIGHT } from '../entities/rocket.js';
 import { knockBackShoveTarget, resolveShoveHit, resolveShoveHitOnCrate } from '../entities/shove.js';
 import { HoldTheHill } from './hold-the-hill.js';
 import { PassTheBomb } from './pass-the-bomb.js';
-import { drawArenaBackground } from '../levels/arena-backgrounds.js';
+import { drawArenaBackground, drawArenaMotion } from '../levels/arena-backgrounds.js';
 import { createHazards } from '../levels/level-hazards.js';
 import { solidRuns } from '../levels/level-loader.js';
 import { PLAYERS } from '../levels/versus-arena.js';
@@ -1081,6 +1081,7 @@ export class VersusScene {
     renderer.zoom = knockoutZoom(this);
     renderer.seaRippleBytes = this.seaRipple.toBytes();
     renderer.clearGameLayer();
+    drawArenaMotion(renderer.gameContext, this.level.background, this.tickCount);
     for (const tile of this.level.tiles) {
       if (!this.brokenTiles.has(tile))
         renderer.gameContext.drawImage(this.level.tileSprites[tile.name], tile.x, tile.y);

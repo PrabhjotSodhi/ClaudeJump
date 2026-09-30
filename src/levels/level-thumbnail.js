@@ -1,5 +1,5 @@
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../engine/config.js';
-import { drawArenaBackground } from './arena-backgrounds.js';
+import { drawArenaBackground, drawArenaMotion } from './arena-backgrounds.js';
 
 // Each thumbnail pixel is one point sampled from a square of screen pixels this wide, so the thumbnail
 // stays pixel art made of palette colors.
@@ -11,6 +11,8 @@ export const THUMBNAIL_HEIGHT = SCREEN_HEIGHT / THUMBNAIL_SCALE_DOWN;
 const SEA_COLOR = '#124e89';
 const SEA_SURFACE_COLOR = '#0099db';
 const SEA_SURFACE_HEIGHT = THUMBNAIL_SCALE_DOWN;
+// A moving background shows as it looks this many ticks in.
+const THUMBNAIL_MOTION_TICK = 40;
 
 function createCanvas(width, height) {
   const canvas = document.createElement('canvas');
@@ -24,6 +26,7 @@ export function createLevelThumbnail(level) {
   const fullSizeCanvas = createCanvas(SCREEN_WIDTH, SCREEN_HEIGHT);
   const fullSizeContext = fullSizeCanvas.getContext('2d');
   drawArenaBackground(fullSizeContext, level.background);
+  drawArenaMotion(fullSizeContext, level.background, THUMBNAIL_MOTION_TICK);
   for (const tile of level.tiles) fullSizeContext.drawImage(level.tileSprites[tile.name], tile.x, tile.y);
   fullSizeContext.fillStyle = SEA_SURFACE_COLOR;
   fullSizeContext.fillRect(0, level.waterLineY, SCREEN_WIDTH, SEA_SURFACE_HEIGHT);

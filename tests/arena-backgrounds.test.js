@@ -16,7 +16,16 @@ function recordingContext() {
 
 test('every level draws its own background the same way each time', async () => {
   const drawings = [];
-  for (const file of ['harbor', 'cave', 'rooftops', 'server-farm', 'cooling-towers', 'bridge', 'quarry']) {
+  for (const file of [
+    'harbor',
+    'cave',
+    'rooftops',
+    'server-farm',
+    'cooling-towers',
+    'bridge',
+    'quarry',
+    'lighthouse',
+  ]) {
     const { background } = JSON.parse(await readFile(new URL(`../data/levels/${file}.json`, import.meta.url), 'utf8'));
     const first = recordingContext();
     const second = recordingContext();
@@ -35,7 +44,16 @@ test('an unknown background name is rejected', () => {
 test('backgrounds use only palette colors', async () => {
   const palette = JSON.parse(await readFile(new URL('../data/palette.json', import.meta.url), 'utf8'));
   const paletteColors = new Set(Object.values(palette.ramps).flat());
-  for (const background of ['harbor', 'cave', 'rooftops', 'server-farm', 'cooling-towers', 'bridge', 'quarry']) {
+  for (const background of [
+    'harbor',
+    'cave',
+    'rooftops',
+    'server-farm',
+    'cooling-towers',
+    'bridge',
+    'quarry',
+    'lighthouse',
+  ]) {
     const context = recordingContext();
     drawArenaBackground(context, background);
     for (const [color] of context.fills) assert.ok(paletteColors.has(color), `${background} uses ${color}`);
