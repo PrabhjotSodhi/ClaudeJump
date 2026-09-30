@@ -15,6 +15,7 @@ import {
 } from '../ui/menu-kit.js';
 import { MENU_BACKGROUND_COLOR, NO_WATER_LINE_Y } from '../ui/menu-screen.js';
 import { drawPanel } from '../ui/panel.js';
+import { SelectCardMotion } from '../ui/select-card-motion.js';
 import { drawText, measureText } from '../ui/text.js';
 import { drawCharacterBody, FRAME_SIZE } from '../vfx/character-body.js';
 import { EYE_STIFFNESSES, GooglyEye } from '../vfx/googly-eyes.js';
@@ -34,8 +35,6 @@ const PEDESTAL_BLOCKS = 2;
 const PEDESTAL_TOP_Y = CARD_TOP_Y + 72;
 // The white outline row of the body overlaps the top edge of the pedestal so the feet read as touching.
 const CHARACTER_SINK_PIXELS = 1;
-const HOP_TICKS = 24;
-const HOP_HEIGHT = 10;
 
 const CHIP_WIDTH = 132;
 const CHIP_HEIGHT = 24;
@@ -126,13 +125,6 @@ export function playerCardBox(seatIndex) {
   };
 }
 
-// How many pixels above the pedestal a character is this many ticks after a hop starts: a parabola that
-// leaves the pedestal at 0, peaks at HOP_HEIGHT and lands at HOP_TICKS.
-export function hopOffsetY(ticksSinceHop) {
-  if (ticksSinceHop < 0 || ticksSinceHop >= HOP_TICKS) return 0;
-  return Math.round((HOP_HEIGHT * 4 * ticksSinceHop * (HOP_TICKS - ticksSinceHop)) / (HOP_TICKS * HOP_TICKS));
-}
-
 // Every card shows the same eyes at rest.
 const PORTRAIT_EYES = EYE_STIFFNESSES.map((stiffness) => new GooglyEye(stiffness));
 
@@ -150,9 +142,8 @@ export class PlayerSelectScene {
     // Captured from the real input on the first tick this scene runs, so a button still held from
     // the title screen's confirm press never counts as a fresh press here.
     this.previousInput = null;
-    // Render only: when each player's character last changed, so the card can hop it.
-    this.tickCount = 0;
-    this.hopStartTickByPlayerId = {};
+    // Render only: hops, cheers and slide-ins of the cards.
+    this.cardMotion = new SelectCardMotion();
     this.countdownTicksRemaining = null;
     this.stateByPlayerId = {};
     // An index into CHARACTERS: the hovered character until the player locks it in, then the chosen one.
@@ -164,7 +155,7 @@ export class PlayerSelectScene {
   }
 
   update(inputByPlayerId) {
-    this.tickCount++;
+    this.cardMotion.update();
     this.menuMotion.update();
     if (!this.previousInput) {
       this.previousInput = {};
@@ -231,8 +222,14 @@ export class PlayerSelectScene {
     if (!(state in NEXT_STATE)) return;
     this.stateByPlayerId[playerId] = NEXT_STATE[state];
     this.events.emit('menu-selected', { playerId });
+    const seatIndex = PLAYERS.findIndex((spawn) => spawn.id === playerId);
+    if (this.stateByPlayerId[playerId] === 'picking') this.cardMotion.join(seatIndex);
     if (this.stateByPlayerId[playerId] === 'ready') {
-      this.hopStartTickByPlayerId[playerId] = this.tickCount;
+      this.cardMotion.cheer(seatIndex);
+      this.events.emit('character-cheered', {
+        playerId,
+        characterName: CHARACTERS[this.characterIndexByPlayerId[playerId]].name,
+      });
       this.moveHoveringPlayersOff(playerId);
     }
   }
@@ -257,7 +254,7 @@ export class PlayerSelectScene {
 
   changeCharacter(playerId, direction) {
     this.characterIndexByPlayerId[playerId] = this.nextFreeCharacterIndex(playerId, direction);
-    this.hopStartTickByPlayerId[playerId] = this.tickCount;
+    this.cardMotion.hop(PLAYERS.findIndex((spawn) => spawn.id === playerId));
     this.events.emit('menu-moved', { playerId });
   }
 
@@ -309,8 +306,12 @@ function drawFrame(context, x, y, width, height, color) {
 function drawPlayerCard(context, scene, spawn) {
   const state = scene.stateByPlayerId[spawn.id];
   const character = CHARACTERS[scene.characterIndexByPlayerId[spawn.id]];
-  const { x: cardX } = playerCardBox(PLAYERS.indexOf(spawn));
+  const seatIndex = PLAYERS.indexOf(spawn);
+  const cardBox = playerCardBox(seatIndex);
+  const cardX = cardBox.x;
   const centerX = cardX + CARD_WIDTH / 2;
+  context.save();
+  context.translate(scene.cardMotion.slideOffsetX(seatIndex, cardBox), 0);
 
   drawPanel(context, cardX, CARD_TOP_Y, CARD_WIDTH, CARD_HEIGHT);
   drawFrame(
@@ -333,23 +334,32 @@ function drawPlayerCard(context, scene, spawn) {
     context.drawImage(scene.sprites.stoneBlocks[`block-big-${block % 2}`], blockX, PEDESTAL_TOP_Y);
   }
   if (state !== 'unjoined') {
-    const hopY = hopOffsetY(scene.tickCount - (scene.hopStartTickByPlayerId[spawn.id] ?? -HOP_TICKS));
-    drawCharacter(context, character, scene.sprites, centerX, PEDESTAL_TOP_Y + CHARACTER_SINK_PIXELS - hopY);
+    const pose = scene.cardMotion.pose(seatIndex);
+    const bottomY = PEDESTAL_TOP_Y + CHARACTER_SINK_PIXELS - pose.offsetY;
+    drawCharacter(context, character, scene.sprites, centerX, bottomY, pose);
   }
 
   drawChip(context, state, character, centerX, JOIN_TEXT_BY_PLAYER_ID[spawn.id]);
   drawRoster(context, scene, spawn, centerX);
+  context.restore();
 }
 
-function drawCharacter(context, character, sprites, centerX, bottomY) {
+function drawCharacter(
+  context,
+  character,
+  sprites,
+  centerX,
+  bottomY,
+  size = { width: FRAME_SIZE, height: FRAME_SIZE },
+) {
   drawCharacterBody(context, {
     sprite: sprites[character.spriteName].body,
     eyeFramePositions: character.eyeFramePositions,
     eyes: PORTRAIT_EYES,
     centerX,
     bottomY,
-    width: FRAME_SIZE,
-    height: FRAME_SIZE,
+    width: size.width,
+    height: size.height,
   });
 }
 
