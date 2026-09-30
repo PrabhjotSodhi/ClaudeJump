@@ -50,3 +50,12 @@ export function knockBackPlayersInBlast(players, blastCenterX, blastCenterY) {
   }
   return knockedPlayers.map((player) => player.id);
 }
+
+// True when any part of the rectangle is inside the blast radius.
+export function blastReaches(rectangle, blastCenterX, blastCenterY) {
+  const nearestX = Math.max(rectangle.x, Math.min(blastCenterX, rectangle.x + rectangle.width));
+  const nearestY = Math.max(rectangle.y, Math.min(blastCenterY, rectangle.y + rectangle.height));
+  const distanceX = nearestX - blastCenterX;
+  const distanceY = nearestY - blastCenterY;
+  return Math.sqrt(distanceX * distanceX + distanceY * distanceY) <= BLAST_RADIUS;
+}

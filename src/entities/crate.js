@@ -1,6 +1,6 @@
 import { Entity } from '../engine/entity.js';
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../engine/config.js';
-import { swayOffset } from '../vfx/parachute-sway.js';
+import { flutterWobble, swayOffset } from '../vfx/parachute-sway.js';
 import { findLandingPlatform, predictCrateLanding } from './crate-landing.js';
 
 export const CRATE_WIDTH = 16;
@@ -25,6 +25,8 @@ const CRATE_FILL_COLOR = '#a0703c';
 // How many pixels the crate falls each tick. The sway is a render offset only, so it never
 // changes how long the fall takes or where the crate lands.
 const FALL_SPEED = 4;
+// Without its parachute the crate drops twice as fast.
+const POPPED_FALL_SPEED = 8;
 const OUTLINE_COLOR = '#3e2731';
 const CANOPY_COLOR = '#f77622';
 const CANOPY_LIGHT_COLOR = '#feae34';
@@ -34,6 +36,10 @@ const CANOPY_WIDTH = 16;
 const CANOPY_HEIGHT = 7;
 const STRING_LENGTH = 6;
 const FOLD_TICKS = 12;
+// A popped canopy drifts up and to the side for this long, then is gone.
+const FLUTTER_TICKS = 40;
+const FLUTTER_RISE_DIVISOR = 3;
+const FLUTTER_DRIFT_DIVISOR = 2;
 // Comfortably above the top of the screen so the crate is never visible before it starts falling.
 const FALL_START_Y = -CRATE_HEIGHT;
 
@@ -42,7 +48,8 @@ const FALL_START_Y = -CRATE_HEIGHT;
 // none is below it. `landing` holds the predicted spot, refreshed every tick because blocks can
 // break under it, and a shadow on that spot grows as the crate comes down. It can be taken by any player without a held card, in the air or landed.
 // It hangs under a parachute that sways
-// while it falls and folds away on landing. Placeholder shapes for the crate itself.
+// while it falls and folds away on landing. A hit on the parachute pops it and the crate then falls
+// at full speed. Placeholder shapes for the crate itself.
 export class Crate extends Entity {
   constructor({ x, y, cardName }) {
     super({ x, y: FALL_START_Y, width: CRATE_WIDTH, height: CRATE_HEIGHT });
@@ -55,6 +62,34 @@ export class Crate extends Entity {
     this.landed = false;
     this.landedTicks = 0;
     this.landing = null;
+    this.parachuteAttached = true;
+    this.poppedTicks = 0;
+    this.poppedDirectionX = 1;
+    this.poppedAt = null;
+  }
+
+  get fallSpeed() {
+    return this.parachuteAttached ? FALL_SPEED : POPPED_FALL_SPEED;
+  }
+
+  // The canopy and its strings, where a shove, rocket, bomb or blast can pop the parachute. Null when there is
+  // nothing to pop: the crate has not appeared yet, has landed, or already lost its parachute.
+  get parachuteBounds() {
+    if (!this.parachuteAttached || this.landed || !this.isFalling) return null;
+    const height = CANOPY_HEIGHT + STRING_LENGTH;
+    return { x: this.x + (this.width - CANOPY_WIDTH) / 2, y: this.y - height, width: CANOPY_WIDTH, height };
+  }
+
+  // Returns true when this pops the parachute. `directionX` is the way the canopy flutters off, and
+  // `platforms` lets the landing marker move to where the faster fall ends.
+  popParachute(directionX, platforms) {
+    const bounds = this.parachuteBounds;
+    if (!bounds) return false;
+    this.parachuteAttached = false;
+    this.poppedDirectionX = directionX < 0 ? -1 : 1;
+    this.poppedAt = { x: bounds.x, y: bounds.y };
+    this.predictLanding(platforms);
+    return true;
   }
 
   // Refreshes `landing`: the spot { x, y, ticks } where this crate will rest, or null over the sea.
@@ -64,7 +99,7 @@ export class Crate extends Entity {
       y: this.y,
       width: this.width,
       height: this.height,
-      fallSpeed: FALL_SPEED,
+      fallSpeed: this.fallSpeed,
       platforms,
       fallLimitY: SCREEN_HEIGHT,
     });
@@ -76,6 +111,7 @@ export class Crate extends Entity {
   }
 
   update(platforms = []) {
+    if (!this.parachuteAttached) this.poppedTicks++;
     if (this.landed) {
       this.landedTicks++;
       return;
@@ -84,7 +120,7 @@ export class Crate extends Entity {
     this.ticksUntilLanded--;
     if (this.ticksUntilLanded >= this.fallTicks) return; // still just a marker, hasn't appeared yet
 
-    this.y += FALL_SPEED;
+    this.y += this.fallSpeed;
     const platform = findLandingPlatform({ x: this.x, width: this.width, bottom: this.y + this.height, platforms });
     if (!platform) return;
     this.y = platform.y - this.height;
@@ -99,7 +135,8 @@ export class Crate extends Entity {
     const fallenTicks = this.fallTicks - this.ticksUntilLanded;
     const sway = this.landed ? 0 : swayOffset(fallenTicks, this.markerY - this.y);
     const drawY = Math.round(this.y);
-    this.renderParachute(context, drawX + sway, drawY);
+    if (this.parachuteAttached) this.renderParachute(context, drawX + sway, drawY);
+    else this.renderFlutteringCanopy(context);
     context.fillStyle = CRATE_SHADOW_COLOR;
     context.fillRect(drawX + sway, drawY, this.width, this.height);
     context.fillStyle = CRATE_FILL_COLOR;
@@ -165,6 +202,23 @@ export class Crate extends Entity {
     drawAt(spotX);
     if (spotX < 0) drawAt(spotX + SCREEN_WIDTH);
     else if (spotX + this.width > SCREEN_WIDTH) drawAt(spotX - SCREEN_WIDTH);
+  }
+
+  // The popped canopy stays where it was hit, drifting up and away, and blinks out as it ends.
+  renderFlutteringCanopy(context) {
+    if (this.poppedTicks >= FLUTTER_TICKS) return;
+    if (this.poppedTicks > FLUTTER_TICKS - 12 && this.poppedTicks % 2 === 0) return;
+    const wobble = flutterWobble(this.poppedTicks);
+    const canopyX =
+      Math.round(this.poppedAt.x) +
+      wobble +
+      this.poppedDirectionX * Math.floor(this.poppedTicks / FLUTTER_DRIFT_DIVISOR);
+    const canopyY = Math.round(this.poppedAt.y) - Math.floor(this.poppedTicks / FLUTTER_RISE_DIVISOR);
+    const flutterHeight = Math.max(2, CANOPY_HEIGHT - Math.floor(this.poppedTicks / 8));
+    context.fillStyle = OUTLINE_COLOR;
+    context.fillRect(canopyX, canopyY, CANOPY_WIDTH, flutterHeight);
+    context.fillStyle = CANOPY_COLOR;
+    context.fillRect(canopyX + 1, canopyY + 1, CANOPY_WIDTH - 2, Math.max(0, flutterHeight - 2));
   }
 
   // Open canopy with two strings while falling; on landing the canopy shrinks flat and vanishes.
