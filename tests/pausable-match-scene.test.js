@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { KNOCKOUT_SLOWMO_TICKS } from '../src/engine/config.js';
 import { SoundPlayer } from '../src/engine/sound-player.js';
-import { PausableMatchScene } from '../src/scenes/pausable-match-scene.js';
+import { PausableMatchScene, RESULTS_MENU_OPTIONS } from '../src/scenes/pausable-match-scene.js';
 import { PlayerSelectScene, START_COUNTDOWN_TICKS } from '../src/scenes/player-select-scene.js';
 import { TitleScene } from '../src/scenes/title-scene.js';
 import { VersusScene } from '../src/scenes/versus-scene.js';
@@ -339,6 +339,18 @@ test('Change characters opens player select', () => {
 
   assert.equal(scenes.length, 1);
   assert.equal(scenes[0].constructor.name, 'PlayerSelectScene');
+});
+
+test('Rematch is selected by default and awards pop in with a sound event', () => {
+  const { scene } = sceneShowingResults();
+  const shown = [];
+  scene.events.on('award-shown', ({ awardId }) => shown.push(awardId));
+  scene.update(neutralInputs());
+  assert.equal(scene.resultsSelectedIndex, 0);
+  for (let tick = 0; tick < 300; tick++) scene.update(neutralInputs());
+
+  assert.equal(RESULTS_MENU_OPTIONS[scene.resultsSelectedIndex].id, 'rematch');
+  assert.deepEqual(shown, ['splashes']);
 });
 
 test('jump confirms the selected results option, and up wraps to the last one', () => {

@@ -3,6 +3,7 @@ import { createGameLoop } from './engine/game-loop.js';
 import { createGamepadInput } from './engine/gamepad-input.js';
 import { createFullscreen } from './engine/fullscreen.js';
 import { combineInputs, createKeyboardInput } from './engine/input.js';
+import { gameOptions } from './engine/game-options.js';
 import { Renderer } from './engine/renderer.js';
 import { SceneManager } from './engine/scene-manager.js';
 import { MusicPlayer } from './engine/music-player.js';
@@ -70,6 +71,7 @@ function playerScreenRectangles(scene) {
 async function main() {
   const searchParameters = new URLSearchParams(location.search);
   const isDevMode = searchParameters.has('dev');
+  gameOptions.heat = searchParameters.has('heat');
 
   const [
     keyMappings,
@@ -168,6 +170,7 @@ async function main() {
           players: PLAYERS.slice(0, playerCount).map(({ id }) => ({ id, character: HOVER_CHARACTER_BY_PLAYER_ID[id] })),
           sprites,
           levels,
+          heat: gameOptions.heat,
         }),
       }),
     );

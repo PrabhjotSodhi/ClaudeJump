@@ -38,6 +38,7 @@
   "shove-charging": "shove-charge",
   "shove-fully-charged": "charge-ping",
   "shove-clash": "clash",
+  "award-shown": "award",
   "countdown-beat": {
     "by": "count",
     "3": "count-beat",

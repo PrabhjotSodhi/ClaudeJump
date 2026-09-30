@@ -1,4 +1,4 @@
-import { SCREEN_WIDTH } from '../engine/config.js';
+import { AWARD_POP_TICKS, SCREEN_WIDTH } from '../engine/config.js';
 import { drawCharacterBody, FRAME_SIZE } from '../vfx/character-body.js';
 import {
   drawKeyHints,
@@ -37,7 +37,7 @@ const FLOOR_COLOR = '#3a4466';
 const FLOOR_EDGE_COLOR = '#5a6988';
 
 const STATS_PANEL_WIDTH = 128;
-const STATS_PANEL_HEIGHT = 64;
+const STATS_PANEL_HEIGHT = 76;
 const STATS_PANEL_MARGIN_X = 48;
 const STATS_PANEL_TOP_Y = 64;
 // With more than two players the panels sit two to a row, so they start higher.
@@ -48,6 +48,9 @@ const STATS_TEXT_INSET = 12;
 const STATS_ROW_HEIGHT = 14;
 const STATS_FIRST_ROW_Y = 12;
 const STATS_LABEL_COLOR = '#c0cbdc';
+const AWARD_COLOR = '#feae34';
+const AWARD_FLASH_COLOR = '#ffffff';
+const AWARD_FLASH_TICKS = 4;
 
 const MENU_TOP_Y = 172;
 const HINT_GAP = 14;
@@ -158,7 +161,7 @@ function drawCharacter(context, { player, box, matchScene }) {
 const ORDINALS = ['1st', '2nd', '3rd', '4th'];
 
 // rank is null when the screen does not show one.
-function drawStatsPanel(context, panel, player, rank, matchScene) {
+function drawStatsPanel(context, panel, player, rank, matchScene, awardReveal) {
   drawPanel(context, panel.x, panel.y, panel.width, panel.height);
   context.fillStyle = player.color;
   context.fillRect(panel.x + 2, panel.y + 2, panel.width - 4, STATS_ACCENT_HEIGHT);
@@ -173,6 +176,16 @@ function drawStatsPanel(context, panel, player, rank, matchScene) {
   rows.forEach(([text, color], index) => {
     drawText(context, text, textX, firstRowY + index * STATS_ROW_HEIGHT, { scale: 1, color, outlineColor: null });
   });
+
+  const ticksSinceShown = awardReveal?.ticksSinceShown(player.id) ?? -1;
+  if (ticksSinceShown < 0) return;
+  // A new award hops up and settles down, and flashes white while it does.
+  const hop = Math.max(0, Math.floor((AWARD_POP_TICKS - ticksSinceShown) / 2));
+  drawText(context, awardReveal.awardFor(player.id).label, textX, firstRowY + rows.length * STATS_ROW_HEIGHT - hop, {
+    scale: 1,
+    color: ticksSinceShown < AWARD_FLASH_TICKS ? AWARD_FLASH_COLOR : AWARD_COLOR,
+    outlineColor: null,
+  });
 }
 
 export function resultsMenuRowRectangles(options) {
@@ -182,7 +195,7 @@ export function resultsMenuRowRectangles(options) {
   );
 }
 
-export function drawResultsMenu(context, { matchScene, options, selectedIndex, motion }) {
+export function drawResultsMenu(context, { matchScene, options, selectedIndex, motion, awardReveal }) {
   const winnerIndex = matchScene.players.findIndex((player) => player.id === matchScene.winnerId);
   const winner = matchScene.players[winnerIndex];
   const playerCount = matchScene.players.length;
@@ -204,11 +217,11 @@ export function drawResultsMenu(context, { matchScene, options, selectedIndex, m
     // Two players keep their own side. More are shown in rank order with their place named.
     if (playerCount === 2) {
       matchScene.players.forEach((player, index) =>
-        drawStatsPanel(context, layout.statsPanels[index], player, null, matchScene),
+        drawStatsPanel(context, layout.statsPanels[index], player, null, matchScene, awardReveal),
       );
     } else {
       ranked.forEach(({ player, rank }, index) =>
-        drawStatsPanel(context, layout.statsPanels[index], player, rank, matchScene),
+        drawStatsPanel(context, layout.statsPanels[index], player, rank, matchScene, awardReveal),
       );
     }
     drawMenuList(context, { options, selectedIndex, topY: layout.menuTopY, motion });

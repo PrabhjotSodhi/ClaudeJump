@@ -401,6 +401,31 @@
       "volume": 0.3
     }
   ],
+  "award": [
+    {
+      "waveform": "square",
+      "startFrequency": 784,
+      "endFrequency": 784,
+      "duration": 0.08,
+      "volume": 0.16
+    },
+    {
+      "waveform": "square",
+      "startFrequency": 988,
+      "endFrequency": 988,
+      "duration": 0.08,
+      "volume": 0.16,
+      "delay": 0.08
+    },
+    {
+      "waveform": "square",
+      "startFrequency": 1319,
+      "endFrequency": 1319,
+      "duration": 0.16,
+      "volume": 0.16,
+      "delay": 0.16
+    }
+  ],
   "count-beat": [
     {
       "waveform": "square",

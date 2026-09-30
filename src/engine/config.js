@@ -71,6 +71,13 @@ export const SHOVE_CLASH_BOUNCE_VELOCITY_X = 3;
 export const SHOVE_CLASH_CHARGE_MARGIN = 0.2;
 export const SHOVE_CLASH_WIN_KNOCKBACK_MULTIPLIER = 0.5;
 
+// The heat prototype, only on with `?heat` in the URL. Each hit a player takes adds one heat step for the rest of the
+// round. A hit's knockback is multiplied by 1 plus the heat built up before it times HEAT_KNOCKBACK_STEP, up to
+// HEAT_KNOCKBACK_MAX_MULTIPLIER. The player glows with the first color at one step, and the last color when capped.
+export const HEAT_KNOCKBACK_STEP = 0.25;
+export const HEAT_KNOCKBACK_MAX_MULTIPLIER = 2;
+export const HEAT_GLOW_COLORS = ['#feae34', '#f77622', '#e43b44'];
+
 // The knockout that decides a round plays in slow motion: the world only steps every KNOCKOUT_SLOWMO_STEP_INTERVAL
 // ticks for KNOCKOUT_SLOWMO_TICKS ticks, then the round ends as usual. The view zooms in by a whole KNOCKOUT_ZOOM
 // toward the player who fell. The crop slides to the player over KNOCKOUT_ZOOM_IN_TICKS ticks and slides back to
@@ -92,7 +99,6 @@ export const ROUND_GO_TICKS = 30;
 // CALLOUT_CAUSE_TICKS of the fall, and a knockout with fewer than CLUTCH_SECONDS left on the round timer is a clutch.
 // A callout stays on screen for CALLOUT_TICKS.
 export const CALLOUT_CAUSE_TICKS = 90;
-export const CLUTCH_SECONDS = 3;
 export const CALLOUT_TICKS = 60;
 
 // Online matches. A press is scheduled this many ticks ahead so it can cross the network before it is needed.
@@ -106,3 +112,11 @@ export const ONLINE_MESSAGE_TICKS = 240;
 export const STALL_MESSAGE_TICKS = 30;
 // Hashes still waiting for a slow device are forgotten after this many hash intervals.
 export const HASH_KEEP_INTERVALS = 4;
+
+// Results screen. Awards pop in one at a time: the first after AWARD_FIRST_DELAY_TICKS, then one every
+// AWARD_INTERVAL_TICKS. A new award bounces for AWARD_POP_TICKS.
+export const AWARD_FIRST_DELAY_TICKS = 45;
+export const AWARD_INTERVAL_TICKS = 40;
+export const AWARD_POP_TICKS = 8;
+// A round won with this many seconds or fewer left on the sudden death countdown earns Clutch survivor.
+export const CLUTCH_SECONDS = 3;

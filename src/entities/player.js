@@ -1,4 +1,7 @@
 import {
+  HEAT_GLOW_COLORS,
+  HEAT_KNOCKBACK_MAX_MULTIPLIER,
+  HEAT_KNOCKBACK_STEP,
   HITSTOP_TICKS,
   SCREEN_WIDTH,
   SHOVE_CHARGE_WALK_MULTIPLIER,
@@ -48,23 +51,28 @@ const STRETCH_PIXELS = 4;
 const SQUASH_TICKS = 6;
 const SQUASH_PIXELS = 4;
 
-const whiteBodies = new WeakMap();
+const silhouettesBySprite = new WeakMap();
 
-// An all white copy of a body sprite, made once per sprite.
-function whiteBodyOf(sprite) {
-  let whiteBody = whiteBodies.get(sprite);
-  if (!whiteBody) {
-    whiteBody = document.createElement('canvas');
-    whiteBody.width = sprite.width;
-    whiteBody.height = sprite.height;
-    const bodyContext = whiteBody.getContext('2d');
-    bodyContext.drawImage(sprite, 0, 0);
-    bodyContext.globalCompositeOperation = 'source-in';
-    bodyContext.fillStyle = '#ffffff';
-    bodyContext.fillRect(0, 0, sprite.width, sprite.height);
-    whiteBodies.set(sprite, whiteBody);
+// A copy of a body sprite in one flat color, made once per sprite and color.
+function silhouetteOf(sprite, color) {
+  let silhouettesByColor = silhouettesBySprite.get(sprite);
+  if (!silhouettesByColor) {
+    silhouettesByColor = new Map();
+    silhouettesBySprite.set(sprite, silhouettesByColor);
   }
-  return whiteBody;
+  let silhouette = silhouettesByColor.get(color);
+  if (!silhouette) {
+    silhouette = document.createElement('canvas');
+    silhouette.width = sprite.width;
+    silhouette.height = sprite.height;
+    const silhouetteContext = silhouette.getContext('2d');
+    silhouetteContext.drawImage(sprite, 0, 0);
+    silhouetteContext.globalCompositeOperation = 'source-in';
+    silhouetteContext.fillStyle = color;
+    silhouetteContext.fillRect(0, 0, sprite.width, sprite.height);
+    silhouettesByColor.set(color, silhouette);
+  }
+  return silhouette;
 }
 
 function clamp(value, minimum, maximum) {
@@ -72,7 +80,7 @@ function clamp(value, minimum, maximum) {
 }
 
 export class Player extends PhysicsEntity {
-  constructor({ id, character, spawnX, spawnY, facing }) {
+  constructor({ id, character, spawnX, spawnY, facing, heatEnabled = false }) {
     super({ x: spawnX - PLAYER_WIDTH / 2, y: spawnY - PLAYER_HEIGHT, width: PLAYER_WIDTH, height: PLAYER_HEIGHT });
     this.id = id;
     this.character = character;
@@ -99,6 +107,8 @@ export class Player extends PhysicsEntity {
     this.shoveFullChargeTicks = 0;
     this.shoveJustFullyCharged = false;
     this.shoveCharge = 0;
+    this.heatEnabled = heatEnabled;
+    this.heat = 0;
     this.hitstopTicksRemaining = 0;
     this.pendingKnockbackVelocityX = 0;
     this.pendingKnockbackVelocityY = 0;
@@ -155,12 +165,33 @@ export class Player extends PhysicsEntity {
     return this.hitstopTicksRemaining > 0;
   }
 
+  get heatKnockbackMultiplier() {
+    return Math.min(HEAT_KNOCKBACK_MAX_MULTIPLIER, 1 + this.heat * HEAT_KNOCKBACK_STEP);
+  }
+
+  // Render only. Nothing until the first hit, then warmer with every step up to the cap.
+  get heatGlowColor() {
+    if (this.heat === 0) return null;
+    const capReached = (this.heatKnockbackMultiplier - 1) / (HEAT_KNOCKBACK_MAX_MULTIPLIER - 1);
+    return HEAT_GLOW_COLORS[Math.min(HEAT_GLOW_COLORS.length - 1, Math.floor(capReached * HEAT_GLOW_COLORS.length))];
+  }
+
+  // Every hit that knocks this player back goes through here. With heat on, the knockback grows with the heat built
+  // up by earlier hits this round, and this hit adds a step.
+  takeKnockbackHit(knockbackVelocityX, knockbackVelocityY) {
+    const multiplier = this.heatEnabled ? this.heatKnockbackMultiplier : 1;
+    if (this.heatEnabled) this.heat++;
+    return { x: knockbackVelocityX * multiplier, y: knockbackVelocityY * multiplier };
+  }
+
   // Holds the player still for the hit's freeze, then launches them with the given knockback. The hitter
   // freezes with no knockback. A second hit while frozen keeps the longer freeze and adds the knockbacks.
   freeze(strength, knockbackVelocityX = 0, knockbackVelocityY = 0) {
     this.hitstopTicksRemaining = Math.max(this.hitstopTicksRemaining, HITSTOP_TICKS[strength]);
-    this.pendingKnockbackVelocityX += knockbackVelocityX;
-    this.pendingKnockbackVelocityY += knockbackVelocityY;
+    if (knockbackVelocityX === 0 && knockbackVelocityY === 0) return;
+    const knockback = this.takeKnockbackHit(knockbackVelocityX, knockbackVelocityY);
+    this.pendingKnockbackVelocityX += knockback.x;
+    this.pendingKnockbackVelocityY += knockback.y;
   }
 
   // A frozen player ignores input, and a button held through the freeze does not fire when it ends.
@@ -356,7 +387,8 @@ export class Player extends PhysicsEntity {
       this.isShoveFullyCharged && Math.floor(this.shoveFullChargeTicks / FULL_CHARGE_FLASH_TICKS) % 2 === 0;
     drawCharacterBody(context, {
       sprite,
-      flashSprite: flashing ? whiteBodyOf(sprite) : null,
+      flashSprite: flashing ? silhouetteOf(sprite, '#ffffff') : null,
+      glowSprite: this.heatGlowColor && !this.inWater ? silhouetteOf(sprite, this.heatGlowColor) : null,
       eyeFramePositions: this.character.eyeFramePositions,
       eyes: playerEyes.eyesFor(this.id),
       centerX: bodyCenterX,
