@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { mapGamepadToInput, mapGamepadsToInputs } from '../src/engine/gamepad-input.js';
+import { PLAYERS } from '../src/levels/versus-arena.js';
 
 function fakeGamepad({ buttonsPressed = [], axes = [0, 0] } = {}) {
   const buttons = [];
@@ -119,4 +120,21 @@ test('A produces jump and confirm, and B does not confirm', () => {
   assert.equal(aInput.jump, true);
   assert.equal(aInput.confirm, true);
   assert.equal(bInput.confirm, false);
+});
+
+test('the seats take pads in order: slots 3 and 4 control green and yellow', () => {
+  const pads = [null, null, fakeGamepad({ buttonsPressed: [0] }), fakeGamepad({ buttonsPressed: [15] })];
+
+  const inputs = mapGamepadsToInputs(
+    pads,
+    PLAYERS.map((player) => player.id),
+  );
+
+  assert.deepEqual(Object.keys(inputs), ['red', 'blue', 'green', 'yellow']);
+  assert.equal(inputs.green.jump, true);
+  assert.equal(inputs.green.right, false);
+  assert.equal(inputs.yellow.right, true);
+  assert.equal(inputs.yellow.jump, false);
+  assert.equal(inputs.red.jump, false);
+  assert.equal(inputs.blue.jump, false);
 });

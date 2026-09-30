@@ -138,3 +138,15 @@ test('combineInputs merges three sources and keeps the tap point', () => {
   assert.equal(combined.red.jump, true);
   assert.deepEqual(combined.red.tap, { x: 10, y: 20 });
 });
+
+test('combineInputs keeps a player that only the gamepad knows, like the green and yellow seats', () => {
+  const keyboard = { red: input(), blue: input() };
+  const gamepad = { red: input(), blue: input(), green: input({ jump: true }), yellow: input({ left: true }) };
+
+  const combined = combineInputs(keyboard, gamepad);
+
+  assert.deepEqual(Object.keys(combined), ['red', 'blue', 'green', 'yellow']);
+  assert.equal(combined.green.jump, true);
+  assert.equal(combined.yellow.left, true);
+  assert.equal(combined.red.jump, false);
+});

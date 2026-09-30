@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { CHARACTERS } from '../src/entities/characters.js';
-import { hopOffsetY, PlayerSelectScene } from '../src/scenes/player-select-scene.js';
+import { hopOffsetY, PlayerSelectScene, playerCardBox } from '../src/scenes/player-select-scene.js';
 import { harborLevel } from './fixtures/harbor-level.mjs';
 
 function noInput() {
@@ -189,4 +189,100 @@ test('changing character starts a hop, joining does not', () => {
 
   scene.update({ ...neutralInputs(), red: { ...noInput(), right: true } });
   assert.equal(scene.hopStartTickByPlayerId.red, scene.tickCount);
+});
+
+function lockIn(scene, playerId) {
+  press(scene, playerId, 'jump');
+  press(scene, playerId, 'jump');
+}
+
+test('the green and yellow seats join and pick like the others', () => {
+  const { scene } = sceneWithBaseline();
+
+  press(scene, 'green', 'jump');
+  press(scene, 'yellow', 'jump');
+  press(scene, 'green', 'right');
+
+  assert.equal(scene.stateByPlayerId.green, 'picking');
+  assert.equal(scene.stateByPlayerId.yellow, 'picking');
+  assert.equal(hoveredCharacterName(scene, 'green'), 'gemini', 'ChatGPT was the starting pick, so right is Gemini');
+  assert.equal(scene.stateByPlayerId.red, 'unjoined');
+});
+
+test('a match needs two ready players, so one alone never starts it', () => {
+  const { scene, scenes } = sceneWithBaseline();
+
+  lockIn(scene, 'green');
+
+  assert.equal(scene.stateByPlayerId.green, 'ready');
+  assert.equal(scenes.length, 0);
+});
+
+test('the match starts with exactly the players who are ready, in seat order', () => {
+  const { scene, scenes } = sceneWithBaseline();
+
+  lockIn(scene, 'yellow');
+  readyUp(scene, 'red');
+
+  assert.equal(scenes.length, 1);
+  assert.deepEqual(Object.keys(scenes[0].characterByPlayerId), ['red', 'yellow']);
+});
+
+test('a joined player who is still picking holds the match until they are ready', () => {
+  const { scene, scenes } = sceneWithBaseline();
+  press(scene, 'green', 'jump');
+  lockIn(scene, 'red');
+  lockIn(scene, 'blue');
+
+  assert.equal(scenes.length, 0, 'green joined but has not locked in');
+
+  scene.update(inputsWithJump('green'));
+  assert.equal(scenes.length, 1);
+  assert.deepEqual(Object.keys(scenes[0].characterByPlayerId), ['red', 'blue', 'green']);
+});
+
+test('all four players can join first and then be ready together', () => {
+  const { scene, scenes } = sceneWithBaseline();
+  for (const playerId of ['red', 'blue', 'green', 'yellow']) press(scene, playerId, 'jump');
+  for (const playerId of ['red', 'blue', 'green']) press(scene, playerId, 'jump');
+  assert.equal(scenes.length, 0, 'yellow is still picking');
+
+  scene.update(inputsWithJump('yellow'));
+
+  assert.deepEqual(Object.keys(scenes[0].characterByPlayerId), ['red', 'blue', 'green', 'yellow']);
+});
+
+test('down steps a picking player back out, so a mistaken join does not hold the match', () => {
+  const { scene, scenes } = sceneWithBaseline();
+  press(scene, 'green', 'jump');
+  lockIn(scene, 'red');
+  lockIn(scene, 'blue');
+  assert.equal(scenes.length, 0);
+
+  scene.update({ ...neutralInputs(), green: { ...noInput(), down: true } });
+
+  assert.equal(scene.stateByPlayerId.green, 'unjoined');
+  assert.equal(scenes.length, 1);
+  assert.deepEqual(Object.keys(scenes[0].characterByPlayerId), ['red', 'blue']);
+});
+
+test('down does nothing to a player who is ready or has not joined', () => {
+  const { scene } = sceneWithBaseline();
+  lockIn(scene, 'red');
+
+  press(scene, 'red', 'down');
+  press(scene, 'blue', 'down');
+
+  assert.equal(scene.stateByPlayerId.red, 'ready');
+  assert.equal(scene.stateByPlayerId.blue, 'unjoined');
+});
+
+test('the four cards sit side by side inside the screen without overlapping', () => {
+  const boxes = [0, 1, 2, 3].map((seatIndex) => playerCardBox(seatIndex));
+
+  boxes.forEach((box, index) => {
+    for (const value of Object.values(box)) assert.ok(Number.isInteger(value));
+    assert.ok(box.x >= 0 && box.x + box.width <= 640);
+    if (index > 0) assert.ok(box.x >= boxes[index - 1].x + boxes[index - 1].width);
+  });
 });

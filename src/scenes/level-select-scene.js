@@ -2,7 +2,7 @@ import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../engine/config.js';
 import { EventEmitter } from '../engine/events.js';
 import { SeededRandom } from '../engine/seeded-random.js';
 import { THUMBNAIL_HEIGHT, THUMBNAIL_WIDTH } from '../levels/level-thumbnail.js';
-import { MENU_PLAYERS } from '../levels/versus-arena.js';
+import { PLAYERS } from '../levels/versus-arena.js';
 import {
   drawKeyHints,
   drawMenuTitle,
@@ -42,7 +42,8 @@ const RANDOM_MARK_SCALE = 6;
 const RANDOM_MARK_TOP_Y = 14;
 const RANDOM_MARK_COLOR = '#5a6988';
 
-const STATUS_OFFSET_X = 148;
+// Where each voter's prompt sits, as offsets from the screen's center, by how many players voted.
+const STATUS_OFFSETS_X = { 2: [-148, 148], 3: [-200, 0, 200], 4: [-240, -80, 80, 240] };
 const HINTS = [
   { keys: ['A', 'D', 'S', 'Left', 'Right', 'Down'], label: 'Move' },
   { keys: ['W', 'Up'], label: 'Vote' },
@@ -72,7 +73,9 @@ export class LevelSelectScene {
     // A cursor is an index into levels, or levels.length for the Random tile.
     this.cursorByPlayerId = {};
     this.lockedByPlayerId = {};
-    for (const spawn of MENU_PLAYERS) {
+    // Only the players who joined vote, in seat order.
+    this.voters = PLAYERS.filter((spawn) => spawn.id in characterByPlayerId);
+    for (const spawn of this.voters) {
       this.cursorByPlayerId[spawn.id] = levels.length;
       this.lockedByPlayerId[spawn.id] = false;
     }
@@ -89,11 +92,11 @@ export class LevelSelectScene {
 
     if (!this.previousInput) {
       this.previousInput = {};
-      for (const spawn of MENU_PLAYERS) this.previousInput[spawn.id] = { ...inputByPlayerId[spawn.id] };
+      for (const spawn of this.voters) this.previousInput[spawn.id] = { ...inputByPlayerId[spawn.id] };
       return;
     }
 
-    for (const spawn of MENU_PLAYERS) {
+    for (const spawn of this.voters) {
       const input = inputByPlayerId[spawn.id] ?? {};
       const previous = this.previousInput[spawn.id];
       if (!this.lockedByPlayerId[spawn.id]) {
@@ -122,7 +125,7 @@ export class LevelSelectScene {
 
   // Touch drives the first player. A tap moves their cursor to the tile, and a tap on the tile they are on votes.
   selectTappedTile(inputByPlayerId) {
-    const playerId = MENU_PLAYERS[0].id;
+    const playerId = this.voters[0].id;
     const tappedIndex = rowIndexAt(levelSelectLayout(this.levels.length + 1).bounds, tapPoint(inputByPlayerId));
     if (tappedIndex < 0 || this.lockedByPlayerId[playerId]) return;
     if (this.cursorByPlayerId[playerId] === tappedIndex) this.lockedByPlayerId[playerId] = true;
@@ -148,14 +151,18 @@ export class LevelSelectScene {
     this.cursorByPlayerId[playerId] = below < cardCount ? below : cursor % columns;
   }
 
-  // Every vote for a level is one ticket for it, and a Random vote is one ticket for every level.
+  // The level with the most votes wins. A Random vote first turns into a vote for one random level, and a tie
+  // between the leaders is broken at random. Every draw comes from the seed, so the same votes always pick the same level.
   pickLevel() {
-    const tickets = [];
-    for (const vote of Object.values(this.cursorByPlayerId)) {
-      if (vote < this.levels.length) tickets.push(this.levels[vote]);
-      else tickets.push(...this.levels);
+    const random = new SeededRandom(this.seed);
+    const pickIndex = (count) => Math.floor(random.next() * count);
+    const votesByLevelIndex = new Array(this.levels.length).fill(0);
+    for (const cursor of Object.values(this.cursorByPlayerId)) {
+      votesByLevelIndex[cursor < this.levels.length ? cursor : pickIndex(this.levels.length)]++;
     }
-    return tickets[Math.floor(new SeededRandom(this.seed).next() * tickets.length)];
+    const mostVotes = Math.max(...votesByLevelIndex);
+    const leaders = this.levels.filter((level, index) => votesByLevelIndex[index] === mostVotes);
+    return leaders[pickIndex(leaders.length)];
   }
 
   startMatch() {
@@ -165,7 +172,7 @@ export class LevelSelectScene {
         matchScene: new VersusScene({
           level: this.pickedLevel,
           seed: this.seed,
-          players: Object.entries(this.characterByPlayerId).map(([id, character]) => ({ id, character })),
+          players: this.voters.map(({ id }) => ({ id, character: this.characterByPlayerId[id] })),
           sprites: this.sprites,
           levels: this.levels,
         }),
@@ -264,15 +271,18 @@ function drawCaption(context, x, restingY, level, selected) {
   });
 }
 
-// The player's character sits in the tile's top corner on their side, so both players show on a shared tile.
-function drawBadge(context, x, y, playerIndex, character, sprites) {
+// The player's character sits in a corner of the tile by seat: top left, top right, bottom left, bottom right,
+// so everyone shows on a shared tile.
+function drawBadge(context, x, y, seatIndex, character, sprites) {
   const offsetX = BADGE_MARGIN + FRAME_SIZE / 2;
+  const isRightColumn = seatIndex % 2 === 1;
+  const isBottomRow = seatIndex >= 2;
   drawCharacterBody(context, {
     sprite: sprites[character.spriteName].body,
     eyeFramePositions: character.eyeFramePositions,
     eyes: BADGE_EYES,
-    centerX: playerIndex === 0 ? x + offsetX : x + THUMBNAIL_WIDTH - offsetX,
-    bottomY: y + BADGE_MARGIN + FRAME_SIZE,
+    centerX: isRightColumn ? x + THUMBNAIL_WIDTH - offsetX : x + offsetX,
+    bottomY: isBottomRow ? y + THUMBNAIL_HEIGHT - BADGE_MARGIN : y + BADGE_MARGIN + FRAME_SIZE,
     width: FRAME_SIZE,
     height: FRAME_SIZE,
   });
@@ -285,7 +295,7 @@ function drawLevelSelectUi(context, scene) {
   const pickedIndex = scene.levels.indexOf(scene.pickedLevel);
   const flashOn = Math.floor(scene.revealTicksRemaining / REVEAL_FLASH_TICKS) % 2 === 0;
   for (let tileIndex = 0; tileIndex < cardCount; tileIndex++) {
-    const playersHere = MENU_PLAYERS.filter((spawn) => scene.cursorByPlayerId[spawn.id] === tileIndex);
+    const playersHere = scene.voters.filter((spawn) => scene.cursorByPlayerId[spawn.id] === tileIndex);
     const isSelected = scene.pickedLevel ? tileIndex === pickedIndex : playersHere.length > 0;
     const isLit = scene.pickedLevel ? isSelected && flashOn : isSelected;
     const restingY = tiles[tileIndex].y;
@@ -294,13 +304,13 @@ function drawLevelSelectUi(context, scene) {
     drawTile(context, x, y, scene.levels[tileIndex], { selected: isLit, dimmed: !isSelected });
     drawCaption(context, x, restingY, scene.levels[tileIndex], isSelected);
     for (const spawn of playersHere) {
-      drawBadge(context, x, y, MENU_PLAYERS.indexOf(spawn), scene.characterByPlayerId[spawn.id], scene.sprites);
+      drawBadge(context, x, y, PLAYERS.indexOf(spawn), scene.characterByPlayerId[spawn.id], scene.sprites);
     }
   }
 
   if (scene.pickedLevel) return;
-  MENU_PLAYERS.forEach((spawn, playerIndex) => {
-    const centerX = SCREEN_WIDTH / 2 + (playerIndex === 0 ? -STATUS_OFFSET_X : STATUS_OFFSET_X);
+  scene.voters.forEach((spawn, voterIndex) => {
+    const centerX = SCREEN_WIDTH / 2 + STATUS_OFFSETS_X[scene.voters.length][voterIndex];
     const locked = scene.lockedByPlayerId[spawn.id];
     const prompt = locked ? 'Locked in!' : 'Press jump to vote';
     drawText(context, prompt, centerX - Math.floor(measureText(prompt) / 2), promptY, {
