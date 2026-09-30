@@ -44,7 +44,8 @@ class OnlineConnection {
     this.onMessage = () => {};
     this.onError = () => {};
     this.peers = new Map();
-    this.lastMessageId = '';
+    this.seenMessageIds = new Set();
+    this.earlyCandidates = new Map();
     this.pollTimer = null;
     this.pollingEnabled = false;
     this.closed = false;
@@ -94,10 +95,11 @@ class OnlineConnection {
     this.pollTimer = null;
     try {
       const { messages } = await requestRooms(this.endpoint, 'poll', {
-        query: { code: this.code, playerId: this.playerId, after: this.lastMessageId },
+        query: { code: this.code, playerId: this.playerId },
       });
       for (const message of messages) {
-        this.lastMessageId = message.id;
+        if (this.seenMessageIds.has(message.id)) continue;
+        this.seenMessageIds.add(message.id);
         await this.handleSignal(message.from, message.payload);
       }
     } catch (error) {
@@ -124,15 +126,28 @@ class OnlineConnection {
 
   createPeer(peerId) {
     const connection = new RTCPeerConnection({ iceServers: STUN_SERVERS });
-    const peer = { connection, channel: null, pendingCandidates: [], timeoutTimer: null };
+    const pendingCandidates = this.earlyCandidates.get(peerId) ?? [];
+    this.earlyCandidates.delete(peerId);
+    const peer = { connection, channel: null, pendingCandidates, timeoutTimer: null };
     this.peers.set(peerId, peer);
     connection.onicecandidate = (event) => {
       if (event.candidate) this.sendSignal(peerId, { type: 'candidate', candidate: event.candidate });
     };
     peer.timeoutTimer = setTimeout(() => {
-      if (peer.channel?.readyState !== 'open') this.fail(new OnlineError('connection-failed'));
+      if (peer.channel?.readyState === 'open') return;
+      if (this.isHost) this.dropPeer(peerId);
+      else this.fail(new OnlineError('connection-failed'));
     }, CONNECT_TIMEOUT_MILLISECONDS);
     return peer;
+  }
+
+  dropPeer(peerId) {
+    const peer = this.peers.get(peerId);
+    clearTimeout(peer.timeoutTimer);
+    if (peer.channel) peer.channel.onclose = null;
+    peer.connection.close();
+    this.peers.delete(peerId);
+    this.onPeerClose(peerId);
   }
 
   watchChannel(peerId, peer, channel) {
@@ -166,7 +181,12 @@ class OnlineConnection {
       return;
     }
     const peer = this.peers.get(peerId);
-    if (!peer) return;
+    if (!peer) {
+      if (payload.type === 'candidate') {
+        this.earlyCandidates.set(peerId, [...(this.earlyCandidates.get(peerId) ?? []), payload.candidate]);
+      }
+      return;
+    }
     if (payload.type === 'answer') {
       await peer.connection.setRemoteDescription(payload.description);
       await this.addPendingCandidates(peer);

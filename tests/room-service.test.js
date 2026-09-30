@@ -11,10 +11,19 @@ import {
 
 function createMemoryStore() {
   const entries = new Map();
+  const versions = new Map();
   return {
     entries,
     get: async (key) => structuredClone(entries.get(key) ?? null),
     set: async (key, value) => void entries.set(key, structuredClone(value)),
+    read: async (key) =>
+      entries.has(key) ? { value: structuredClone(entries.get(key)), version: versions.get(key) } : null,
+    write: async (key, value, version) => {
+      if ((versions.get(key) ?? null) !== version) return false;
+      entries.set(key, structuredClone(value));
+      versions.set(key, (version ?? 0) + 1);
+      return true;
+    },
     delete: async (key) => void entries.delete(key),
     list: async (prefix) => [...entries.keys()].filter((key) => key.startsWith(prefix)),
   };
@@ -74,7 +83,7 @@ test('a room expires after 10 minutes without activity and is cleaned up', async
   assert.equal(store.entries.size, 0);
 });
 
-test('signals reach only the recipient, in order, and polling resumes after a cursor', async () => {
+test('signals reach only the recipient, in order', async () => {
   const { clock, service } = createFixture();
   const { code, hostId } = await service.create();
   const first = await service.join({ code });
@@ -93,17 +102,52 @@ test('signals reach only the recipient, in order, and polling resumes after a cu
       [hostId, 2],
     ],
   );
-  clock.time += MIN_POLL_INTERVAL_MILLISECONDS;
-  const cursor = firstPoll.messages.at(-1).id;
-  await service.signal({ code, from: first.playerId, to: hostId, payload: { type: 'answer' } });
-  const laterPoll = await service.poll({ code, playerId: first.playerId, after: cursor });
-  assert.deepEqual(laterPoll.messages, []);
-
   const secondPoll = await service.poll({ code, playerId: second.playerId });
   assert.deepEqual(
     secondPoll.messages.map((message) => message.payload.n),
     [3],
   );
+});
+
+test('a message that sorts before one already delivered is still delivered', async () => {
+  const { clock, service } = createFixture();
+  const { code, hostId } = await service.create();
+  const { playerId } = await service.join({ code });
+  const send = (n) => service.signal({ code, from: hostId, to: playerId, payload: { n } });
+
+  await send(1);
+  const firstPoll = await service.poll({ code, playerId });
+  clock.time -= 1;
+  await send(2);
+  clock.time += 1 + MIN_POLL_INTERVAL_MILLISECONDS;
+  const laterPoll = await service.poll({ code, playerId, after: firstPoll.messages.at(-1).id });
+  const delivered = laterPoll.messages.map((message) => message.payload.n);
+  assert.ok(delivered.includes(2), `delivered ${delivered}`);
+});
+
+test('two players joining at the same moment get different slots', async () => {
+  const { service } = createFixture();
+  const { code } = await service.create();
+  const joined = await Promise.all([service.join({ code }), service.join({ code })]);
+  assert.deepEqual(joined.map((player) => player.slot).sort(), [1, 2]);
+  await service.join({ code });
+  await assertRejects(service.join({ code }), 'room-full');
+});
+
+test('two hosts can never take the same code', async () => {
+  const store = createMemoryStore();
+  const service = createRoomService({ store, now: () => 1_000_000, random: () => 0 });
+  await service.create();
+  await assertRejects(service.create(), 'no-free-code');
+});
+
+test('payload size is measured in bytes, not characters', async () => {
+  const { service } = createFixture();
+  const { code, hostId } = await service.create();
+  const { playerId } = await service.join({ code });
+  const payload = { text: 'é'.repeat(MAX_PAYLOAD_BYTES / 2) };
+  assert.ok(JSON.stringify(payload).length < MAX_PAYLOAD_BYTES);
+  await assertRejects(service.signal({ code, from: hostId, to: playerId, payload }), 'payload-too-large');
 });
 
 test('the host is told when a player joins', async () => {

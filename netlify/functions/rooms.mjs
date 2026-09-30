@@ -11,6 +11,14 @@ export default async function rooms(request) {
     set: (key, value) => blobs.setJSON(key, value),
     delete: (key) => blobs.delete(key),
     list: async (prefix) => (await blobs.list({ prefix })).blobs.map((blob) => blob.key),
+    read: async (key) => {
+      const stored = await blobs.getWithMetadata(key, { type: 'json' });
+      return stored ? { value: stored.data, version: stored.etag } : null;
+    },
+    write: async (key, value, version) => {
+      const condition = version === null ? { onlyIfNew: true } : { onlyIfMatch: version };
+      return (await blobs.setJSON(key, value, condition)).modified;
+    },
   };
   return handleRoomRequest(createRoomService({ store }), request);
 }

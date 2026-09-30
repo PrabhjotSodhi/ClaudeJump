@@ -29,7 +29,6 @@ export async function handleRoomRequest(service, request) {
         await service.poll({
           code: parameters.get('code'),
           playerId: parameters.get('playerId'),
-          after: parameters.get('after') ?? '',
         }),
       );
     }
