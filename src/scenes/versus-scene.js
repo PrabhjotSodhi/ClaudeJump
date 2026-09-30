@@ -1,9 +1,11 @@
-import { CARD_NAMES, GOLDEN_PICKUP_USES, PICKUP_USES } from '../cards/card-definitions.js';
+import { crateCardFor, GOLDEN_PICKUP_USES, PICKUP_USES } from '../cards/card-definitions.js';
 import {
   CALLOUT_CAUSE_TICKS,
   GOLDEN_CRATE_AFTER_TICKS,
   KNOCKOUT_SLOWMO_STEP_INTERVAL,
   KNOCKOUT_SLOWMO_TICKS,
+  MAGNET_PULL_SPEED,
+  MAGNET_STOP_DISTANCE,
   MODIFIER_EVERY_N_ROUNDS,
   MODIFIER_PICK_TICKS,
   ROUND_COUNTDOWN_BEAT_TICKS,
@@ -44,6 +46,7 @@ import {
   BOUNCE_PAD_FLING_VELOCITY_X,
   BOUNCE_PAD_FLING_VELOCITY_Y,
 } from '../entities/bounce-pad.js';
+import { IceShot, ICE_SHOT_WIDTH, ICE_SHOT_HEIGHT } from '../entities/ice-shot.js';
 import { DEFAULT_JOINED_PLAYERS } from '../entities/characters.js';
 import { BLAST_SLIDE_SPEED, Crate, CRATE_WIDTH, CRATE_HEIGHT, CRATE_WARNING_TICKS } from '../entities/crate.js';
 import { Platform } from '../entities/platform.js';
@@ -64,6 +67,7 @@ import { drawPlayerTags } from '../ui/player-tags.js';
 import { WinPips } from '../ui/win-pips.js';
 import { ClashSparks, drawClashSparks } from '../vfx/clash-sparks.js';
 import { knockoutZoom } from '../vfx/knockout-zoom.js';
+import { drawMagnetField } from '../vfx/magnet-field.js';
 import { CharacterAnimations } from '../vfx/character-animations.js';
 import { Confetti } from '../vfx/confetti.js';
 import { CrateOpenings } from '../vfx/crate-openings.js';
@@ -249,6 +253,7 @@ export class VersusScene {
     this.entityGroups.clear('players');
     this.entityGroups.clear('rockets');
     this.entityGroups.clear('bombs');
+    this.entityGroups.clear('iceShots');
     this.entityGroups.clear('hazards');
     for (const hazard of createHazards(this.level.hazards, { level: this.level, random: this.random }))
       this.entityGroups.add('hazards', hazard);
@@ -453,6 +458,8 @@ export class VersusScene {
         this.updateHazards();
         this.updateRockets();
         this.updateBombs();
+        this.updateIceShots();
+        this.updateMagnets();
         this.updateBouncePads();
         this.updateBananaRain();
         this.updateBananas();
@@ -464,6 +471,7 @@ export class VersusScene {
           this.updatePlayers(null);
           this.updateRockets();
           this.updateBombs();
+          this.updateIceShots();
         }
         if (this.ticksRemaining <= 0) this.endRound();
         break;
@@ -471,6 +479,7 @@ export class VersusScene {
         this.updatePlayers(null);
         this.updateRockets();
         this.updateBombs();
+        this.updateIceShots();
         if (this.ticksRemaining <= 0) this.startNextRound();
         break;
       case 'modifier':
@@ -480,6 +489,7 @@ export class VersusScene {
         this.updatePlayers(null);
         this.updateRockets();
         this.updateBombs();
+        this.updateIceShots();
         break;
     }
   }
@@ -513,6 +523,7 @@ export class VersusScene {
       player.update(inputByPlayerId ? inputByPlayerId[player.id] : null, platforms);
       const feet = { playerId: player.id, x: player.x + player.width / 2, y: player.y + player.height };
       if (player.ticksSinceJump === 0) this.events.emit('player-jumped', feet);
+      if (player.springJumped) this.events.emit('spring-jumped', feet);
       if (player.onGround && !wasOnGround && fallSpeed >= HARD_LANDING_SPEED) this.events.emit('player-landed', feet);
       if (player.playedCardName) {
         this.events.emit('card-played', { playerId: player.id, cardName: player.playedCardName });
@@ -520,6 +531,8 @@ export class VersusScene {
         if (player.playedCardName === 'bouncePad') this.spawnBouncePad(player);
         if (player.playedCardName === 'bomb') this.spawnBomb(player);
         if (player.playedCardName === 'banana') this.spawnBanana(player);
+        if (player.playedCardName === 'freeze') this.spawnIceShot(player);
+        if (player.playedCardName === 'magnet') this.startMagnet(player);
       }
       if (player.shoveJustFullyCharged) this.events.emit('shove-fully-charged', { playerId: player.id });
       if (
@@ -722,6 +735,54 @@ export class VersusScene {
     }
   }
 
+  spawnIceShot(player) {
+    const x = player.facing > 0 ? player.x + player.width : player.x - ICE_SHOT_WIDTH;
+    const y = player.y + player.height / 2 - ICE_SHOT_HEIGHT / 2;
+    this.entityGroups.add('iceShots', new IceShot({ x, y, facing: player.facing, shooterId: player.id }));
+  }
+
+  updateIceShots() {
+    const platforms = this.entityGroups.get('platforms');
+    for (const iceShot of this.entityGroups.get('iceShots')) {
+      iceShot.update(this.players, platforms);
+      wrapAroundScreen(iceShot);
+      if (!iceShot.finished) continue;
+
+      const target = this.players.find((player) => player.id === iceShot.hitPlayerId);
+      const x = iceShot.x + iceShot.width / 2;
+      const y = iceShot.y + iceShot.height / 2;
+      if (target) {
+        target.freezeSolid();
+        this.events.emit('player-iced', { shooterId: iceShot.shooterId, targetId: target.id, x, y });
+      } else {
+        this.events.emit('ice-shattered', { x, y });
+      }
+      this.entityGroups.remove('iceShots', iceShot);
+    }
+  }
+
+  startMagnet(player) {
+    const targetIds = this.players.filter((other) => other !== player && !other.inWater).map((other) => other.id);
+    this.events.emit('magnet-pulled', { playerId: player.id, targetIds });
+  }
+
+  // Pulls sideways only, straight across the screen, and never slower than a pull already carrying the player.
+  updateMagnets() {
+    for (const puller of this.players) {
+      if (puller.magnetTicksRemaining <= 0) continue;
+      puller.magnetTicksRemaining = puller.inWater ? 0 : puller.magnetTicksRemaining - 1;
+      for (const target of this.players) {
+        if (target === puller || target.inWater) continue;
+        const distanceX = puller.x - target.x;
+        if (Math.abs(distanceX) <= MAGNET_STOP_DISTANCE) continue;
+        const direction = Math.sign(distanceX);
+        if (target.knockbackVelocityX * direction < MAGNET_PULL_SPEED) {
+          target.knockbackVelocityX = direction * MAGNET_PULL_SPEED;
+        }
+      }
+    }
+  }
+
   // Dropped just behind the player, then falls to the ground from there, or into the sea.
   spawnBanana(player) {
     const x = player.facing > 0 ? player.x - BANANA_WIDTH : player.x + player.width;
@@ -836,7 +897,7 @@ export class VersusScene {
     if (openTops.length === 0) return; // no dry platform right now; try again next tick
 
     const openTop = openTops[Math.floor(this.random.next() * openTops.length)];
-    const cardName = CARD_NAMES[Math.floor(this.random.next() * CARD_NAMES.length)];
+    const cardName = crateCardFor(this.random.next());
     const x = openTop.x + this.random.next() * (openTop.width - CRATE_WIDTH);
     const y = openTop.y - CRATE_HEIGHT;
     const golden = !this.goldenCrateSpawned && this.fightTicks >= GOLDEN_CRATE_AFTER_TICKS;
@@ -987,6 +1048,7 @@ export class VersusScene {
       arenaName: this.level.background,
     });
     this.crateOpenings.render(renderer.gameContext);
+    drawMagnetField(renderer.gameContext, this);
     drawSplashes(renderer.gameContext, this);
     drawParticles(renderer.gameContext, this);
     drawClashSparks(renderer.gameContext, this);

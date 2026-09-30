@@ -15,6 +15,10 @@ export class PhysicsEntity extends Entity {
     this.previousY = y;
   }
 
+  get knockbackDecay() {
+    return this.onGround ? GROUND_KNOCKBACK_DECAY : AIR_KNOCKBACK_DECAY;
+  }
+
   applyGravity(gravity, maxFallSpeed) {
     this.velocityY = Math.min(this.velocityY + gravity, maxFallSpeed);
   }
@@ -57,7 +61,7 @@ export class PhysicsEntity extends Entity {
       this.velocityX = 0;
       this.knockbackVelocityX = 0;
     }
-    const knockbackDecay = this.onGround ? GROUND_KNOCKBACK_DECAY : AIR_KNOCKBACK_DECAY;
+    const knockbackDecay = this.knockbackDecay;
     if (this.knockbackVelocityX > 0) this.knockbackVelocityX = Math.max(0, this.knockbackVelocityX - knockbackDecay);
     else if (this.knockbackVelocityX < 0)
       this.knockbackVelocityX = Math.min(0, this.knockbackVelocityX + knockbackDecay);

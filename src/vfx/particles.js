@@ -16,6 +16,9 @@ const DUST_COLOR = '#c8ccd4';
 const FIRE_COLOR = '#f77622';
 const BLAST_COLOR = '#ffd23c';
 const CRAB_COLOR = '#e43b44';
+const ICE_COLOR = '#2ce8f5';
+const SPRING_COLOR = '#feae34';
+const ICE_GLINT_COLOR = '#ffffff';
 const DROPLET_COLORS = ['#c0cbdc', '#2ce8f5', '#ffffff'];
 const PLAYER_HALF_WIDTH = 12;
 const PLAYER_HALF_HEIGHT = 14;
@@ -95,6 +98,20 @@ export class Particles {
       const player = findPlayer(playerId);
       if (player) burst(centerOf(player).x, centerOf(player).y, player.color, HIT_SPARKS);
     });
+    events.on('magnet-pulled', ({ playerId, targetIds }) => {
+      const puller = findPlayer(playerId);
+      if (!puller) return;
+      for (const target of targetIds.map(findPlayer)) {
+        if (target) burst(centerOf(target).x, centerOf(target).y, puller.color, HIT_SPARKS);
+      }
+    });
+    events.on('spring-jumped', ({ x, y }) => burst(x, y, SPRING_COLOR, LANDING_DUST));
+    events.on('player-iced', ({ targetId, x, y }) => {
+      const target = findPlayer(targetId);
+      if (target) burst(centerOf(target).x, centerOf(target).y, ICE_COLOR, BLAST_SPARKS);
+      burst(x, y, ICE_GLINT_COLOR, HIT_SPARKS);
+    });
+    events.on('ice-shattered', ({ x, y }) => burst(x, y, ICE_COLOR, HIT_SPARKS));
     events.on('crab-stomped', ({ x, y }) => burst(x, y, CRAB_COLOR, HIT_SPARKS));
     events.on('player-pinched', (hit) => {
       const player = findPlayer(hit.playerId);

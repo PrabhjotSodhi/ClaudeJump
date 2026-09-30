@@ -183,3 +183,34 @@ export const BRIDGE_PLANK_FALL_VISIBLE_TICKS = 90;
 // Once per round, the first crate that starts to land after GOLDEN_CRATE_AFTER_TICKS of the fight is golden: it gives
 // GOLDEN_PICKUP_USES uses of its card (see card-definitions.js) and has a gold landing marker.
 export const GOLDEN_CRATE_AFTER_TICKS = 1200;
+
+// Each crate draws its card by these weights: a card with weight 2 turns up twice as often as one with weight 1.
+export const CARD_CRATE_WEIGHTS = {
+  dash: 1,
+  rocket: 1,
+  bouncePad: 1,
+  bomb: 1,
+  banana: 1,
+  magnet: 1,
+  springShoes: 1,
+  freeze: 1,
+};
+
+// Magnet: for MAGNET_TICKS every other player is pulled sideways toward the player who played it at
+// MAGNET_PULL_SPEED, until their centers are within MAGNET_STOP_DISTANCE.
+export const MAGNET_TICKS = 60;
+export const MAGNET_PULL_SPEED = 3;
+export const MAGNET_STOP_DISTANCE = 20;
+
+// Spring shoes: the next SPRING_SHOES_JUMPS jumps, from the ground or in the air, go SPRING_SHOES_HEIGHT_MULTIPLIER
+// times as high.
+export const SPRING_SHOES_JUMPS = 3;
+export const SPRING_SHOES_HEIGHT_MULTIPLIER = 2;
+
+// Freeze: an ice shot flies straight at ICE_SHOT_SPEED and melts after ICE_SHOT_LIFETIME_TICKS or on a wall. The first
+// other player it touches is frozen for FREEZE_TICKS: no control, and their knockback only fades by
+// FROZEN_KNOCKBACK_DECAY a tick, so a shove sends them sliding.
+export const ICE_SHOT_SPEED = 5;
+export const ICE_SHOT_LIFETIME_TICKS = 120;
+export const FREEZE_TICKS = 60;
+export const FROZEN_KNOCKBACK_DECAY = 0.15;
