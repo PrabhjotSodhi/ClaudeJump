@@ -2,6 +2,7 @@ import { SCREEN_WIDTH } from '../engine/config.js';
 import { CHARACTERS, findCharacter } from '../entities/characters.js';
 import { PLAYERS } from '../levels/versus-arena.js';
 import { THUMBNAIL_HEIGHT, THUMBNAIL_WIDTH } from '../levels/level-thumbnail.js';
+import { matchModeName } from '../scenes/match-modes.js';
 import { RANDOM_LEVEL } from '../scenes/online-lobby-state.js';
 import { drawKeyHints, drawMenuList, menuRowRectangles } from './menu-kit.js';
 import { drawPanel } from './panel.js';
@@ -42,7 +43,7 @@ const HINTS = [
 const TOUCH_HINT = 'Tap a row. Tap its sides to change';
 
 // Rows the menu can hold. A row named here that the local player cannot use is left out by the scene.
-export const CHANGEABLE_ROWS = ['character', 'level'];
+export const CHANGEABLE_ROWS = ['character', 'level', 'mode'];
 
 export function cardBox(seatIndex) {
   return selectCardBox(seatIndex, CARD_TOP_Y);
@@ -53,6 +54,7 @@ export function lobbyRowLabels({ rows, lobby, localSeat }) {
   return rows.map((row) => {
     if (row === 'character') return `Character: ${findCharacter(localSeatState?.characterName)?.displayName ?? ''}`;
     if (row === 'ready') return localSeatState?.ready ? 'Cancel ready' : 'Ready up';
+    if (row === 'mode') return `Mode: ${matchModeName(lobby.modeId)}`;
     if (row === 'level') return `Level: ${lobby.levelName === RANDOM_LEVEL ? 'Random' : lobby.levelName}`;
     if (row === 'start') {
       if (lobby.canStart()) return 'Start match';
@@ -142,9 +144,10 @@ function drawStatusPanel(context, view, x) {
   const lines = [
     [`Players ${lobby.playerCount} of ${PLAYERS.length}`, LABEL_COLOR],
     [`Ready ${lobby.readyCount} of ${lobby.playerCount}`, lobby.canStart() ? SELECTED_COLOR : LABEL_COLOR],
+    [matchModeName(lobby.modeId), LABEL_COLOR],
     [isHost ? 'You start the match' : 'Host starts the match', DIM_COLOR],
   ];
-  drawPanel(context, x, MENU_TOP_Y, SIDE_PANEL_WIDTH, 50);
+  drawPanel(context, x, MENU_TOP_Y, SIDE_PANEL_WIDTH, 62);
   lines.forEach(([text, color], index) => {
     drawText(context, text, x + SIDE_PANEL_WIDTH / 2, MENU_TOP_Y + 10 + index * 12, {
       scale: 1,

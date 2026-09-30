@@ -79,7 +79,7 @@ const REVEAL_FLASH_TICKS = 6;
 const BADGE_EYES = EYE_STIFFNESSES.map((stiffness) => new GooglyEye(stiffness));
 
 export class LevelSelectScene {
-  constructor({ sceneManager, levels, characterByPlayerId, sprites = {}, seed = Date.now() }) {
+  constructor({ sceneManager, levels, characterByPlayerId, sprites = {}, seed = Date.now(), mode = 'knockout' }) {
     this.sceneManager = sceneManager;
     this.events = new EventEmitter();
     this.musicTrackName = 'menu';
@@ -87,6 +87,7 @@ export class LevelSelectScene {
     this.characterByPlayerId = characterByPlayerId;
     this.sprites = sprites;
     this.seed = seed;
+    this.mode = mode;
     this.waterLineY = NO_WATER_LINE_Y;
     this.backgroundDrawn = false;
     // Captured from the real input on the first tick this scene runs, so the jump that locked in a
@@ -200,6 +201,7 @@ export class LevelSelectScene {
           sprites: this.sprites,
           levels: this.levels,
           heat: gameOptions.heat,
+          mode: this.mode,
         }),
       }),
     );

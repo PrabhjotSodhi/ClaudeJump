@@ -15,7 +15,7 @@ import { VersusScene } from './versus-scene.js';
 
 const HOST_MEMBER_ID = 'host';
 const HOST_PLAYER_ID = PLAYERS[0].id;
-const HOST_ROWS = ['character', 'ready', 'level', 'start', 'leave'];
+const HOST_ROWS = ['character', 'ready', 'level', 'mode', 'start', 'leave'];
 const JOINER_ROWS = ['character', 'ready', 'leave'];
 
 // The room before a match, for the host and for joiners. The host owns the lobby and sends it to everyone.
@@ -184,6 +184,9 @@ export class OnlineLobbyScene {
     this.events.emit('menu-moved', {});
     if (row === 'level') {
       this.lobby.changeLevel(direction);
+      this.broadcastLobby();
+    } else if (row === 'mode') {
+      this.lobby.changeMode(direction);
       this.broadcastLobby();
     } else if (this.isHost) {
       this.lobby.changeCharacter(HOST_MEMBER_ID, direction);

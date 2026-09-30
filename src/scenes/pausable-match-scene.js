@@ -170,6 +170,7 @@ export class PausableMatchScene {
           characterByPlayerId: this.matchScene.characterByPlayerId,
           sprites: this.matchScene.sprites,
           seed: this.nextSeed(),
+          mode: this.matchScene.mode,
         }),
       );
     } else if (optionId === 'characters') {

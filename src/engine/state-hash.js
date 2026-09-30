@@ -24,6 +24,8 @@ const VERSUS_FIELDS = [
   'modifierJumpHeld',
   'ticksUntilBananaDrop',
   'goldenCrateSpawned',
+  'mode',
+  'modeRules',
 ];
 
 const SURVIVAL_FIELDS = [

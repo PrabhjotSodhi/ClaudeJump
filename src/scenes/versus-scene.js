@@ -53,6 +53,7 @@ import { Platform } from '../entities/platform.js';
 import { Player } from '../entities/player.js';
 import { Rocket, ROCKET_WIDTH, ROCKET_HEIGHT } from '../entities/rocket.js';
 import { knockBackShoveTarget, resolveShoveHit, resolveShoveHitOnCrate } from '../entities/shove.js';
+import { HoldTheHill } from './hold-the-hill.js';
 import { drawArenaBackground } from '../levels/arena-backgrounds.js';
 import { createHazards } from '../levels/level-hazards.js';
 import { solidRuns } from '../levels/level-loader.js';
@@ -67,6 +68,7 @@ import { drawPlayerTags } from '../ui/player-tags.js';
 import { WinPips } from '../ui/win-pips.js';
 import { ClashSparks, drawClashSparks } from '../vfx/clash-sparks.js';
 import { knockoutZoom } from '../vfx/knockout-zoom.js';
+import { drawHillZone } from '../vfx/hill-zone.js';
 import { drawMagnetField } from '../vfx/magnet-field.js';
 import { CharacterAnimations } from '../vfx/character-animations.js';
 import { Confetti } from '../vfx/confetti.js';
@@ -135,6 +137,7 @@ export class VersusScene {
     sprites = {},
     levels = [],
     heat = false,
+    mode = 'knockout',
   } = {}) {
     // The joined players, each { id, character }, in seat order. Every level has a spawn for each id.
     this.joinedPlayers = players;
@@ -142,6 +145,9 @@ export class VersusScene {
     this.sprites = sprites;
     this.levels = levels;
     this.heatEnabled = heat;
+    // One of MATCH_MODES. Knockout is last standing with a rising sea; a party mode brings its own round rules.
+    this.mode = mode;
+    this.modeRules = mode === 'hill' ? new HoldTheHill() : null;
     this.events = new EventEmitter();
     this.random = new SeededRandom(seed);
     this.entityGroups = new EntityGroups();
@@ -232,7 +238,7 @@ export class VersusScene {
   }
 
   get suddenDeathCountdownTicks() {
-    return Math.max(0, SUDDEN_DEATH_ROUND_TICKS - this.fightTicks);
+    return Math.max(0, (this.modeRules?.roundTicks ?? SUDDEN_DEATH_ROUND_TICKS) - this.fightTicks);
   }
 
   get activeModifier() {
@@ -261,23 +267,8 @@ export class VersusScene {
     for (const { x, y } of this.level.bouncePads) {
       this.entityGroups.add('bouncePads', new BouncePad({ x, y, lifetimeTicks: Infinity }));
     }
-    for (const { id, character } of this.joinedPlayers) {
-      const { x, y, facing } = this.level.spawns.find((spawn) => spawn.id === id);
-      this.entityGroups.add(
-        'players',
-        new Player({
-          id,
-          character,
-          spawnX: x,
-          spawnY: y,
-          facing,
-          heatEnabled: this.heatEnabled,
-          gravityMultiplier: this.activeModifier.gravityMultiplier,
-          groundAccelerationMultiplier: this.activeModifier.groundAccelerationMultiplier,
-          outlineColor: PLAYERS.find((spawn) => spawn.id === id).color,
-        }),
-      );
-    }
+    for (const { id, character } of this.joinedPlayers)
+      this.entityGroups.add('players', this.createPlayer(id, character));
     this.ticksUntilCrateSpawn = this.crateSpawnDelayTicks();
     this.goldenCrateSpawned = false;
     if (this.skipNextReadyPhase) {
@@ -298,10 +289,38 @@ export class VersusScene {
     this.waterLineY = this.level.waterLineY;
     this.fightTicks = 0;
     this.suddenDeathPhase = 'none';
+    this.modeRules?.startRound(this);
     this.events.emit('round-started', {});
     if (isMatchPoint(this.wins, this.winsNeeded)) this.events.emit('match-point', {});
     if (this.phase === 'ready')
       this.events.emit('countdown-beat', { count: ROUND_COUNTDOWN_TICKS / ROUND_COUNTDOWN_BEAT_TICKS });
+  }
+
+  createPlayer(id, character) {
+    const { x, y, facing } = this.level.spawns.find((spawn) => spawn.id === id);
+    return new Player({
+      id,
+      character,
+      spawnX: x,
+      spawnY: y,
+      facing,
+      heatEnabled: this.heatEnabled,
+      gravityMultiplier: this.activeModifier.gravityMultiplier,
+      groundAccelerationMultiplier: this.activeModifier.groundAccelerationMultiplier,
+      outlineColor: PLAYERS.find((spawn) => spawn.id === id).color,
+    });
+  }
+
+  // A fresh player at their own spawn, in the same seat so every loop over players keeps its order.
+  respawnPlayer(player) {
+    const players = this.players;
+    const respawned = this.createPlayer(player.id, player.character);
+    players[players.indexOf(player)] = respawned;
+    this.events.emit('player-respawned', {
+      playerId: player.id,
+      x: respawned.x + respawned.width / 2,
+      y: respawned.y + respawned.height,
+    });
   }
 
   startNextRound() {
@@ -464,6 +483,7 @@ export class VersusScene {
         this.updateBananaRain();
         this.updateBananas();
         this.updateCrates();
+        this.modeRules?.update(this);
         this.checkRoundEnd();
         break;
       case 'knockout':
@@ -500,6 +520,7 @@ export class VersusScene {
     if (countdownTicks > 0 && countdownTicks <= TIMER_URGENT_SECONDS * TICK_RATE && countdownTicks % TICK_RATE === 0) {
       this.events.emit('timer-ticked', { secondsRemaining: countdownTicks / TICK_RATE });
     }
+    if (this.modeRules) return;
     if (this.suddenDeathPhase === 'none' && this.fightTicks >= SUDDEN_DEATH_ROUND_TICKS) {
       this.suddenDeathPhase = 'warning';
       this.events.emit('sudden-death-started', {});
@@ -987,6 +1008,10 @@ export class VersusScene {
   }
 
   checkRoundEnd() {
+    if (this.modeRules) {
+      if (this.suddenDeathCountdownTicks === 0) this.awardRound(this.modeRules.winnerId());
+      return;
+    }
     const standingPlayers = this.players.filter((player) => !player.inWater);
     if (standingPlayers.length > 1) return;
 
@@ -1001,11 +1026,16 @@ export class VersusScene {
 
   endRound() {
     const standingPlayers = this.players.filter((player) => !player.inWater);
+    this.awardRound(standingPlayers[0]?.id ?? null);
+  }
+
+  // A null winner is a draw.
+  awardRound(winnerId) {
     this.phase = 'point';
     this.ticksRemaining = POINT_PAUSE_TICKS;
-    if (standingPlayers.length === 0) return;
+    if (!winnerId) return;
 
-    this.winnerId = standingPlayers[0].id;
+    this.winnerId = winnerId;
     this.wins[this.winnerId]++;
     this.events.emit('round-won', { playerId: this.winnerId, wins: this.wins[this.winnerId] });
     if (this.wins[this.winnerId] >= this.winsNeeded) {
@@ -1039,6 +1069,7 @@ export class VersusScene {
       if (!this.brokenTiles.has(tile))
         renderer.gameContext.drawImage(this.level.tileSprites[tile.name], tile.x, tile.y);
     }
+    if (this.modeRules) drawHillZone(renderer.gameContext, this);
     drawWrapPuffs(renderer.gameContext, this);
     this.characterAnimations.render(renderer.gameContext);
     this.entityGroups.renderAll(renderer.gameContext, {
