@@ -1,6 +1,8 @@
 import { CARD_NAMES } from '../cards/card-definitions.js';
 import {
   CALLOUT_CAUSE_TICKS,
+  CRANE_KNOCKBACK_VELOCITY_X,
+  CRANE_KNOCKBACK_VELOCITY_Y,
   KNOCKOUT_SLOWMO_STEP_INTERVAL,
   KNOCKOUT_SLOWMO_TICKS,
   MODIFIER_EVERY_N_ROUNDS,
@@ -43,6 +45,7 @@ import {
   BOUNCE_PAD_FLING_VELOCITY_Y,
 } from '../entities/bounce-pad.js';
 import { DEFAULT_JOINED_PLAYERS } from '../entities/characters.js';
+import { CraneHook } from '../entities/crane-hook.js';
 import { BLAST_SLIDE_SPEED, Crate, CRATE_WIDTH, CRATE_HEIGHT, CRATE_WARNING_TICKS } from '../entities/crate.js';
 import { Platform } from '../entities/platform.js';
 import { Player } from '../entities/player.js';
@@ -232,6 +235,8 @@ export class VersusScene {
     this.entityGroups.clear('players');
     this.entityGroups.clear('rockets');
     this.entityGroups.clear('bombs');
+    this.entityGroups.clear('hazards');
+    if (this.level.hazard === 'crane') this.entityGroups.add('hazards', new CraneHook());
     this.restoreBlocks();
     for (const { x, y } of this.level.bouncePads) {
       this.entityGroups.add('bouncePads', new BouncePad({ x, y, lifetimeTicks: Infinity }));
@@ -419,6 +424,7 @@ export class VersusScene {
         this.fightTicks++;
         this.updateSuddenDeath();
         this.updatePlayers(inputByPlayerId);
+        this.updateHazards();
         this.updateRockets();
         this.updateBombs();
         this.updateBouncePads();
@@ -622,6 +628,29 @@ export class VersusScene {
     const spawnX = player.facing > 0 ? player.x + player.width : player.x - ROCKET_WIDTH;
     const spawnY = player.y + player.height / 2 - ROCKET_HEIGHT / 2;
     this.entityGroups.add('rockets', new Rocket({ x: spawnX, y: spawnY, facing: player.facing, shooterId: player.id }));
+  }
+
+  updateHazards() {
+    for (const hazard of this.entityGroups.get('hazards')) {
+      hazard.update();
+      if (hazard.isSwinging) this.knockBackPlayersTouchingCraneHook(hazard);
+    }
+  }
+
+  knockBackPlayersTouchingCraneHook(hook) {
+    for (const player of this.players) {
+      if (player.inWater || hook.hitPlayerIds.has(player.id) || !player.overlaps(hook)) continue;
+
+      hook.hitPlayerIds.add(player.id);
+      player.freeze('heavy', CRANE_KNOCKBACK_VELOCITY_X * hook.direction, CRANE_KNOCKBACK_VELOCITY_Y);
+      this.events.emit('trap-sprung', {
+        ownerId: null,
+        targetId: player.id,
+        directionX: hook.direction,
+        directionY: 0,
+        strength: 'heavy',
+      });
+    }
   }
 
   updateRockets() {

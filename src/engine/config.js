@@ -139,3 +139,21 @@ export const ROUND_MODIFIERS = {
   bananaRain: { name: 'Banana rain', bananaRainIntervalTicks: 150 },
   fastCrates: { name: 'Fast crates', crateDelayMultiplier: 0.25 },
 };
+
+// Harbor's crane hook. Its first swing starts CRANE_FIRST_SWING_TICKS into the fight, and a swing follows every
+// CRANE_WARNING_TICKS + CRANE_SWING_TICKS + CRANE_REST_TICKS. The hook shakes and its path flashes for
+// CRANE_WARNING_TICKS before it moves, and swings alternate direction. The path runs from CRANE_PATH_START_X to
+// CRANE_PATH_END_X and dips by CRANE_PATH_DIP to CRANE_PATH_BOTTOM_Y at the middle. A player the hook touches is
+// knocked away in the swing direction, once per swing.
+export const CRANE_FIRST_SWING_TICKS = 600;
+export const CRANE_WARNING_TICKS = 60;
+export const CRANE_SWING_TICKS = 120;
+export const CRANE_REST_TICKS = 120;
+export const CRANE_PATH_START_X = 32;
+export const CRANE_PATH_END_X = 608;
+export const CRANE_PATH_BOTTOM_Y = 240;
+export const CRANE_PATH_DIP = 90;
+export const CRANE_HOOK_WIDTH = 14;
+export const CRANE_HOOK_HEIGHT = 18;
+export const CRANE_KNOCKBACK_VELOCITY_X = 9;
+export const CRANE_KNOCKBACK_VELOCITY_Y = -5;
