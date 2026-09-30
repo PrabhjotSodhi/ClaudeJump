@@ -67,6 +67,12 @@ test('the host sees Rematch and Leave and a joiner sees only Leave', () => {
   );
 });
 
+test('Rematch is selected by default for the host and one confirm press starts it', () => {
+  const { scene } = startResults({ isHost: true });
+
+  assert.equal(scene.resultsOptions[scene.resultsSelectedIndex].id, 'rematch');
+});
+
 test('Rematch tells every device to go back to the lobby and goes back too', () => {
   const { scene, connection, calls } = startResults({ isHost: true });
 

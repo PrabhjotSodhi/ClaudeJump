@@ -99,3 +99,11 @@ export const ONLINE_MESSAGE_TICKS = 240;
 export const STALL_MESSAGE_TICKS = 30;
 // Hashes still waiting for a slow device are forgotten after this many hash intervals.
 export const HASH_KEEP_INTERVALS = 4;
+
+// Results screen. Awards pop in one at a time: the first after AWARD_FIRST_DELAY_TICKS, then one every
+// AWARD_INTERVAL_TICKS. A new award bounces for AWARD_POP_TICKS.
+export const AWARD_FIRST_DELAY_TICKS = 45;
+export const AWARD_INTERVAL_TICKS = 40;
+export const AWARD_POP_TICKS = 8;
+// A round won with this many seconds or fewer left on the sudden death countdown earns Clutch survivor.
+export const CLUTCH_SECONDS = 3;
