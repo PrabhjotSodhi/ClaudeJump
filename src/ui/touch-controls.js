@@ -1,15 +1,18 @@
 import { TOUCH_BUTTONS } from '../engine/touch-input.js';
-import { drawPanel } from './panel.js';
 import { drawText } from './text.js';
 
-const IDLE_ALPHA = 0.5;
-const PRESSED_ALPHA = 0.85;
+const OUTLINE_COLOR = '#c0cbdc';
+const FILL_COLOR = '#c0cbdc';
 const PRESSED_COLOR = '#feae34';
-const GLYPH_COLOR = '#c0cbdc';
+const IDLE_FILL_ALPHA = 0.1;
+const PRESSED_FILL_ALPHA = 0.4;
+const OUTLINE_ALPHA = 0.55;
+// A button fades to this fraction of its look while a player's body is behind it.
+const OVERLAP_FADE = 0.2;
 const ARROW_DEPTH = 8;
-const PAUSE_BAR_WIDTH = 4;
-const PAUSE_BAR_HEIGHT = 16;
-const PAUSE_BAR_GAP = 6;
+const PAUSE_BAR_WIDTH = 3;
+const PAUSE_BAR_HEIGHT = 10;
+const PAUSE_BAR_GAP = 4;
 const TEXT_HEIGHT = 5;
 
 // An arrow is 2 * ARROW_DEPTH - 1 rows or columns of stepped length, so it stays crisp.
@@ -28,7 +31,7 @@ function drawArrow(context, centerX, centerY, direction) {
 function drawGlyph(context, button) {
   const centerX = button.x + button.width / 2;
   const centerY = button.y + button.height / 2;
-  context.fillStyle = GLYPH_COLOR;
+  context.fillStyle = OUTLINE_COLOR;
   if (button.id === 'pause') {
     const barY = centerY - PAUSE_BAR_HEIGHT / 2;
     context.fillRect(centerX - PAUSE_BAR_GAP / 2 - PAUSE_BAR_WIDTH, barY, PAUSE_BAR_WIDTH, PAUSE_BAR_HEIGHT);
@@ -37,7 +40,7 @@ function drawGlyph(context, button) {
     drawText(context, 'Shove', centerX, centerY - Math.floor(TEXT_HEIGHT / 2), {
       scale: 1,
       align: 'center',
-      color: GLYPH_COLOR,
+      color: OUTLINE_COLOR,
       outlineColor: null,
     });
   } else {
@@ -45,15 +48,34 @@ function drawGlyph(context, button) {
   }
 }
 
-export function drawTouchControls(context, pressedButtonIds) {
+function overlaps(button, rectangle) {
+  return (
+    rectangle.x < button.x + button.width &&
+    rectangle.x + rectangle.width > button.x &&
+    rectangle.y < button.y + button.height &&
+    rectangle.y + rectangle.height > button.y
+  );
+}
+
+// playerRectangles are the players' bodies in screen pixels. showPause hides the pause button
+// in scenes that cannot pause.
+export function drawTouchControls(context, { pressedButtonIds, playerRectangles, showPause }) {
   for (const button of TOUCH_BUTTONS) {
+    if (button.id === 'pause' && !showPause) continue;
+    const fade = playerRectangles.some((rectangle) => overlaps(button, rectangle)) ? OVERLAP_FADE : 1;
     const isPressed = pressedButtonIds.includes(button.id);
-    context.globalAlpha = isPressed ? PRESSED_ALPHA : IDLE_ALPHA;
-    drawPanel(context, button.x, button.y, button.width, button.height);
-    if (isPressed) {
-      context.fillStyle = PRESSED_COLOR;
-      context.fillRect(button.x + 3, button.y + 3, button.width - 6, 2);
-    }
+
+    context.globalAlpha = (isPressed ? PRESSED_FILL_ALPHA : IDLE_FILL_ALPHA) * fade;
+    context.fillStyle = isPressed ? PRESSED_COLOR : FILL_COLOR;
+    context.fillRect(button.x, button.y, button.width, button.height);
+
+    context.globalAlpha = OUTLINE_ALPHA * fade;
+    context.fillStyle = OUTLINE_COLOR;
+    context.fillRect(button.x, button.y, button.width, 1);
+    context.fillRect(button.x, button.y + button.height - 1, button.width, 1);
+    context.fillRect(button.x, button.y + 1, 1, button.height - 2);
+    context.fillRect(button.x + button.width - 1, button.y + 1, 1, button.height - 2);
+
     drawGlyph(context, button);
   }
   context.globalAlpha = 1;

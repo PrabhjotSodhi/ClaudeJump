@@ -39,6 +39,17 @@ function isAnyControlHeld(inputByPlayerId) {
   return Object.values(inputByPlayerId).some((input) => Object.values(input).some(Boolean));
 }
 
+// Survival scrolls, so a player's screen position is their world position minus the camera.
+function playerScreenRectangles(scene) {
+  const matchScene = scene.matchScene ?? scene;
+  return (matchScene.players ?? []).map((player) => ({
+    x: player.x,
+    y: player.y - (matchScene.cameraTopY ?? 0),
+    width: player.width,
+    height: player.height,
+  }));
+}
+
 async function main() {
   const searchParameters = new URLSearchParams(location.search);
   const isDevMode = searchParameters.has('dev');
@@ -172,10 +183,17 @@ async function main() {
       renderRotatePrompt();
       return;
     }
+    renderer.touchActive = touchInput.visible;
     renderer.shakeOffset = { x: 0, y: 0 };
     renderer.seaRippleBytes = null;
     sceneManager.render(renderer);
-    if (touchInput.visible) drawTouchControls(renderer.uiContext, touchInput.pressedButtonIds);
+    if (touchInput.visible) {
+      drawTouchControls(renderer.uiContext, {
+        pressedButtonIds: touchInput.pressedButtonIds,
+        playerRectangles: playerScreenRectangles(sceneManager.currentScene),
+        showPause: sceneManager.currentScene instanceof PausableMatchScene,
+      });
+    }
     gameWindow.render({
       backgroundCanvas: renderer.backgroundChanged ? renderer.backgroundCanvas : null,
       gameCanvas: renderer.gameCanvas,

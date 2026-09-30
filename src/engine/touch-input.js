@@ -5,7 +5,10 @@ const BUTTON_SIZE = 68;
 const BUTTON_GAP = 8;
 const EDGE_MARGIN = 12;
 const BOTTOM_Y = SCREEN_HEIGHT - EDGE_MARGIN - BUTTON_SIZE;
-const PAUSE_TOP_Y = 42;
+// The pause button is small and sits at the top center, under the timer, where it covers nothing.
+const PAUSE_WIDTH = 32;
+const PAUSE_HEIGHT = 22;
+const PAUSE_TOP_Y = 28;
 
 // The controls in game pixels. Drawing and hit testing both read this list, so they never drift apart.
 // Action also presses down, like the keyboard's shove key, so it moves menu selections.
@@ -14,8 +17,8 @@ export const TOUCH_BUTTONS = [
   { id: 'right', x: EDGE_MARGIN + BUTTON_SIZE + BUTTON_GAP, y: BOTTOM_Y },
   { id: 'jump', x: SCREEN_WIDTH - EDGE_MARGIN - BUTTON_SIZE, y: BOTTOM_Y },
   { id: 'action', x: SCREEN_WIDTH - EDGE_MARGIN - 2 * BUTTON_SIZE - BUTTON_GAP, y: BOTTOM_Y },
-  { id: 'pause', x: EDGE_MARGIN, y: PAUSE_TOP_Y },
-].map((button) => ({ ...button, width: BUTTON_SIZE, height: BUTTON_SIZE }));
+  { id: 'pause', x: (SCREEN_WIDTH - PAUSE_WIDTH) / 2, y: PAUSE_TOP_Y, width: PAUSE_WIDTH, height: PAUSE_HEIGHT },
+].map((button) => ({ width: BUTTON_SIZE, height: BUTTON_SIZE, ...button }));
 
 function isInside(button, point) {
   return (
