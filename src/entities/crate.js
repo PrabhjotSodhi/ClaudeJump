@@ -8,10 +8,14 @@ export const CRATE_HEIGHT = 16;
 // How long the marker shows at the landing spot before the crate lands there, warning included.
 export const CRATE_WARNING_TICKS = 60;
 
-const MARKER_FLASH_TICKS = 10;
-const MARKER_COLOR = '#fee761';
-const MARKER_CORNER_WIDTH = 3;
-const MARKER_HEIGHT = 2;
+const MARKER_PULSE_TICKS = 8;
+const MARKER_COLORS = ['#fee761', '#feae34'];
+const MARKER_OUTLINE_COLOR = '#181425';
+const MARKER_BRACKET_WIDTH = 2;
+const MARKER_BRACKET_HEIGHT = 4;
+const MARKER_ARROW_GAP = 3;
+const MARKER_ARROW_BOB_PIXELS = 2;
+const SHADOW_HEIGHT = 2;
 const GROUND_SHADOW_COLOR = '#3e2731';
 const GROUND_SHADOW_MIN_WIDTH = 4;
 const CRATE_SHADOW_COLOR = '#5c3c1e';
@@ -110,26 +114,41 @@ export class Crate extends Entity {
       ? Math.min(1, Math.max(0, (this.y - FALL_START_Y) / (this.landing.y - FALL_START_Y)))
       : 0;
     const shadowWidth = GROUND_SHADOW_MIN_WIDTH + Math.round((this.width - GROUND_SHADOW_MIN_WIDTH) * fallProgress);
-    const markerVisible = Math.floor(this.ticksUntilLanded / MARKER_FLASH_TICKS) % 2 === 0;
+    const pulse = Math.floor(this.ticksUntilLanded / MARKER_PULSE_TICKS);
+    const markerColor = MARKER_COLORS[pulse % MARKER_COLORS.length];
+    const arrowBob = pulse % 2 === 0 ? 0 : MARKER_ARROW_BOB_PIXELS;
     const drawAt = (x) => {
       if (this.isFalling) {
         context.fillStyle = GROUND_SHADOW_COLOR;
         context.fillRect(
           x + Math.floor((this.width - shadowWidth) / 2),
-          surfaceY - MARKER_HEIGHT,
+          surfaceY - SHADOW_HEIGHT,
           shadowWidth,
-          MARKER_HEIGHT,
+          SHADOW_HEIGHT,
         );
       }
-      if (!markerVisible) return;
-      context.fillStyle = MARKER_COLOR;
-      context.fillRect(x, surfaceY - MARKER_HEIGHT, MARKER_CORNER_WIDTH, MARKER_HEIGHT);
-      context.fillRect(
-        x + this.width - MARKER_CORNER_WIDTH,
-        surfaceY - MARKER_HEIGHT,
-        MARKER_CORNER_WIDTH,
-        MARKER_HEIGHT,
-      );
+      const leftX = x - MARKER_BRACKET_WIDTH;
+      const rightX = x + this.width;
+      const bracketY = surfaceY - MARKER_BRACKET_HEIGHT;
+      context.fillStyle = MARKER_OUTLINE_COLOR;
+      for (const bracketX of [leftX, rightX]) {
+        context.fillRect(bracketX - 1, bracketY - 1, MARKER_BRACKET_WIDTH + 2, MARKER_BRACKET_HEIGHT + 2);
+      }
+      context.fillStyle = markerColor;
+      for (const bracketX of [leftX, rightX]) {
+        context.fillRect(bracketX, bracketY, MARKER_BRACKET_WIDTH, MARKER_BRACKET_HEIGHT);
+      }
+      // A down arrow above the surface, three rows tall, bobbing by two pixels.
+      const arrowCenterX = x + Math.floor(this.width / 2);
+      const arrowTopY = bracketY - MARKER_ARROW_GAP - 4 - arrowBob;
+      context.fillStyle = MARKER_OUTLINE_COLOR;
+      context.fillRect(arrowCenterX - 3, arrowTopY, 6, 2);
+      context.fillRect(arrowCenterX - 2, arrowTopY + 2, 4, 1);
+      context.fillRect(arrowCenterX - 1, arrowTopY + 3, 2, 1);
+      context.fillStyle = markerColor;
+      context.fillRect(arrowCenterX - 2, arrowTopY, 4, 1);
+      context.fillRect(arrowCenterX - 1, arrowTopY + 1, 2, 1);
+      context.fillRect(arrowCenterX - 1, arrowTopY + 2, 2, 1);
     };
     drawAt(spotX);
     if (spotX < 0) drawAt(spotX + SCREEN_WIDTH);
