@@ -1,0 +1,33 @@
+{
+  "colors": {
+    ".": null,
+    "o": "#181425",
+    "b": "#c0cbdc",
+    "s": "#3a4466",
+    "a": "#feae34"
+  },
+  "frames": {
+    "icon": [
+      "............................................",
+      "............................................",
+      ".oooooooooo.................................",
+      ".obbbbbbbbo.................................",
+      ".obssssssbo.................................",
+      ".obssssssbo.................oooooooooooooooo",
+      ".obssssssbo.................obbbbbbbbbbbbbbo",
+      ".obssssssbo...........a.....obssssssssssssbo",
+      ".obssssssbo............a....obssssssssssssbo",
+      ".obssssssbo.............a...obssssssssssssbo",
+      ".obssssssbo...aaaaaaaaaaa...obssssssssssssbo",
+      ".obssssssbo.............a...obssssssssssssbo",
+      ".obssssssbo............a....obssssssssssssbo",
+      ".obssssssbo...........a.....obbbbbbbbbbbbbbo",
+      ".obssssssbo.................oooooooooooooooo",
+      ".obssssssbo.................................",
+      ".obbbbbbbbo.................................",
+      ".oooooooooo.................................",
+      "............................................",
+      "............................................"
+    ]
+  }
+}
