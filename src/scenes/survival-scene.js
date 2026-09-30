@@ -99,6 +99,7 @@ export class SurvivalScene {
     this.sprites = sprites;
     this.seed = seed;
     this.events = new EventEmitter();
+    this.musicTrackName = 'match';
     this.entityGroups = new EntityGroups();
     this.playerEyes = new PlayerEyes();
     this.playerEyes.attach(this.events, () => this.players);

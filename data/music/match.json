@@ -1,0 +1,73 @@
+{
+  "tempo": 124,
+  "beatsPerBar": 4,
+  "stepsPerBeat": 2,
+  "bars": 16,
+  "channels": {
+    "lead": {
+      "waveform": "square",
+      "volume": 0.1,
+      "bars": [
+        "E5 . C5 E5 A5 . G5 .",
+        "F5 . A4 C5 F5 . E5 .",
+        "E5 . G4 C5 E5 . D5 .",
+        "D5 . B4 D5 G5 - - .",
+        "C5 . E5 A5 . C6 B5 .",
+        "A5 . F5 . C5 . A4 .",
+        "D5 . F5 A5 . G5 F5 .",
+        "E5 . G#5 B5 . G#5 E5 .",
+        "A5 - E5 . C5 . E5 .",
+        "C6 . A5 . F5 . A5 .",
+        "G5 - E5 . C5 . E5 .",
+        "B5 . G5 . D5 . G5 .",
+        "E5 . A5 . C6 . E6 .",
+        "D6 . C6 . A5 . F5 .",
+        "F5 . A5 . D6 . C6 .",
+        "B5 . G#5 . E5 - - ."
+      ]
+    },
+    "bass": {
+      "waveform": "triangle",
+      "volume": 0.3,
+      "bars": [
+        "A2 . A3 A2 . A3 E3 .",
+        "F2 . F3 F2 . F3 C3 .",
+        "C3 . C4 C3 . C4 G3 .",
+        "G2 . G3 G2 . G3 D3 .",
+        "A2 . A3 A2 . A3 E3 .",
+        "F2 . F3 F2 . F3 C3 .",
+        "D3 . D4 D3 . D4 A3 .",
+        "E2 . E3 E2 . E3 B2 .",
+        "A2 . A3 A2 . A3 E3 .",
+        "F2 . F3 F2 . F3 C3 .",
+        "C3 . C4 C3 . C4 G3 .",
+        "G2 . G3 G2 . G3 D3 .",
+        "A2 . A3 A2 . A3 E3 .",
+        "F2 . F3 F2 . F3 C3 .",
+        "D3 . D4 D3 . D4 A3 .",
+        "E2 . E3 E2 . E3 B2 ."
+      ]
+    },
+    "drums": {
+      "drums": true,
+      "bars": [
+        "k h s h k h s h",
+        "k h s h k h s h",
+        "k h s h k h s h",
+        "k h s h k k s h",
+        "k h s h k h s h",
+        "k h s h k h s h",
+        "k h s h k h s h",
+        "k h s h k k s h",
+        "k h s h k h s h",
+        "k h s h k h s h",
+        "k h s h k h s h",
+        "k h s h k k s h",
+        "k h s h k h s h",
+        "k h s h k h s h",
+        "k h s h k h s h",
+        "k h s h k k s h"
+      ]
+    }
+  }
+}

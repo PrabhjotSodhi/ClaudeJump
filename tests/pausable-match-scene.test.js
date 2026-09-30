@@ -207,7 +207,7 @@ test('up moves the pause selection up with wrapping, and down moves it down', ()
   scene.update(inputsWith('red', { pause: true }));
 
   scene.update(inputsWith('red', { up: true }));
-  assert.equal(scene.selectedIndex, 2, 'up from the first option wraps to the last');
+  assert.equal(scene.selectedIndex, 3, 'up from the first option wraps to the last');
 
   scene.update(neutralInputs());
   scene.update(inputsWith('blue', { down: true }));
@@ -373,6 +373,8 @@ test('confirming the Sound row flips the sound setting and stays paused', () => 
   const { scene, sceneManager } = pausedScene();
   sceneManager.soundPlayer = soundPlayer;
   scene.update(inputsWith('red', { pause: true }));
+  scene.update(inputsWith('red', { up: true }));
+  scene.update(neutralInputs());
   scene.update(inputsWith('red', { up: true }));
   scene.update(neutralInputs());
 

@@ -59,6 +59,7 @@ export class LevelSelectScene {
   constructor({ sceneManager, levels, characterByPlayerId, sprites = {}, seed = Date.now() }) {
     this.sceneManager = sceneManager;
     this.events = new EventEmitter();
+    this.musicTrackName = 'menu';
     this.levels = levels;
     this.characterByPlayerId = characterByPlayerId;
     this.sprites = sprites;
