@@ -9,7 +9,7 @@ import { arenaLevels } from './fixtures/arena-levels.mjs';
 
 const holdRight = { left: false, right: true, jump: false };
 const idle = { left: false, right: false, jump: false };
-const LEDGE_TOP_BY_LEVEL = { cave: 160, rooftops: 240, 'server-farm': 160 };
+const LEDGE_TOP_BY_LEVEL = { cave: 160, rooftops: 240, 'server-farm': 160, 'cooling-towers': 224 };
 
 for (const [levelName, ledgeTop] of Object.entries(LEDGE_TOP_BY_LEVEL)) {
   test(`walking right across the seam on ${levelName} keeps the player on the ledge`, () => {
