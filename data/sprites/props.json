@@ -14,7 +14,12 @@
     "f": "#f77622",
     "b": "#a09088",
     "s": "#585050",
-    "l": "#c8c0b8"
+    "l": "#c8c0b8",
+    "k": "#733e39",
+    "m": "#b86f50",
+    "h": "#e4a672",
+    "e": "#be4a2f",
+    "d": "#d77643"
   },
   "frames": {
     "rocket-0": [
@@ -74,6 +79,42 @@
       ".olllbbso.",
       ".osssssso.",
       "..oooooo.."
+    ],
+    "crate": [
+      "oooooooooooooooo",
+      "ohhhhhhhhhhhhhmo",
+      "ohmmmmmmmmmmmmko",
+      "ohmkkkkkkkkkkmko",
+      "ohmkmmmmmmmmhmko",
+      "ohmkmmmmmmmhmmko",
+      "ohmkkkkkkkhmkmko",
+      "ohmkmmmmmhmkmmko",
+      "ohmkmmmmhmkmmmko",
+      "ohmkkkkhmkkkkmko",
+      "ohmkmmhmkmmmmmko",
+      "ohmkmhmkmmmmmmko",
+      "ohmkhmkmmmmmmmko",
+      "ohmmmmmmmmmmmmko",
+      "omkkkkkkkkkkkkko",
+      "oooooooooooooooo"
+    ],
+    "crate-golden": [
+      "oooooooooooooooo",
+      "oyyyyyyyyyyyyyao",
+      "oyaaaaaaaaaaaado",
+      "oyaddddddddddado",
+      "oyadaaaaaaaayado",
+      "oyadaaaaaaayaado",
+      "oyadddddddyadado",
+      "oyadaaaaayadaado",
+      "oyadaaaayadaaado",
+      "oyaddddyaddddado",
+      "oyadaayadaaaaado",
+      "oyadayadaaaaaado",
+      "oyadyadaaaaaaado",
+      "oyaaaaaaaaaaaado",
+      "oadddddddddddddo",
+      "oooooooooooooooo"
     ]
   }
 }

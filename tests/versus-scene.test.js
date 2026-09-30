@@ -832,7 +832,10 @@ test('touching a crate with no card takes the card', () => {
 
   scene.update(neutralInputs());
 
-  assert.deepEqual(pickupEvents, [{ playerId: 'red', cardName: 'dash', golden: false }]);
+  assert.deepEqual(
+    pickupEvents.map(({ playerId, cardName, golden }) => ({ playerId, cardName, golden })),
+    [{ playerId: 'red', cardName: 'dash', golden: false }],
+  );
   assert.equal(red.heldCardName, 'dash');
   assert.equal(scene.entityGroups.get('crates').includes(crate), false, 'the taken crate is removed');
 });
@@ -970,7 +973,10 @@ test('a player can take a crate while it is still in the air', () => {
 
   assert.equal(crate.landed, false, 'the crate is still airborne');
   assert.equal(crate.isFalling, true, 'the fall is already under way');
-  assert.deepEqual(pickupEvents, [{ playerId: 'red', cardName: 'dash', golden: false }]);
+  assert.deepEqual(
+    pickupEvents.map(({ playerId, cardName, golden }) => ({ playerId, cardName, golden })),
+    [{ playerId: 'red', cardName: 'dash', golden: false }],
+  );
   assert.equal(red.heldCardName, 'dash');
 });
 

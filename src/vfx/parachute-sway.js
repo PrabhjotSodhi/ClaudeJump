@@ -17,3 +17,10 @@ const FLUTTER_PERIOD_TICKS = 12;
 export function flutterWobble(poppedTicks) {
   return Math.round(Math.sin((poppedTicks * 2 * Math.PI) / FLUTTER_PERIOD_TICKS) * FLUTTER_WOBBLE_PIXELS);
 }
+
+const CORD_FLUTTER_PERIOD_TICKS = 10;
+
+// Sideways ripple in pixels, -1 to 1, of one step down a parachute cord. The ripple runs down the cord over time.
+export function cordFlutter(fallenTicks, step) {
+  return Math.round(Math.sin(((fallenTicks - step * 2) * 2 * Math.PI) / CORD_FLUTTER_PERIOD_TICKS) * 0.6);
+}
