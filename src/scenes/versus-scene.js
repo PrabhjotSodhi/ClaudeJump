@@ -52,6 +52,7 @@ import { knockBackShoveTarget, resolveShoveHit, resolveShoveHitOnCrate } from '.
 import { drawArenaBackground } from '../levels/arena-backgrounds.js';
 import { createHazards } from '../levels/level-hazards.js';
 import { solidRuns } from '../levels/level-loader.js';
+import { PLAYERS } from '../levels/versus-arena.js';
 import { drawHeldCardIcons } from '../ui/held-card-icons.js';
 import { Callouts } from '../ui/callouts.js';
 import { drawHud } from '../ui/hud.js';
@@ -255,6 +256,7 @@ export class VersusScene {
           heatEnabled: this.heatEnabled,
           gravityMultiplier: this.activeModifier.gravityMultiplier,
           groundAccelerationMultiplier: this.activeModifier.groundAccelerationMultiplier,
+          outlineColor: PLAYERS.find((spawn) => spawn.id === id).color,
         }),
       );
     }

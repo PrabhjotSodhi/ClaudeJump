@@ -90,6 +90,7 @@ export class Player extends PhysicsEntity {
     heatEnabled = false,
     gravityMultiplier = 1,
     groundAccelerationMultiplier = 1,
+    outlineColor = null,
   }) {
     super({ x: spawnX - PLAYER_WIDTH / 2, y: spawnY - PLAYER_HEIGHT, width: PLAYER_WIDTH, height: PLAYER_HEIGHT });
     this.id = id;
@@ -97,6 +98,8 @@ export class Player extends PhysicsEntity {
     this.groundAccelerationMultiplier = groundAccelerationMultiplier;
     this.character = character;
     this.color = character.tagColor;
+    // The player slot's color, drawn as a ring around the body during matches. Null draws no ring.
+    this.outlineColor = outlineColor;
     this.facing = facing;
     this.coyoteTicksRemaining = 0;
     this.jumpBufferTicksRemaining = 0;
@@ -400,6 +403,7 @@ export class Player extends PhysicsEntity {
     drawCharacterBody(context, {
       sprite,
       flashSprite: flashing ? silhouetteOf(sprite, '#ffffff') : null,
+      outlineSprite: this.outlineColor ? silhouetteOf(sprite, this.outlineColor) : null,
       glowSprite: this.heatGlowColor && !this.inWater ? silhouetteOf(sprite, this.heatGlowColor) : null,
       eyeFramePositions: this.character.eyeFramePositions,
       eyes: playerEyes.eyesFor(this.id),

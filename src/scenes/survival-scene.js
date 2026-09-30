@@ -13,6 +13,7 @@ import { Player, SHOVE_KNOCKBACK_VELOCITY_X, SHOVE_KNOCKBACK_VELOCITY_Y } from '
 import { Rocket, ROCKET_HEIGHT, ROCKET_WIDTH } from '../entities/rocket.js';
 import { drawArenaBackground } from '../levels/arena-backgrounds.js';
 import { blockName } from '../levels/level-loader.js';
+import { PLAYERS } from '../levels/versus-arena.js';
 import { drawSurvivalHud } from '../ui/hud.js';
 import { drawParticles, Particles } from '../vfx/particles.js';
 import { PlayerEyes } from '../vfx/player-eyes.js';
@@ -167,6 +168,7 @@ export class SurvivalScene {
         spawnX: SCREEN_WIDTH / 2,
         spawnY: START_FLOOR_Y,
         facing: 1,
+        outlineColor: PLAYERS.find((spawn) => spawn.id === PLAYER_ID).color,
       }),
     );
     this.startPlayerY = Math.round(this.players[0].y);

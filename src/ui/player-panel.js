@@ -2,6 +2,7 @@ import { SCREEN_WIDTH } from '../engine/config.js';
 import { drawCharacterBody } from '../vfx/character-body.js';
 import { GooglyEye, EYE_STIFFNESSES } from '../vfx/googly-eyes.js';
 import { drawPanel } from './panel.js';
+import { drawPlayerShape, PLAYER_SHAPE_SIZE } from './player-shapes.js';
 import { PIP_SIZE } from './win-pips.js';
 
 const PANEL_MARGIN = 8;
@@ -15,6 +16,8 @@ const PORTRAIT_FILL_COLOR = '#3a4466';
 // The sprite frame hangs this many rows below the portrait's bottom edge, so the portrait shows head and shoulders.
 const PORTRAIT_CROP_ROWS = 8;
 const PIP_GAP = 3;
+// The slot's shape sits in the portrait's bottom corner nearest the pips, one pixel in from the border.
+const SHAPE_INSET = 1;
 const PIP_OUTLINE_COLOR = '#3e2731';
 const EMPTY_PIP_OUTLINE_COLOR = '#5a6988';
 const EMPTY_PIP_FILL_COLOR = '#262b44';
@@ -97,6 +100,12 @@ export function drawPlayerPanel(context, scene, player, { x: panelX, side }) {
     PANEL_MARGIN + PANEL_PADDING,
     player.color,
   );
+  const portraitInnerTop = PANEL_MARGIN + PANEL_PADDING + PORTRAIT_BORDER;
+  const shapeX = isLeft
+    ? portraitX + PORTRAIT_OUTER_SIZE - PORTRAIT_BORDER - SHAPE_INSET - PLAYER_SHAPE_SIZE
+    : portraitX + PORTRAIT_BORDER + SHAPE_INSET;
+  const shapeY = portraitInnerTop + PORTRAIT_SIZE - SHAPE_INSET - PLAYER_SHAPE_SIZE;
+  drawPlayerShape(context, player.id, shapeX, shapeY, { color: player.outlineColor ?? player.color });
 
   const pipsHeight = scene.winsNeeded * PIP_SIZE + (scene.winsNeeded - 1) * PIP_GAP;
   const pipsTop = PANEL_MARGIN + Math.floor((PANEL_HEIGHT - pipsHeight) / 2);
