@@ -59,26 +59,32 @@ export const TWO_PLAYER_TOUCH_BUTTONS = [
 // online scenes: every button fills the first player's record. The panel is CONTROLS_PANEL_WIDTH
 // wide and as tall as the phone allows, so the layout takes its height. Buttons sit near the
 // bottom, where thumbs rest.
-const PANEL_BUTTON_SIZE = 34;
-const PANEL_BUTTON_GAP = 4;
-const PANEL_EDGE_MARGIN = 6;
+const PANEL_EDGE_MARGIN = 4;
 const PANEL_BOTTOM_MARGIN = 10;
+// Left and right form one wide rocker on the left, each half 28% of the panel width.
+const ROCKER_HALF_WIDTH = Math.round(CONTROLS_PANEL_WIDTH * 0.28);
+const ROCKER_HEIGHT = 56;
+// Shove and jump are large squares, 26% of the panel width, one above the other.
+const ACTION_SIZE = Math.round(CONTROLS_PANEL_WIDTH * 0.26);
+const ACTION_ROW_GAP = 4;
+// Shove sits lower left of jump, so the two form a diagonal.
+const SHOVE_OFFSET_LEFT = 16;
 // Pause is small and tucked in the top right corner, away from the thumbs.
 const PANEL_PAUSE = { id: 'pause', width: 28, height: 16, x: CONTROLS_PANEL_WIDTH - PANEL_EDGE_MARGIN - 28, y: 6 };
-// Shove sits lower left of jump, so the two thumbs' buttons form a diagonal.
-const PANEL_SHOVE_DROP = 18;
 
 export function portraitTouchButtons(panelHeight) {
-  const bottomY = panelHeight - PANEL_BOTTOM_MARGIN - PANEL_BUTTON_SIZE;
-  const jumpX = CONTROLS_PANEL_WIDTH - PANEL_EDGE_MARGIN - PANEL_BUTTON_SIZE;
+  const bottomY = panelHeight - PANEL_BOTTOM_MARGIN;
+  const jumpX = CONTROLS_PANEL_WIDTH - PANEL_EDGE_MARGIN - ACTION_SIZE;
+  const shoveY = bottomY - ACTION_SIZE;
+  const rocker = { width: ROCKER_HALF_WIDTH, height: ROCKER_HEIGHT, y: bottomY - ROCKER_HEIGHT };
+  const action = { width: ACTION_SIZE, height: ACTION_SIZE };
   return [
-    { id: 'left', x: PANEL_EDGE_MARGIN, y: bottomY },
-    { id: 'right', x: PANEL_EDGE_MARGIN + PANEL_BUTTON_SIZE + PANEL_BUTTON_GAP, y: bottomY },
-    { id: 'jump', x: jumpX, y: bottomY - PANEL_SHOVE_DROP },
-    { id: 'action', x: jumpX - PANEL_BUTTON_GAP - PANEL_BUTTON_SIZE, y: bottomY },
-  ]
-    .map((button) => ({ width: PANEL_BUTTON_SIZE, height: PANEL_BUTTON_SIZE, ...button }))
-    .concat(PANEL_PAUSE);
+    { id: 'left', x: PANEL_EDGE_MARGIN, ...rocker },
+    { id: 'right', x: PANEL_EDGE_MARGIN + ROCKER_HALF_WIDTH, ...rocker },
+    { id: 'jump', x: jumpX, y: shoveY - ACTION_ROW_GAP - ACTION_SIZE, ...action },
+    { id: 'action', x: jumpX - SHOVE_OFFSET_LEFT, y: shoveY, ...action },
+    PANEL_PAUSE,
+  ];
 }
 
 function isInside(button, point) {

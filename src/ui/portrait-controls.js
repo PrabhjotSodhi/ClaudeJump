@@ -1,4 +1,5 @@
 import { drawGlyph } from './touch-controls.js';
+import { drawText } from './text.js';
 
 const BORDER_COLOR = '#3e2731';
 const PANEL_COLOR = '#181425';
@@ -6,6 +7,8 @@ const PANEL_HIGHLIGHT_COLOR = '#262b44';
 const BUTTON_COLOR = '#3a4466';
 const BUTTON_LIGHT_COLOR = '#5a6988';
 const BUTTON_SHADOW_COLOR = '#262b44';
+const LABEL_COLOR = '#8b9bb4';
+const LABEL_Y = 9;
 const GLYPH_COLOR = '#c0cbdc';
 const PRESSED_COLOR = '#feae34';
 const PRESSED_GLYPH_COLOR = '#3e2731';
@@ -41,6 +44,12 @@ function drawButton(context, button, isPressed) {
 // layout and pressedButtons the buttons under a finger. showPause hides pause in scenes that cannot pause.
 export function drawPortraitControls(context, { width, height, buttons, pressedButtons, showPause }) {
   drawFrame(context, width, height);
+  drawText(context, 'ClaudeJump', width / 2, LABEL_Y, {
+    scale: 1,
+    align: 'center',
+    color: LABEL_COLOR,
+    outlineColor: null,
+  });
   for (const button of buttons) {
     if (button.id === 'pause' && !showPause) continue;
     const isPressed = pressedButtons.includes(button);

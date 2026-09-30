@@ -35,10 +35,11 @@ test('every panel button fits inside the panel and no two overlap', () => {
   }
 });
 
-test('panel buttons are large enough for a thumb', () => {
-  for (const button of BUTTONS.filter((candidate) => candidate.id !== 'pause')) {
-    assert.ok(button.width >= 24 && button.height >= 24, button.id);
-  }
+test('the rocker halves and the two action buttons are sized for thumbs', () => {
+  const byId = (id) => BUTTONS.find((button) => button.id === id);
+  for (const id of ['left', 'right']) assert.ok(byId(id).width >= CONTROLS_PANEL_WIDTH * 0.27, id);
+  for (const id of ['action', 'jump']) assert.ok(byId(id).width >= CONTROLS_PANEL_WIDTH * 0.25, id);
+  assert.equal(byId('left').x + byId('left').width, byId('right').x, 'the halves form one rocker');
 });
 
 test('panel touches map to the same input records as the landscape buttons', () => {
@@ -123,7 +124,7 @@ test('the pressed buttons under a finger are reported for drawing', () => {
   );
 });
 
-test('pause is small and in the top right corner, thumb buttons sit near the bottom', () => {
+test('pause is small in the top right corner and the controls fill the lower 60 percent', () => {
   const pause = BUTTONS.find((button) => button.id === 'pause');
   assert.ok(pause.width <= 32 && pause.height <= 20);
   assert.ok(pause.x + pause.width > CONTROLS_PANEL_WIDTH - 12 && pause.y < 12);
@@ -131,6 +132,6 @@ test('pause is small and in the top right corner, thumb buttons sit near the bot
   const action = BUTTONS.find((button) => button.id === 'action');
   assert.ok(action.x < jump.x && action.y > jump.y, 'shove is lower left of jump');
   for (const button of BUTTONS.filter((candidate) => candidate.id !== 'pause')) {
-    assert.ok(button.y + button.height > PANEL_HEIGHT - 40, `${button.id} is near the bottom`);
+    assert.ok(button.y >= PANEL_HEIGHT * 0.4, `${button.id} is in the lower 60 percent`);
   }
 });
