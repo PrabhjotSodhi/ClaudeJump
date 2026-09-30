@@ -1,0 +1,21 @@
+{
+  "ticksPerFrame": 2,
+  "stages": [
+    [
+      { "x": -4, "height": -2 },
+      { "x": -4, "height": -2 }
+    ],
+    [
+      { "x": -5, "height": -2 },
+      { "x": -3, "height": -2 }
+    ],
+    [
+      { "x": -6, "height": -2 },
+      { "x": -2, "height": -2 }
+    ],
+    [
+      { "x": -7, "y": -1, "height": -2 },
+      { "x": -1, "height": -2 }
+    ]
+  ]
+}

@@ -11,6 +11,7 @@ import { MusicPlayer } from './engine/music-player.js';
 import { SoundPlayer } from './engine/sound-player.js';
 import { initKeyBindings, loadKeyBindings } from './engine/key-bindings.js';
 import { loadSettings, settings } from './engine/sound-settings.js';
+import { loadCharacterPoses } from './vfx/character-animations.js';
 import { loadSpriteFile } from './engine/sprites.js';
 import {
   createTouchInput,
@@ -95,6 +96,7 @@ async function main() {
     mistral,
     props,
     blocks,
+    characterPoses,
     vertexShaderSource,
     fragmentShaderSource,
   ] = await Promise.all([
@@ -112,6 +114,7 @@ async function main() {
     loadSpriteFile('data/sprites/mistral.json'),
     loadSpriteFile('data/sprites/props.json'),
     loadSpriteFile('data/sprites/blocks.json'),
+    loadCharacterPoses(),
     loadText('data/shaders/composite.vert'),
     loadText('data/shaders/composite.frag'),
   ]);
@@ -153,7 +156,7 @@ async function main() {
   musicPlayer.start();
   const fullscreen = createFullscreen();
   const sceneManager = new SceneManager({ soundPlayer, musicPlayer, fullscreen });
-  const sprites = { claude, muse, chatgpt, gemini, grok, deepseek, mistral, props, blocks };
+  const sprites = { claude, muse, chatgpt, gemini, grok, deepseek, mistral, props, blocks, characterPoses };
   // Survival builds its platforms from the Harbor stone, the first level file.
   sprites.stoneBlocks = levels[0].tileSprites;
   const platformStoneColors = {

@@ -124,9 +124,17 @@ export class GooglyEye {
   }
 }
 
-// x and y are the top left of the eye, rim included.
-export function drawGooglyEye(context, eye, x, y) {
+// x and y are the top left of the eye, rim included. A closed eye shows its lid: the white in shade with a dark
+// line across the middle.
+export function drawGooglyEye(context, eye, x, y, closed = false) {
   context.drawImage(eyeImage(), x, y);
+  if (closed) {
+    EYE_WHITE_SPANS.forEach(([start, end], row) => {
+      context.fillStyle = row === Math.floor(WHITE_DIAMETER / 2) ? RIM_COLOR : SHADE_COLOR;
+      context.fillRect(x + 1 + start, y + 1 + row, end - start + 1, 1);
+    });
+    return;
+  }
   context.fillStyle = PUPIL_COLOR;
   for (const [pupilX, pupilY] of eye.pupilPixels()) context.fillRect(x + 1 + pupilX, y + 1 + pupilY, 1, 1);
 }
