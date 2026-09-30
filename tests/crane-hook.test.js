@@ -46,7 +46,7 @@ function standInHook(scene, id) {
 
 test('Harbor has a crane hook and the other arenas do not', () => {
   assert.ok(craneHook(harborFight()));
-  const otherArena = new VersusScene({ level: arenaLevels['cooling-towers'], startInFightPhase: true, seed: 1 });
+  const otherArena = new VersusScene({ level: arenaLevels.cave, startInFightPhase: true, seed: 1 });
   assert.equal(otherArena.entityGroups.get('hazards').length, 0);
 });
 
