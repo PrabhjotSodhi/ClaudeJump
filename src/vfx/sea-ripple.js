@@ -26,6 +26,10 @@ export class SeaRipple {
     });
   }
 
+  attachCrates(events) {
+    events.on('crate-fell-in-water', ({ x }) => this.splash(x));
+  }
+
   splash(x) {
     const centerColumn = Math.min(SEA_COLUMN_COUNT - 1, Math.max(0, Math.floor(x / SEA_COLUMN_WIDTH)));
     for (let offset = -SPLASH_SPREAD_COLUMNS; offset <= SPLASH_SPREAD_COLUMNS; offset++) {

@@ -17,7 +17,13 @@ import {
   TILE_SIZE,
   TIMER_URGENT_SECONDS,
 } from '../engine/config.js';
-import { BLAST_STRENGTH, blastIsReady, blastReaches, knockBackPlayersInBlast } from '../engine/blast.js';
+import {
+  BLAST_STRENGTH,
+  blastIsReady,
+  blastReaches,
+  crateSlideVelocity,
+  knockBackPlayersInBlast,
+} from '../engine/blast.js';
 import { EntityGroups } from '../engine/entity-groups.js';
 import { EventEmitter } from '../engine/events.js';
 import { SeededRandom } from '../engine/seeded-random.js';
@@ -33,11 +39,11 @@ import {
   BOUNCE_PAD_FLING_VELOCITY_Y,
 } from '../entities/bounce-pad.js';
 import { DEFAULT_JOINED_PLAYERS } from '../entities/characters.js';
-import { Crate, CRATE_WIDTH, CRATE_HEIGHT, CRATE_WARNING_TICKS } from '../entities/crate.js';
+import { BLAST_SLIDE_SPEED, Crate, CRATE_WIDTH, CRATE_HEIGHT, CRATE_WARNING_TICKS } from '../entities/crate.js';
 import { Platform } from '../entities/platform.js';
 import { Player } from '../entities/player.js';
 import { Rocket, ROCKET_WIDTH, ROCKET_HEIGHT } from '../entities/rocket.js';
-import { knockBackShoveTarget, resolveShoveHit } from '../entities/shove.js';
+import { knockBackShoveTarget, resolveShoveHit, resolveShoveHitOnCrate } from '../entities/shove.js';
 import { drawArenaBackground } from '../levels/arena-backgrounds.js';
 import { solidRuns } from '../levels/level-loader.js';
 import { drawHeldCardIcons } from '../ui/held-card-icons.js';
@@ -147,6 +153,7 @@ export class VersusScene {
     this.screenShake.attach(this.events);
     this.seaRipple = new SeaRipple();
     this.seaRipple.attach(this.events, () => this.players);
+    this.seaRipple.attachCrates(this.events);
     this.particles = new Particles();
     this.particles.attach(this.events, {
       getPlayers: () => this.players,
@@ -155,6 +162,7 @@ export class VersusScene {
     });
     this.splashes = new Splashes();
     this.splashes.attach(this.events, { getPlayers: () => this.players, getWaterLineY: () => this.waterLineY });
+    this.splashes.attachCrates(this.events);
     // Display data for the results screen, counted only from events. Created here (rather than
     // lazily on first render) so it never misses an event: dev mode can run a whole match through
     // step() with no render call in between. Game logic never reads it, only the HUD does.
@@ -432,6 +440,15 @@ export class VersusScene {
       });
       const hitZone = shover.shoveHitZone;
       this.popCrateParachute((bounds) => rectanglesOverlap(bounds, hitZone), shover.facing, 'shove');
+      const crate = this.entityGroups.get('crates')[0];
+      if (crate) {
+        resolveShoveHitOnCrate({
+          events: this.events,
+          crate,
+          shover,
+          alreadyHitIds: this.shoveHitIdsByShoverId.get(shover.id),
+        });
+      }
     }
     this.resolvePlayerCollisions();
   }
@@ -531,9 +548,11 @@ export class VersusScene {
   }
 
   resolveBlast(blastCenterX, blastCenterY) {
+    const crate = this.entityGroups.get('crates')[0];
+    const crateVelocityX = crate ? crateSlideVelocity(crate, blastCenterX, blastCenterY, BLAST_SLIDE_SPEED) : 0;
+    if (crateVelocityX !== 0) crate.slide(crateVelocityX);
     const knockedPlayerIds = knockBackPlayersInBlast(this.players, blastCenterX, blastCenterY);
     this.breakBlocksWhere((block) => blockIsInBlast(block, blastCenterX, blastCenterY));
-    const crate = this.entityGroups.get('crates')[0];
     if (crate) {
       this.popCrateParachute(
         (bounds) => blastReaches(bounds, blastCenterX, blastCenterY),
@@ -652,7 +671,9 @@ export class VersusScene {
     }
 
     crate.update(this.entityGroups.get('platforms'));
+    wrapAroundScreen(crate);
     if (crate.y + crate.height >= this.waterLineY) {
+      this.events.emit('crate-fell-in-water', { x: crate.x + crate.width / 2, y: this.waterLineY });
       this.entityGroups.remove('crates', crate);
       this.scheduleNextCrate();
       return;
