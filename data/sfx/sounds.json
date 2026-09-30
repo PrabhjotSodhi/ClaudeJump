@@ -169,6 +169,25 @@
       "volume": 0.12
     }
   ],
+  "bomb-pass": [
+    {
+      "waveform": "square",
+      "startFrequency": 440,
+      "endFrequency": 880,
+      "duration": 0.08,
+      "volume": 0.14
+    }
+  ],
+  "bomb-lit": [
+    {
+      "waveform": "sawtooth",
+      "startFrequency": 900,
+      "endFrequency": 1400,
+      "duration": 0.3,
+      "volume": 0.06,
+      "noiseVolume": 0.3
+    }
+  ],
   "slip": [
     {
       "waveform": "sine",

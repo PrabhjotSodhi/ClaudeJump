@@ -25,6 +25,8 @@
   "spring-jumped": "spring",
   "player-iced": "freeze",
   "hill-moved": "hill-move",
+  "bomb-passed": "bomb-pass",
+  "bomb-handed": "bomb-lit",
   "player-respawned": "respawn",
   "ice-shattered": "ice-shatter",
   "player-burned": "burn",

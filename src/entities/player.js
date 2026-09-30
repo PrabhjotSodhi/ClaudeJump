@@ -112,6 +112,7 @@ export class Player extends PhysicsEntity {
     // Starts true so a jump key still held from the last round does not auto-jump on spawn.
     this.jumpHeld = true;
     this.inWater = false;
+    this.blownUp = false;
     this.slipTicksRemaining = 0;
     this.slipDirection = 0;
     this.airJumpAvailable = false;
@@ -265,6 +266,12 @@ export class Player extends PhysicsEntity {
 
   startSinking() {
     this.inWater = true;
+  }
+
+  // Out of the round like a player in the sea, but gone from sight in the blast.
+  blowUp() {
+    this.inWater = true;
+    this.blownUp = true;
   }
 
   // Keeps sliding the way they were moving; a player standing still slides the way they face.
@@ -433,6 +440,7 @@ export class Player extends PhysicsEntity {
   // appearance is { sprites, playerEyes, characterAnimations }: the loaded sprite files by name, the display only eyes
   // and the display only poses. Without characterAnimations the body is drawn in its plain frame.
   render(context, appearance) {
+    if (this.blownUp) return;
     this.renderAt(context, this.x, appearance);
     if (this.x < 0) this.renderAt(context, this.x + SCREEN_WIDTH, appearance);
     else if (this.x + this.width > SCREEN_WIDTH) this.renderAt(context, this.x - SCREEN_WIDTH, appearance);
