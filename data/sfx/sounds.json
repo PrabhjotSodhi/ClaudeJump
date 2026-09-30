@@ -400,5 +400,39 @@
       "duration": 0.16,
       "volume": 0.3
     }
+  ],
+  "count-beat": [
+    {
+      "waveform": "square",
+      "startFrequency": 440,
+      "endFrequency": 440,
+      "duration": 0.09,
+      "volume": 0.16
+    },
+    {
+      "waveform": "triangle",
+      "startFrequency": 110,
+      "endFrequency": 70,
+      "duration": 0.1,
+      "volume": 0.25,
+      "noiseVolume": 0.08
+    }
+  ],
+  "count-go": [
+    {
+      "waveform": "square",
+      "startFrequency": 660,
+      "endFrequency": 990,
+      "duration": 0.2,
+      "volume": 0.2
+    },
+    {
+      "waveform": "triangle",
+      "startFrequency": 140,
+      "endFrequency": 60,
+      "duration": 0.16,
+      "volume": 0.32,
+      "noiseVolume": 0.14
+    }
   ]
 }
