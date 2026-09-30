@@ -286,7 +286,7 @@ function sceneJustBeforeResults() {
   const setup = pausedScene();
   const { scene, matchScene } = setup;
   matchScene.levels = [harborLevel];
-  matchScene.characterByPlayerId = { red: 'muse', blue: 'claude' };
+  matchScene.characterByPlayerId = { red: 'meta', blue: 'claude' };
   for (let win = 1; win <= 5; win++) {
     for (let tick = 0; tick < READY_TICKS; tick++) scene.update(neutralInputs());
     findPlayer(matchScene, 'blue').y = 600;

@@ -10,7 +10,7 @@
       "drums": { "drums": true, "bars": ["k . s . k k s .", "k+s . . . . . . ."] }
     }
   },
-  "muse": {
+  "meta": {
     "tempo": 132,
     "beatsPerBar": 4,
     "stepsPerBeat": 2,

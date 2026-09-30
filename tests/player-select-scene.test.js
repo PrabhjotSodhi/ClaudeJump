@@ -120,11 +120,11 @@ function hoveredCharacterName(scene, playerId) {
   return CHARACTERS[scene.characterIndexByPlayerId[playerId]].name;
 }
 
-test('red starts hovering on Claude and blue on Muse', () => {
+test('red starts hovering on Claude and blue on Meta AI', () => {
   const { scene } = sceneWithBaseline();
 
   assert.equal(hoveredCharacterName(scene, 'red'), 'claude');
-  assert.equal(hoveredCharacterName(scene, 'blue'), 'muse');
+  assert.equal(hoveredCharacterName(scene, 'blue'), 'meta');
 });
 
 test('left and right cycle the hovered character while picking', () => {
@@ -158,11 +158,11 @@ test('a player hovering on a character the other player locks in moves to the ne
   press(scene, 'blue', 'jump');
   press(scene, 'red', 'jump');
   press(scene, 'red', 'right');
-  assert.equal(hoveredCharacterName(scene, 'blue'), 'muse', 'hovering is not locking, so red may hover on Muse too');
+  assert.equal(hoveredCharacterName(scene, 'blue'), 'meta', 'hovering is not locking, so red may hover on Meta AI too');
 
   press(scene, 'red', 'jump');
 
-  assert.equal(hoveredCharacterName(scene, 'red'), 'muse');
+  assert.equal(hoveredCharacterName(scene, 'red'), 'meta');
   assert.equal(hoveredCharacterName(scene, 'blue'), 'chatgpt');
   assert.equal(scene.stateByPlayerId.blue, 'picking');
 });
@@ -177,7 +177,7 @@ test('level select gets the character each player locked in', () => {
   runCountdown(scene);
 
   const { characterByPlayerId } = scenes[0];
-  assert.deepEqual([characterByPlayerId.red.name, characterByPlayerId.blue.name], ['muse', 'chatgpt']);
+  assert.deepEqual([characterByPlayerId.red.name, characterByPlayerId.blue.name], ['meta', 'chatgpt']);
 });
 
 test('changing character starts a hop, joining slides the card in instead', () => {

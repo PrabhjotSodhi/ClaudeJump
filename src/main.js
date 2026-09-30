@@ -91,7 +91,7 @@ async function main() {
     winJingles,
     stingers,
     claude,
-    muse,
+    meta,
     chatgpt,
     gemini,
     grok,
@@ -112,7 +112,7 @@ async function main() {
     fetch('data/music/win-jingles.json').then((response) => response.json()),
     fetch('data/music/stingers.json').then((response) => response.json()),
     loadSpriteFile('data/sprites/claude.json'),
-    loadSpriteFile('data/sprites/muse.json'),
+    loadSpriteFile('data/sprites/meta.json'),
     loadSpriteFile('data/sprites/chatgpt.json'),
     loadSpriteFile('data/sprites/gemini.json'),
     loadSpriteFile('data/sprites/grok.json'),
@@ -164,7 +164,7 @@ async function main() {
   musicPlayer.start();
   const fullscreen = createFullscreen();
   const sceneManager = new SceneManager({ soundPlayer, musicPlayer, fullscreen });
-  const sprites = { claude, muse, chatgpt, gemini, grok, deepseek, mistral, props, blocks, characterPoses };
+  const sprites = { claude, meta, chatgpt, gemini, grok, deepseek, mistral, props, blocks, characterPoses };
   // Survival builds its platforms from the Harbor stone, the first level file.
   sprites.stoneBlocks = levels[0].tileSprites;
   const platformStoneColors = {

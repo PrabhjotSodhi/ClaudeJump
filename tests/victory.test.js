@@ -29,7 +29,7 @@ function advance(scene, tickCount) {
   for (let tick = 0; tick < tickCount; tick++) scene.update(idleInputs(scene));
 }
 
-// Blue, playing Muse, wins the round by staying dry while red falls in.
+// Blue, playing Meta AI, wins the round by staying dry while red falls in.
 function sceneAfterBlueWinsRound({ matchPoint = false } = {}) {
   const players = PLAYERS.slice(0, 2).map(({ id }, index) => ({ id, character: CHARACTERS[index] }));
   const scene = new VersusScene({ level: harborLevel, seed: 0, players, sprites: { characterPoses: POSES } });
@@ -56,7 +56,7 @@ test('the round winner strikes their victory pose and the loser does not', () =>
   assert.equal(scene.phase, 'point');
   assert.equal(scene.characterAnimations.stateFor('blue').action, 'victory');
   assert.notEqual(scene.characterAnimations.stateFor('red').action, 'victory');
-  assert.ok(POSES.victory.muse.frames.includes(scene.characterAnimations.poseFor(blue)));
+  assert.ok(POSES.victory.meta.frames.includes(scene.characterAnimations.poseFor(blue)));
   assert.ok(red.inWater);
 });
 
@@ -65,7 +65,7 @@ test('winning the match names the winner once and rains confetti in their player
   advance(scene, 30);
 
   assert.equal(scene.phase, 'match');
-  assert.deepEqual(matchWins, [{ playerId: 'blue', characterName: 'muse' }]);
+  assert.deepEqual(matchWins, [{ playerId: 'blue', characterName: 'meta' }]);
   const blueColor = PLAYERS.find(({ id }) => id === 'blue').color;
   const colors = new Set(scene.confetti.pieces.map((piece) => piece.color));
   assert.ok(scene.confetti.pieces.length > 0);
@@ -127,7 +127,7 @@ test('the winner plays their jingle once, then it stops', () => {
   const { scene } = sceneAfterBlueWinsRound();
   musicPlayer.attach(scene.events);
 
-  scene.events.emit('match-won', { playerId: 'blue', characterName: 'muse' });
+  scene.events.emit('match-won', { playerId: 'blue', characterName: 'meta' });
   const pumpFor = (seconds) => {
     const endTime = audioContext.currentTime + seconds;
     while (audioContext.currentTime < endTime) {
@@ -139,7 +139,7 @@ test('the winner plays their jingle once, then it stops', () => {
   const notesPlayed = audioContext.startTimes.length;
   pumpFor(5);
 
-  const jingleNotes = Object.values(JINGLES.muse.channels)
+  const jingleNotes = Object.values(JINGLES.meta.channels)
     .flatMap((channel) => parseChannel(channel).filter((step, index, steps) => step && steps[index - 1] !== step))
     .flatMap((step) => (Array.isArray(step) ? step : [step])).length;
   assert.ok(notesPlayed > 0);

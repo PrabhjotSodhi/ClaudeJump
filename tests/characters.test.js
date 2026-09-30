@@ -7,8 +7,8 @@ test('every character has its tag color, and two eyes', () => {
 
   assert.deepEqual(tagColorByName, {
     claude: '#f77622',
-    muse: '#ead4aa',
-    chatgpt: '#63c74d',
+    meta: '#b55088',
+    chatgpt: '#ffffff',
     gemini: '#0099db',
     grok: '#c0cbdc',
     deepseek: '#2ce8f5',
@@ -17,7 +17,7 @@ test('every character has its tag color, and two eyes', () => {
   for (const character of CHARACTERS) assert.equal(character.eyeFramePositions.length, 2, character.name);
 });
 
-test('red defaults to Claude and blue to Muse', () => {
+test('red defaults to Claude and blue to Meta AI', () => {
   assert.equal(DEFAULT_CHARACTER_BY_PLAYER_ID.red.name, 'claude');
-  assert.equal(DEFAULT_CHARACTER_BY_PLAYER_ID.blue.name, 'muse');
+  assert.equal(DEFAULT_CHARACTER_BY_PLAYER_ID.blue.name, 'meta');
 });

@@ -30,7 +30,7 @@ The palette is [Endesga 32](https://lospec.com/palette-list/endesga-32) plus thr
 
 ## Characters
 
-- Characters are AI logos and mascots. A logo character's body is the logo's shape drawn as pixel art, like Claude's orange spark. A mascot is one chunky, round head-body blob, like Muse the yeti.
+- Characters are AI logos and mascots. A logo character's body is the logo's shape drawn as pixel art, like Claude's orange spark. A mascot is one chunky, round head-body blob.
 - The body is about 28x28, drawn in a 32x32 frame so the outlines and squash fit. The hitbox is 24x28.
 - No animated limbs. A mascot may have stubby arms and legs as part of its one body shape. Motion comes from hopping, squash and stretch, and the eyes.
 - Every character has two big googly eyes: 7 pixel white discs with a `#3e2731` rim and a 3 pixel dark pupil. They must leave room for the shape that makes the character recognizable: the spark's rays, the mascot's face window. The engine draws them on top of the body from `src/vfx/googly-eyes.js`. Each pupil lags behind the body's motion, flies up on a jump and rattles on a hit.
