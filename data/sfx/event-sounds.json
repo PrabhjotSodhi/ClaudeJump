@@ -30,6 +30,7 @@
     "large": "splash-large"
   },
   "round-won": "round-won",
+  "timer-ticked": "timer-tick",
   "sudden-death-started": "sudden-death",
   "new-best": "new-best",
   "menu-moved": "menu-move",

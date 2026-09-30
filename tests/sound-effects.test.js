@@ -29,6 +29,7 @@ const EVENTS_THAT_MAKE_SOUNDS = [
   'player-pinched',
   'player-fell-in-water',
   'round-won',
+  'timer-ticked',
   'sudden-death-started',
   'new-best',
   'menu-moved',
