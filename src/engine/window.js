@@ -45,7 +45,7 @@ function placeCanvas(canvas, { deviceWidth, deviceHeight, cssWidth, cssHeight, c
 }
 
 // Returns the portrait layout while a touch device is held upright, otherwise null.
-function resizeToFitWindow(canvas, webglContext, { controlsCanvas, portraitScaling, coarsePointerQuery }) {
+function resizeToFitWindow(canvas, webglContext, { controlsCanvas, coarsePointerQuery }) {
   const devicePixelRatio = window.devicePixelRatio || 1;
   const insets = document.fullscreenElement ? undefined : readSafeAreaInsets();
   const isPortrait = isPortraitOnTouchDevice({
@@ -63,7 +63,6 @@ function resizeToFitWindow(canvas, webglContext, { controlsCanvas, portraitScali
       height: innerHeight,
       devicePixelRatio,
       insets,
-      scaling: portraitScaling,
     });
     gameFit = portraitLayout.game;
     const { controls } = portraitLayout;
@@ -83,8 +82,8 @@ function resizeToFitWindow(canvas, webglContext, { controlsCanvas, portraitScali
   return portraitLayout;
 }
 
-// controlsCanvas is the portrait controls panel. portraitScaling is 'full' or 'crisp', see portrait-layout.js.
-export function createWindow(canvas, vertexShaderSource, fragmentShaderSource, { controlsCanvas, portraitScaling }) {
+// controlsCanvas is the portrait controls panel.
+export function createWindow(canvas, vertexShaderSource, fragmentShaderSource, { controlsCanvas }) {
   const webglContext = canvas.getContext('webgl', { antialias: false });
   if (!webglContext) return null;
   const program = createProgram(webglContext, vertexShaderSource, fragmentShaderSource);
@@ -126,7 +125,7 @@ export function createWindow(canvas, vertexShaderSource, fragmentShaderSource, {
   const coarsePointerQuery = matchMedia('(pointer: coarse)');
   let portraitLayout = null;
   function resize() {
-    portraitLayout = resizeToFitWindow(canvas, webglContext, { controlsCanvas, portraitScaling, coarsePointerQuery });
+    portraitLayout = resizeToFitWindow(canvas, webglContext, { controlsCanvas, coarsePointerQuery });
   }
   addEventListener('resize', resize);
   // Entering or leaving fullscreen usually fires 'resize' too, but this covers browsers where it doesn't.

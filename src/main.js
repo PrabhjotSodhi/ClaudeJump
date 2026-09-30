@@ -120,11 +120,8 @@ async function main() {
   const canvas = document.getElementById('screen');
   const controlsCanvas = document.getElementById('controls');
   const controlsContext = controlsCanvas.getContext('2d');
-  // ?portrait=crisp keeps every game pixel the same size in portrait, at the cost of a narrower game.
-  const portraitScaling = searchParameters.get('portrait') === 'crisp' ? 'crisp' : 'full';
   const gameWindow = createWindow(canvas, vertexShaderSource, fragmentShaderSource, {
     controlsCanvas,
-    portraitScaling,
   });
   if (!gameWindow) {
     canvas.style.display = 'none';

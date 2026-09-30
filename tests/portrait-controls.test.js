@@ -122,3 +122,15 @@ test('the pressed buttons under a finger are reported for drawing', () => {
     ['right'],
   );
 });
+
+test('pause is small and in the top right corner, thumb buttons sit near the bottom', () => {
+  const pause = BUTTONS.find((button) => button.id === 'pause');
+  assert.ok(pause.width <= 32 && pause.height <= 20);
+  assert.ok(pause.x + pause.width > CONTROLS_PANEL_WIDTH - 12 && pause.y < 12);
+  const jump = BUTTONS.find((button) => button.id === 'jump');
+  const action = BUTTONS.find((button) => button.id === 'action');
+  assert.ok(action.x < jump.x && action.y > jump.y, 'shove is lower left of jump');
+  for (const button of BUTTONS.filter((candidate) => candidate.id !== 'pause')) {
+    assert.ok(button.y + button.height > PANEL_HEIGHT - 40, `${button.id} is near the bottom`);
+  }
+});
