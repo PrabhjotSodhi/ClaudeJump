@@ -6,29 +6,50 @@ import {
 } from '../engine/config.js';
 import { EventEmitter } from '../engine/events.js';
 import { SeededRandom } from '../engine/seeded-random.js';
-import { DEFAULT_CHARACTER_BY_PLAYER_ID } from '../entities/characters.js';
+import { HOVER_CHARACTER_BY_PLAYER_ID } from '../entities/characters.js';
 import { Platform } from '../entities/platform.js';
-import { Player, SHOVE_KNOCKBACK_VELOCITY_X, SHOVE_KNOCKBACK_VELOCITY_Y } from '../entities/player.js';
+import { Player } from '../entities/player.js';
+import { resolveShoveHit } from '../entities/shove.js';
 import { drawParticles, HARD_LANDING_SPEED, Particles } from '../vfx/particles.js';
 import { PlayerEyes } from '../vfx/player-eyes.js';
 
-export const LEDGE_TOP_Y = 140;
-const LEDGE_BLOCK_SIZE = 32;
-const LEDGE_BLOCK_GAP = 2;
-const LEDGE_BLOCK_SPRITE_NAMES = ['block-big-0', 'block-big-1', 'block-big-0', 'block-big-1', 'block-big-0'];
-const LEDGE_BLOCK_STRIDE = LEDGE_BLOCK_SIZE + LEDGE_BLOCK_GAP;
-const LEDGE_WIDTH = LEDGE_BLOCK_SPRITE_NAMES.length * LEDGE_BLOCK_STRIDE - LEDGE_BLOCK_GAP;
-export const LEDGE_LEFT_X = (SCREEN_WIDTH - LEDGE_WIDTH) / 2;
+const BLOCK_SIZE = 32;
+const BLOCK_GAP = 2;
+const BLOCK_STRIDE = BLOCK_SIZE + BLOCK_GAP;
+const BLOCK_SPRITE_NAMES = ['block-big-0', 'block-big-1'];
 
-// A character whose feet sink this far below the ledge top is out of the fight and respawns. The
-// limit sits above the menu, so nobody ever falls behind its text.
-export const RESPAWN_FEET_Y = LEDGE_TOP_Y + 30;
-const SPAWN_INSET = 32;
+// One wide ledge between the logo and the menu, and a lower ledge on each side of the menu, clear of
+// the controls panel. Characters climb from the lower ledges to the upper one with a full jump, and
+// only ever hop a little on the upper ledge so they never reach the logo.
+const LOWER_LEDGE_WIDTH = 5 * BLOCK_STRIDE - BLOCK_GAP;
+const LEDGES = [
+  { leftX: 185, topY: 140, blockCount: 8 },
+  { leftX: 10, topY: 205, blockCount: 5 },
+  { leftX: SCREEN_WIDTH - 10 - LOWER_LEDGE_WIDTH, topY: 205, blockCount: 5 },
+].map((ledge) => ({ ...ledge, width: ledge.blockCount * BLOCK_STRIDE - BLOCK_GAP }));
+const [UPPER_LEDGE, LOWER_LEFT_LEDGE, LOWER_RIGHT_LEDGE] = LEDGES;
+
+// A character whose feet sink this far below a lower ledge is out of the fight and drops back in from
+// the top of the screen. The limit sits above the controls panel.
+const RESPAWN_FEET_Y = LOWER_LEFT_LEDGE.topY + 30;
+const RESPAWN_DROP_FEET_Y = -20;
+const RESPAWN_SPREAD_PIXELS = 40;
 const EDGE_MARGIN = 4;
+// A character rising past this line stops there, so a big hit never carries one behind the logo.
+const CEILING_Y = 66;
 
-const PLAYER_IDS = ['red', 'blue'];
+const SPAWNS = [
+  { id: 'red', ledgeIndex: 1 },
+  { id: 'blue', ledgeIndex: 2 },
+  { id: 'green', ledgeIndex: 0, offsetX: -60 },
+  { id: 'yellow', ledgeIndex: 0, offsetX: 60 },
+];
 const CLOSE_DISTANCE = 44;
+const SAME_LEVEL_DISTANCE = 20;
 const JUMP_HOLD_TICKS = 3;
+const CLIMB_JUMP_HOLD_TICKS = 14;
+const CLIMB_EDGE_DISTANCE = 30;
+const CLIMB_CHANCE = 0.4;
 const TAP_SHOVE_TICKS = 4;
 const SHOVE_RECOVER_TICKS = 24;
 
@@ -38,25 +59,29 @@ function inputFor(direction, overrides = {}) {
   return { ...IDLE_INPUT, left: direction < 0, right: direction > 0, ...overrides };
 }
 
-// Two real players on a small ledge, fighting on their own from scripted inputs. Every choice comes
+function centerX(player) {
+  return player.x + player.width / 2;
+}
+
+// Four real players on a few ledges, fighting on their own from scripted inputs. Every choice comes
 // from the seeded random and the players' positions, so the same seed plays out the same way.
 export class TitleBrawl {
   constructor({ seed }) {
     this.random = new SeededRandom(seed);
     this.events = new EventEmitter();
-    this.platform = new Platform({
-      x: LEDGE_LEFT_X,
-      y: LEDGE_TOP_Y,
-      width: LEDGE_WIDTH,
-      height: LEDGE_BLOCK_SIZE,
-    });
+    this.platforms = LEDGES.map(
+      (ledge) => new Platform({ x: ledge.leftX, y: ledge.topY, width: ledge.width, height: BLOCK_SIZE }),
+    );
     this.tickCount = 0;
     this.stepsByPlayerId = {};
+    this.ledgeByPlayerId = {};
     this.shoveHitIdsByShoverId = new Map();
     this.respawnCount = 0;
-    this.players = PLAYER_IDS.map((id, index) => {
+    this.players = SPAWNS.map(({ id, ledgeIndex, offsetX = 0 }) => {
+      const ledge = LEDGES[ledgeIndex];
       this.stepsByPlayerId[id] = [];
-      return this.spawnPlayer(id, index === 0 ? LEDGE_LEFT_X + SPAWN_INSET : LEDGE_LEFT_X + LEDGE_WIDTH - SPAWN_INSET);
+      this.ledgeByPlayerId[id] = ledge;
+      return this.createPlayer(id, ledge.leftX + ledge.width / 2 + offsetX, ledge.topY);
     });
     this.playerEyes = new PlayerEyes();
     this.playerEyes.attach(this.events, () => this.players);
@@ -68,12 +93,12 @@ export class TitleBrawl {
     });
   }
 
-  spawnPlayer(id, x) {
+  createPlayer(id, x, feetY) {
     return new Player({
       id,
-      character: DEFAULT_CHARACTER_BY_PLAYER_ID[id],
+      character: HOVER_CHARACTER_BY_PLAYER_ID[id],
       spawnX: x,
-      spawnY: LEDGE_TOP_Y,
+      spawnY: feetY,
       facing: x < SCREEN_WIDTH / 2 ? 1 : -1,
     });
   }
@@ -83,35 +108,59 @@ export class TitleBrawl {
     this.playerEyes.update();
     this.particles.update();
     for (const player of [...this.players]) this.updatePlayer(player);
-    for (const player of this.players) if (player.isShoveActive) this.resolveShoveHit(player);
+    for (const shover of this.players) {
+      if (!shover.isShoveActive) continue;
+      resolveShoveHit({
+        events: this.events,
+        players: this.players,
+        shover,
+        alreadyHitIds: this.shoveHitIdsByShoverId.get(shover.id),
+      });
+    }
   }
 
   updatePlayer(player) {
     const fallSpeed = player.velocityY;
     const wasOnGround = player.onGround;
-    player.update(this.scriptedInput(player), [this.platform]);
-    const feet = { playerId: player.id, x: player.x + player.width / 2, y: player.y + player.height };
+    player.update(this.scriptedInput(player), this.platforms);
+    const feet = { playerId: player.id, x: centerX(player), y: player.y + player.height };
     if (player.ticksSinceJump === 0) this.events.emit('player-jumped', feet);
     if (player.onGround && !wasOnGround && fallSpeed >= HARD_LANDING_SPEED) this.events.emit('player-landed', feet);
     if (player.shoveJustFullyCharged) this.events.emit('shove-fully-charged', { playerId: player.id });
     if (player.shoveJustStarted) this.shoveHitIdsByShoverId.set(player.id, new Set());
-    if (player.y + player.height >= RESPAWN_FEET_Y) this.respawn(player);
+    if (player.velocityY < 0 && player.y < CEILING_Y) {
+      player.y = CEILING_Y;
+      player.velocityY = 0;
+    }
+    if (this.isKnockedOut(player)) this.respawn(player);
   }
 
-  // Comes back on the side of the ledge farther from the other character.
+  // Out of the fight once it sinks below the lower ledges, or falls under the upper ledge, where the
+  // menu is.
+  isKnockedOut(player) {
+    const feetY = player.y + player.height;
+    const underUpperLedge =
+      feetY > UPPER_LEDGE.topY + BLOCK_SIZE &&
+      centerX(player) > UPPER_LEDGE.leftX &&
+      centerX(player) < UPPER_LEDGE.leftX + UPPER_LEDGE.width;
+    return feetY >= RESPAWN_FEET_Y || underUpperLedge;
+  }
+
+  // Drops back in from the top of the screen above the lower ledge with fewer characters on it.
   respawn(player) {
-    const opponent = this.players.find((candidate) => candidate !== player);
-    const leftX = LEDGE_LEFT_X + SPAWN_INSET;
-    const rightX = LEDGE_LEFT_X + LEDGE_WIDTH - SPAWN_INSET;
-    const opponentCenterX = opponent.x + opponent.width / 2;
-    const x = Math.abs(opponentCenterX - leftX) > Math.abs(opponentCenterX - rightX) ? leftX : rightX;
-    this.players[this.players.indexOf(player)] = this.spawnPlayer(player.id, x);
+    const others = this.players.filter((candidate) => candidate !== player);
+    const onLeft = others.filter((other) => centerX(other) < SCREEN_WIDTH / 2).length;
+    const ledge = onLeft <= others.length - onLeft ? LOWER_LEFT_LEDGE : LOWER_RIGHT_LEDGE;
+    const spread = this.randomTicks(-RESPAWN_SPREAD_PIXELS, RESPAWN_SPREAD_PIXELS);
+    const x = ledge.leftX + ledge.width / 2 + spread;
+    this.players[this.players.indexOf(player)] = this.createPlayer(player.id, x, RESPAWN_DROP_FEET_Y);
     this.stepsByPlayerId[player.id] = [];
+    this.ledgeByPlayerId[player.id] = ledge;
     this.respawnCount++;
-    this.events.emit('player-landed', { playerId: player.id, x, y: LEDGE_TOP_Y });
   }
 
   scriptedInput(player) {
+    if (player.onGround) this.ledgeByPlayerId[player.id] = this.ledgeUnder(player) ?? this.ledgeByPlayerId[player.id];
     if (player.isFrozen) return IDLE_INPUT;
     const steps = this.stepsByPlayerId[player.id];
     if (steps.length === 0) steps.push(...this.planFor(player));
@@ -120,10 +169,22 @@ export class TitleBrawl {
     return this.keepOnLedge(player, step.input);
   }
 
+  ledgeUnder(player) {
+    const feetY = player.y + player.height;
+    return LEDGES.find(
+      (ledge) => ledge.topY === feetY && player.x < ledge.leftX + ledge.width && player.x + player.width > ledge.leftX,
+    );
+  }
+
+  // Walking stops at the edge, so only a knock or a deliberate jump ever leaves a ledge.
   keepOnLedge(player, input) {
-    const pastLeft = player.x < LEDGE_LEFT_X + EDGE_MARGIN;
-    const pastRight = player.x + player.width > LEDGE_LEFT_X + LEDGE_WIDTH - EDGE_MARGIN;
-    if ((input.left && pastLeft) || (input.right && pastRight)) return { ...input, left: false, right: false };
+    if (!player.onGround) return input;
+    const ledge = this.ledgeByPlayerId[player.id];
+    const pastLeft = player.x < ledge.leftX + EDGE_MARGIN;
+    const pastRight = player.x + player.width > ledge.leftX + ledge.width - EDGE_MARGIN;
+    if (!input.jump && ((input.left && pastLeft) || (input.right && pastRight))) {
+      return { ...input, left: false, right: false };
+    }
     return input;
   }
 
@@ -131,13 +192,26 @@ export class TitleBrawl {
     return minimum + Math.floor(this.random.next() * (maximum - minimum + 1));
   }
 
-  // A plan is a list of { ticks, input } steps: walk toward the other character, hop, or shove
-  // (a quick tap or a held charge) once close, then wait out the cooldown.
+  nearestOpponent(player) {
+    const distanceTo = (other) => Math.abs(centerX(other) - centerX(player)) + Math.abs(other.y - player.y);
+    return this.players
+      .filter((candidate) => candidate !== player)
+      .reduce((nearest, candidate) => (distanceTo(candidate) < distanceTo(nearest) ? candidate : nearest));
+  }
+
+  // A plan is a list of { ticks, input } steps. On the same level a character walks toward the
+  // opponent, hops, or shoves (a quick tap or a held charge) once close, then waits out the cooldown.
+  // Below the opponent it walks to the ledge edge and jumps up. Above the opponent it waits.
   planFor(player) {
-    const opponent = this.players.find((candidate) => candidate !== player);
-    const offset = opponent.x + opponent.width / 2 - (player.x + player.width / 2);
+    const opponent = this.nearestOpponent(player);
+    const offset = centerX(opponent) - centerX(player);
     const direction = Math.sign(offset) || player.facing;
     const roll = this.random.next();
+    const heightGap = opponent.y - player.y;
+    if (heightGap < -SAME_LEVEL_DISTANCE) {
+      return roll < CLIMB_CHANCE ? this.climbPlan(player, direction) : this.hopPlan(direction);
+    }
+    if (heightGap > SAME_LEVEL_DISTANCE) return [{ ticks: this.randomTicks(10, 20), input: inputFor(0) }];
     if (Math.abs(offset) > CLOSE_DISTANCE) {
       if (roll < 0.7) return [{ ticks: this.randomTicks(10, 30), input: inputFor(direction) }];
       if (roll < 0.85) return this.hopPlan(direction);
@@ -146,6 +220,16 @@ export class TitleBrawl {
     if (roll < 0.6) return this.shovePlan(player, direction);
     if (roll < 0.8) return [{ ticks: this.randomTicks(12, 24), input: inputFor(-direction) }];
     return this.hopPlan(direction);
+  }
+
+  climbPlan(player, direction) {
+    const ledge = this.ledgeByPlayerId[player.id];
+    const edgeDistance = direction > 0 ? ledge.leftX + ledge.width - (player.x + player.width) : player.x - ledge.leftX;
+    if (edgeDistance > CLIMB_EDGE_DISTANCE) return [{ ticks: this.randomTicks(10, 20), input: inputFor(direction) }];
+    return [
+      { ticks: CLIMB_JUMP_HOLD_TICKS, input: inputFor(direction, { jump: true }) },
+      { ticks: this.randomTicks(24, 36), input: inputFor(direction) },
+    ];
   }
 
   hopPlan(direction) {
@@ -165,36 +249,13 @@ export class TitleBrawl {
     return steps;
   }
 
-  // Every other character touching the shover's hit zone is knocked away, once per shove.
-  resolveShoveHit(shover) {
-    const hitZone = shover.shoveHitZone;
-    const alreadyHitIds = this.shoveHitIdsByShoverId.get(shover.id);
-    for (const opponent of this.players) {
-      if (opponent === shover || alreadyHitIds.has(opponent.id) || !opponent.overlaps(hitZone)) continue;
-      alreadyHitIds.add(opponent.id);
-      const strength = shover.shoveCharge >= 1 ? 'medium' : 'light';
-      const multiplier = shover.shoveKnockbackMultiplier;
-      opponent.freeze(
-        strength,
-        SHOVE_KNOCKBACK_VELOCITY_X * multiplier * shover.facing,
-        SHOVE_KNOCKBACK_VELOCITY_Y * multiplier,
-      );
-      shover.freeze(strength);
-      this.events.emit('player-shoved', {
-        shoverId: shover.id,
-        targetId: opponent.id,
-        directionX: shover.facing,
-        directionY: 0,
-        strength,
-        charge: shover.shoveCharge,
-      });
-    }
-  }
-
   render(context, sprites) {
-    LEDGE_BLOCK_SPRITE_NAMES.forEach((spriteName, index) => {
-      context.drawImage(sprites.stoneBlocks[spriteName], LEDGE_LEFT_X + index * LEDGE_BLOCK_STRIDE, LEDGE_TOP_Y);
-    });
+    for (const ledge of LEDGES) {
+      for (let index = 0; index < ledge.blockCount; index++) {
+        const spriteName = BLOCK_SPRITE_NAMES[index % BLOCK_SPRITE_NAMES.length];
+        context.drawImage(sprites.stoneBlocks[spriteName], ledge.leftX + index * BLOCK_STRIDE, ledge.topY);
+      }
+    }
     for (const player of this.players) player.render(context, { sprites, playerEyes: this.playerEyes });
     drawParticles(context, this);
   }

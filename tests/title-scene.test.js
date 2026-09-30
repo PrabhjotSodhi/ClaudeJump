@@ -157,28 +157,42 @@ test('the title characters fight: they shove each other and get knocked out and 
   assert.ok(scene.brawl.respawnCount > 0);
 });
 
-test('a title character that falls off the ledge comes back on it', () => {
+test('a title character that falls out drops back in from the top of the screen and lands', () => {
   const scene = new TitleScene({ seed: 0 });
-  const [red] = scene.brawl.players;
+  const red = scene.brawl.players.find((player) => player.id === 'red');
   red.y = 400;
 
   scene.update(neutralInputs());
-
   const returned = scene.brawl.players.find((player) => player.id === 'red');
   assert.notEqual(returned, red);
-  assert.ok(returned.y < 200);
+  assert.ok(returned.y + returned.height < 0);
+
+  for (let tick = 0; tick < 120; tick++) scene.update(neutralInputs());
+  assert.ok(scene.brawl.players.find((player) => player.id === 'red').y > 100);
 });
 
-test('title characters stay above the menu and logo', () => {
+function overlapsRectangle(player, rectangle) {
+  return (
+    player.x < rectangle.x + rectangle.width &&
+    player.x + player.width > rectangle.x &&
+    player.y < rectangle.y + rectangle.height &&
+    player.y + player.height > rectangle.y
+  );
+}
+
+test('four characters fight, at least three are on screen, and none cross the logo or the menu', () => {
   const scene = new TitleScene({ seed: 5 });
-  const logoBottomY = 58;
-  const menuTopY = 176;
+  const logo = { x: 220, y: 30, width: 200, height: 30 };
+  const menu = { x: 270, y: 176, width: 100, height: 64 };
+  assert.equal(scene.brawl.players.length, 4);
 
   for (let tick = 0; tick < 3600; tick++) {
     scene.update(neutralInputs());
+    const onScreen = scene.brawl.players.filter((player) => player.y + player.height > 0);
+    assert.ok(onScreen.length >= 3, `only ${onScreen.length} on screen at tick ${tick}`);
     for (const player of scene.brawl.players) {
-      assert.ok(player.y > logoBottomY, `top ${player.y} at tick ${tick}`);
-      assert.ok(player.y + player.height < menuTopY, `bottom ${player.y + player.height} at tick ${tick}`);
+      assert.ok(!overlapsRectangle(player, logo), `behind the logo at tick ${tick}`);
+      assert.ok(!overlapsRectangle(player, menu), `behind the menu at tick ${tick}`);
     }
   }
 });
