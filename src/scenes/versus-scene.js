@@ -645,7 +645,9 @@ export class VersusScene {
     const cardName = CARD_NAMES[Math.floor(this.random.next() * CARD_NAMES.length)];
     const x = openTop.x + this.random.next() * (openTop.width - CRATE_WIDTH);
     const y = openTop.y - CRATE_HEIGHT;
-    this.entityGroups.add('crates', new Crate({ x, y, cardName }));
+    const crate = new Crate({ x, y, cardName });
+    crate.predictLanding(this.entityGroups.get('platforms'));
+    this.entityGroups.add('crates', crate);
   }
 
   scheduleNextCrate() {

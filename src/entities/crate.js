@@ -1,5 +1,7 @@
 import { Entity } from '../engine/entity.js';
+import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../engine/config.js';
 import { swayOffset } from '../vfx/parachute-sway.js';
+import { findLandingPlatform, predictCrateLanding } from './crate-landing.js';
 
 export const CRATE_WIDTH = 16;
 export const CRATE_HEIGHT = 16;
@@ -8,6 +10,10 @@ export const CRATE_WARNING_TICKS = 60;
 
 const MARKER_FLASH_TICKS = 10;
 const MARKER_COLOR = '#fee761';
+const MARKER_CORNER_WIDTH = 3;
+const MARKER_HEIGHT = 2;
+const GROUND_SHADOW_COLOR = '#3e2731';
+const GROUND_SHADOW_MIN_WIDTH = 4;
 const CRATE_SHADOW_COLOR = '#5c3c1e';
 const CRATE_FILL_COLOR = '#a0703c';
 // How many pixels the crate falls each tick. The sway is a render offset only, so it never
@@ -25,9 +31,10 @@ const FOLD_TICKS = 12;
 // Comfortably above the top of the screen so the crate is never visible before it starts falling.
 const FALL_START_Y = -CRATE_HEIGHT;
 
-// A crate holding one card. Its marker flashes at the spot it is aimed at, then it drops in from
+// A crate holding one card. Its marker flashes on the surface it will land on, then it drops in from
 // above the screen and stops on whichever platform it reaches first, or falls into the sea if
-// none is below it. It can be taken by any player without a held card, in the air or landed.
+// none is below it. `landing` holds the predicted spot, refreshed every tick because blocks can
+// break under it, and a shadow on that spot grows as the crate comes down. It can be taken by any player without a held card, in the air or landed.
 // It hangs under a parachute that sways
 // while it falls and folds away on landing. Placeholder shapes for the crate itself.
 export class Crate extends Entity {
@@ -41,6 +48,20 @@ export class Crate extends Entity {
     this.fallTicks = Math.min(CRATE_WARNING_TICKS, Math.ceil((this.markerY - FALL_START_Y) / FALL_SPEED));
     this.landed = false;
     this.landedTicks = 0;
+    this.landing = null;
+  }
+
+  // Refreshes `landing`: the spot { x, y, ticks } where this crate will rest, or null over the sea.
+  predictLanding(platforms) {
+    this.landing = predictCrateLanding({
+      x: this.x,
+      y: this.y,
+      width: this.width,
+      height: this.height,
+      fallSpeed: FALL_SPEED,
+      platforms,
+      fallLimitY: SCREEN_HEIGHT,
+    });
   }
 
   // False while the crate is still just a marker, waiting above the screen out of anyone's reach.
@@ -53,25 +74,20 @@ export class Crate extends Entity {
       this.landedTicks++;
       return;
     }
+    this.predictLanding(platforms);
     this.ticksUntilLanded--;
     if (this.ticksUntilLanded >= this.fallTicks) return; // still just a marker, hasn't appeared yet
 
     this.y += FALL_SPEED;
-    for (const platform of platforms) {
-      if (this.x + this.width <= platform.x || this.x >= platform.x + platform.width) continue;
-      if (this.y + this.height < platform.y) continue;
-      this.y = platform.y - this.height;
-      this.landed = true;
-      break;
-    }
+    const platform = findLandingPlatform({ x: this.x, width: this.width, bottom: this.y + this.height, platforms });
+    if (!platform) return;
+    this.y = platform.y - this.height;
+    this.landed = true;
   }
 
   render(context) {
     const drawX = Math.round(this.x);
-    if (!this.landed && Math.floor(this.ticksUntilLanded / MARKER_FLASH_TICKS) % 2 === 0) {
-      context.fillStyle = MARKER_COLOR;
-      context.fillRect(drawX, Math.round(this.markerY), this.width, this.height);
-    }
+    this.renderLandingSpot(context);
     if (!this.landed && this.ticksUntilLanded >= this.fallTicks) return; // hasn't started falling yet
 
     const fallenTicks = this.fallTicks - this.ticksUntilLanded;
@@ -82,6 +98,42 @@ export class Crate extends Entity {
     context.fillRect(drawX + sway, drawY, this.width, this.height);
     context.fillStyle = CRATE_FILL_COLOR;
     context.fillRect(drawX + sway + 2, drawY + 2, this.width - 4, this.height - 4);
+  }
+
+  // The marker and the growing shadow sit on the surface the crate will land on, drawn again on the
+  // far side when the crate straddles a screen edge.
+  renderLandingSpot(context) {
+    if (this.landed || !this.landing) return;
+    const spotX = Math.round(this.landing.x);
+    const surfaceY = Math.round(this.landing.y) + this.height;
+    const fallProgress = this.isFalling
+      ? Math.min(1, Math.max(0, (this.y - FALL_START_Y) / (this.landing.y - FALL_START_Y)))
+      : 0;
+    const shadowWidth = GROUND_SHADOW_MIN_WIDTH + Math.round((this.width - GROUND_SHADOW_MIN_WIDTH) * fallProgress);
+    const markerVisible = Math.floor(this.ticksUntilLanded / MARKER_FLASH_TICKS) % 2 === 0;
+    const drawAt = (x) => {
+      if (this.isFalling) {
+        context.fillStyle = GROUND_SHADOW_COLOR;
+        context.fillRect(
+          x + Math.floor((this.width - shadowWidth) / 2),
+          surfaceY - MARKER_HEIGHT,
+          shadowWidth,
+          MARKER_HEIGHT,
+        );
+      }
+      if (!markerVisible) return;
+      context.fillStyle = MARKER_COLOR;
+      context.fillRect(x, surfaceY - MARKER_HEIGHT, MARKER_CORNER_WIDTH, MARKER_HEIGHT);
+      context.fillRect(
+        x + this.width - MARKER_CORNER_WIDTH,
+        surfaceY - MARKER_HEIGHT,
+        MARKER_CORNER_WIDTH,
+        MARKER_HEIGHT,
+      );
+    };
+    drawAt(spotX);
+    if (spotX < 0) drawAt(spotX + SCREEN_WIDTH);
+    else if (spotX + this.width > SCREEN_WIDTH) drawAt(spotX - SCREEN_WIDTH);
   }
 
   // Open canopy with two strings while falling; on landing the canopy shrinks flat and vanishes.
