@@ -25,6 +25,7 @@ export function drawCharacterBody(
     glowSprite = null,
     eyeFramePositions,
     eyes,
+    eyesClosed = false,
     centerX,
     bottomY,
     width,
@@ -53,6 +54,12 @@ export function drawCharacterBody(
   eyeFramePositions.forEach(([frameX, frameY], index) => {
     const eyeCenterX = centerX + (frameX + EYE_SIZE / 2 - FRAME_SIZE / 2) * scaleX;
     const eyeCenterY = bottomY + (frameY + EYE_SIZE / 2 - FRAME_SIZE) * scaleY;
-    drawGooglyEye(context, eyes[index], Math.round(eyeCenterX - EYE_SIZE / 2), Math.round(eyeCenterY - EYE_SIZE / 2));
+    drawGooglyEye(
+      context,
+      eyes[index],
+      Math.round(eyeCenterX - EYE_SIZE / 2),
+      Math.round(eyeCenterY - EYE_SIZE / 2),
+      eyesClosed,
+    );
   });
 }

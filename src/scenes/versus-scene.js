@@ -63,6 +63,7 @@ import { drawPlayerTags } from '../ui/player-tags.js';
 import { WinPips } from '../ui/win-pips.js';
 import { ClashSparks, drawClashSparks } from '../vfx/clash-sparks.js';
 import { knockoutZoom } from '../vfx/knockout-zoom.js';
+import { CharacterAnimations } from '../vfx/character-animations.js';
 import { PlayerEyes } from '../vfx/player-eyes.js';
 import { drawParticles, HARD_LANDING_SPEED, Particles } from '../vfx/particles.js';
 import { SeaRipple } from '../vfx/sea-ripple.js';
@@ -195,6 +196,8 @@ export class VersusScene {
     // Display-only, created here for the same reason: it must never miss a player-wrapped event.
     this.playerEyes = new PlayerEyes();
     this.playerEyes.attach(this.events, () => this.players);
+    this.characterAnimations = new CharacterAnimations(sprites?.characterPoses);
+    this.characterAnimations.attach(() => this.players);
     this.clashSparks = new ClashSparks();
     this.clashSparks.attach(
       this.events,
@@ -418,6 +421,7 @@ export class VersusScene {
       this.particles.update();
       this.splashes.update();
       this.playerEyes.update();
+      this.characterAnimations.update();
     }
     switch (this.phase) {
       case 'ready':
@@ -950,7 +954,12 @@ export class VersusScene {
         renderer.gameContext.drawImage(this.level.tileSprites[tile.name], tile.x, tile.y);
     }
     drawWrapPuffs(renderer.gameContext, this);
-    this.entityGroups.renderAll(renderer.gameContext, { sprites: this.sprites, playerEyes: this.playerEyes });
+    this.characterAnimations.render(renderer.gameContext);
+    this.entityGroups.renderAll(renderer.gameContext, {
+      sprites: this.sprites,
+      playerEyes: this.playerEyes,
+      characterAnimations: this.characterAnimations,
+    });
     drawSplashes(renderer.gameContext, this);
     drawParticles(renderer.gameContext, this);
     drawClashSparks(renderer.gameContext, this);

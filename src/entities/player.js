@@ -42,10 +42,7 @@ export const SHOVE_KNOCKBACK_VELOCITY_Y = -4;
 
 // Display only: how long, and by how many pixels, a player stretches after a jump and squashes
 // after a landing. The hitbox never changes.
-// A player winding up or charging a shove leans back and crouches. Full charge flashes white.
-const WINDUP_LEAN_PIXELS = 2;
-const CHARGE_LEAN_PIXELS = 4;
-const CHARGE_CROUCH_PIXELS = 2;
+// A fully charged shove flashes white.
 const FULL_CHARGE_FLASH_TICKS = 3;
 const STRETCH_TICKS = 6;
 const STRETCH_PIXELS = 4;
@@ -375,7 +372,8 @@ export class Player extends PhysicsEntity {
   }
 
   // Drawn a second time offset by a screen width while crossing an edge, so wrapping never shows a gap.
-  // appearance is { sprites, playerEyes }: the loaded sprite files by name and the display only eyes.
+  // appearance is { sprites, playerEyes, characterAnimations }: the loaded sprite files by name, the display only eyes
+  // and the display only poses. Without characterAnimations the body is drawn in its plain frame.
   render(context, appearance) {
     this.renderAt(context, this.x, appearance);
     if (this.x < 0) this.renderAt(context, this.x + SCREEN_WIDTH, appearance);
@@ -384,7 +382,7 @@ export class Player extends PhysicsEntity {
 
   // The sprite frame sits bottom centered on the hitbox, one pixel lower so its white outline row overlaps the
   // top row of the platform underfoot.
-  renderAt(context, x, { sprites, playerEyes }) {
+  renderAt(context, x, { sprites, playerEyes, characterAnimations }) {
     const drawX = Math.round(x);
     const drawY = Math.round(this.y);
     if (this.isShoveActive) {
@@ -393,10 +391,7 @@ export class Player extends PhysicsEntity {
       context.fillRect(Math.round(drawX + (hitZone.x - this.x)), Math.round(hitZone.y), hitZone.width, hitZone.height);
     }
     const squash = this.inWater ? { width: 0, height: 0 } : this.squash;
-    const charging = this.shoveCharging && !this.inWater;
-    const leanPixels = this.shoveChargeTicks > SHOVE_WINDUP_TICKS ? CHARGE_LEAN_PIXELS : WINDUP_LEAN_PIXELS;
-    const bodyCenterX = drawX + this.width / 2 - (charging ? this.facing * leanPixels : 0);
-    const crouch = charging && this.shoveChargeTicks > SHOVE_WINDUP_TICKS ? CHARGE_CROUCH_PIXELS : 0;
+    const pose = this.inWater || !characterAnimations ? {} : characterAnimations.poseFor(this);
     const sprite = sprites[this.character.spriteName].body;
     const blinkOn = Math.floor(this.shoveFullChargeTicks / FULL_CHARGE_FLASH_TICKS) % 2 === 0;
     const flashing = this.isShoveFullyCharged && (blinkOn || settings.reduceFlashes);
@@ -407,10 +402,11 @@ export class Player extends PhysicsEntity {
       glowSprite: this.heatGlowColor && !this.inWater ? silhouetteOf(sprite, this.heatGlowColor) : null,
       eyeFramePositions: this.character.eyeFramePositions,
       eyes: playerEyes.eyesFor(this.id),
-      centerX: bodyCenterX,
-      bottomY: drawY + this.height + 1,
-      width: FRAME_SIZE + squash.width,
-      height: FRAME_SIZE + squash.height - crouch,
+      eyesClosed: pose.eyes === 'closed',
+      centerX: drawX + this.width / 2 + this.facing * (pose.x ?? 0),
+      bottomY: drawY + this.height + 1 + (pose.y ?? 0),
+      width: FRAME_SIZE + squash.width + (pose.width ?? 0),
+      height: FRAME_SIZE + squash.height + (pose.height ?? 0),
     });
   }
 }

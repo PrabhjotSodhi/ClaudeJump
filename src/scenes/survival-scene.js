@@ -16,6 +16,7 @@ import { blockName } from '../levels/level-loader.js';
 import { PLAYERS } from '../levels/versus-arena.js';
 import { drawSurvivalHud } from '../ui/hud.js';
 import { drawParticles, Particles } from '../vfx/particles.js';
+import { CharacterAnimations } from '../vfx/character-animations.js';
 import { PlayerEyes } from '../vfx/player-eyes.js';
 import { ScreenShake } from '../vfx/screen-shake.js';
 import { SeaRipple } from '../vfx/sea-ripple.js';
@@ -105,6 +106,8 @@ export class SurvivalScene {
     this.entityGroups = new EntityGroups();
     this.playerEyes = new PlayerEyes();
     this.playerEyes.attach(this.events, () => this.players);
+    this.characterAnimations = new CharacterAnimations(sprites?.characterPoses);
+    this.characterAnimations.attach(() => this.players);
     this.particles = new Particles();
     this.particles.attach(this.events, {
       getPlayers: () => this.players,
@@ -417,6 +420,7 @@ export class SurvivalScene {
     }
     if (wrapAroundScreen(player)) this.events.emit('player-wrapped', { playerId: player.id, x: player.x, y: player.y });
     this.playerEyes.update();
+    this.characterAnimations.update();
 
     this.cameraTopY = Math.min(this.cameraTopY, Math.round(player.y) - CAMERA_LEAD_Y);
     this.generateRows();
@@ -477,9 +481,13 @@ export class SurvivalScene {
       }
     }
     this.entityGroups.get('crabs').forEach((crab) => crab.render(context));
-    this.entityGroups
-      .get('players')
-      .forEach((player) => player.render(context, { sprites: this.sprites, playerEyes: this.playerEyes }));
+    this.characterAnimations.render(context);
+    const appearance = {
+      sprites: this.sprites,
+      playerEyes: this.playerEyes,
+      characterAnimations: this.characterAnimations,
+    };
+    this.entityGroups.get('players').forEach((player) => player.render(context, appearance));
     this.entityGroups.get('rockets').forEach((rocket) => rocket.render(context));
     drawSplashes(context, this);
     drawParticles(context, this);

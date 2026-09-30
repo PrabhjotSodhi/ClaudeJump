@@ -11,6 +11,7 @@ import { Platform } from '../entities/platform.js';
 import { Player } from '../entities/player.js';
 import { resolveShoveHit } from '../entities/shove.js';
 import { drawParticles, HARD_LANDING_SPEED, Particles } from '../vfx/particles.js';
+import { CharacterAnimations } from '../vfx/character-animations.js';
 import { PlayerEyes } from '../vfx/player-eyes.js';
 
 const BLOCK_SIZE = 32;
@@ -66,7 +67,7 @@ function centerX(player) {
 // Four real players on a few ledges, fighting on their own from scripted inputs. Every choice comes
 // from the seeded random and the players' positions, so the same seed plays out the same way.
 export class TitleBrawl {
-  constructor({ seed }) {
+  constructor({ seed, characterPoses }) {
     this.random = new SeededRandom(seed);
     this.events = new EventEmitter();
     this.platforms = LEDGES.map(
@@ -85,6 +86,8 @@ export class TitleBrawl {
     });
     this.playerEyes = new PlayerEyes();
     this.playerEyes.attach(this.events, () => this.players);
+    this.characterAnimations = new CharacterAnimations(characterPoses);
+    this.characterAnimations.attach(() => this.players);
     this.particles = new Particles();
     this.particles.attach(this.events, {
       getPlayers: () => this.players,
@@ -106,6 +109,7 @@ export class TitleBrawl {
   update() {
     this.tickCount++;
     this.playerEyes.update();
+    this.characterAnimations.update();
     this.particles.update();
     for (const player of [...this.players]) this.updatePlayer(player);
     for (const shover of this.players) {
@@ -256,7 +260,9 @@ export class TitleBrawl {
         context.drawImage(sprites.stoneBlocks[spriteName], ledge.leftX + index * BLOCK_STRIDE, ledge.topY);
       }
     }
-    for (const player of this.players) player.render(context, { sprites, playerEyes: this.playerEyes });
+    this.characterAnimations.render(context);
+    const appearance = { sprites, playerEyes: this.playerEyes, characterAnimations: this.characterAnimations };
+    for (const player of this.players) player.render(context, appearance);
     drawParticles(context, this);
   }
 }

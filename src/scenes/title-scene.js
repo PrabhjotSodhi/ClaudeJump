@@ -135,7 +135,7 @@ export class TitleScene {
     this.menuMotion = new MenuMotion();
     this.settingsMenu = null;
     this.waterLineY = levels?.find((level) => level.background === BACKGROUND_NAME)?.waterLineY ?? NO_WATER_LINE_Y;
-    this.brawl = new TitleBrawl({ seed });
+    this.brawl = new TitleBrawl({ seed, characterPoses: sprites?.characterPoses });
     this.backgroundDrawn = false;
     this.previous = { up: {}, down: {}, confirm: {} };
     for (const playerId in initialInput) {
