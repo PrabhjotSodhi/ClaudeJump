@@ -145,5 +145,5 @@ test('the winner plays their jingle once, then it stops', () => {
   assert.ok(notesPlayed > 0);
   assert.ok(notesPlayed <= jingleNotes * 2, 'played through once');
   assert.equal(audioContext.startTimes.length, notesPlayed, 'nothing more after it ends');
-  assert.equal(musicPlayer.jingleSequencer, null);
+  assert.equal(musicPlayer.oneShotSequencer, null);
 });

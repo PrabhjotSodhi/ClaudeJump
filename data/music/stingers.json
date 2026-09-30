@@ -1,0 +1,35 @@
+{
+  "matchPoint": {
+    "tempo": 124,
+    "beatsPerBar": 4,
+    "stepsPerBeat": 2,
+    "bars": 1,
+    "channels": {
+      "lead": { "waveform": "square", "volume": 0.1, "bars": ["E5 . E5 . G#5 - B5 -"] },
+      "bass": { "waveform": "triangle", "volume": 0.3, "bars": ["E2 . E2 . E3 - - -"] },
+      "drums": { "drums": true, "bars": ["k . k . s s s s"] }
+    }
+  },
+  "finalKnockout": {
+    "tempo": 124,
+    "beatsPerBar": 4,
+    "stepsPerBeat": 2,
+    "bars": 1,
+    "channels": {
+      "lead": { "waveform": "sawtooth", "volume": 0.1, "bars": ["A5 G5 E5 C5 A4 - - -"] },
+      "bass": { "waveform": "triangle", "volume": 0.3, "bars": ["A2 - - - - - - -"] },
+      "drums": { "drums": true, "bars": ["k+s . . . k . . ."] }
+    }
+  },
+  "matchWin": {
+    "tempo": 150,
+    "beatsPerBar": 4,
+    "stepsPerBeat": 2,
+    "bars": 1,
+    "channels": {
+      "lead": { "waveform": "square", "volume": 0.1, "bars": ["C5 E5 G5 C6 - - - ."] },
+      "bass": { "waveform": "triangle", "volume": 0.3, "bars": ["C3 G3 C4 - - - - ."] },
+      "drums": { "drums": true, "bars": ["s s k+s . . . . ."] }
+    }
+  }
+}

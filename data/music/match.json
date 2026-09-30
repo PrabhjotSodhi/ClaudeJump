@@ -68,6 +68,96 @@
         "k h s h k h s h",
         "k h s h k k s h"
       ]
+    },
+    "tensionArp": {
+      "layer": "tension",
+      "waveform": "sawtooth",
+      "volume": 0.035,
+      "bars": [
+        "A3 E4 A4 E4 A3 E4 A4 E4",
+        "F3 C4 F4 C4 F3 C4 F4 C4",
+        "C4 G4 C5 G4 C4 G4 C5 G4",
+        "G3 D4 G4 D4 G3 D4 G4 D4",
+        "A3 E4 A4 E4 A3 E4 A4 E4",
+        "F3 C4 F4 C4 F3 C4 F4 C4",
+        "D4 A4 D5 A4 D4 A4 D5 A4",
+        "E3 B3 E4 B3 E3 B3 E4 B3",
+        "A3 E4 A4 E4 A3 E4 A4 E4",
+        "F3 C4 F4 C4 F3 C4 F4 C4",
+        "C4 G4 C5 G4 C4 G4 C5 G4",
+        "G3 D4 G4 D4 G3 D4 G4 D4",
+        "A3 E4 A4 E4 A3 E4 A4 E4",
+        "F3 C4 F4 C4 F3 C4 F4 C4",
+        "D4 A4 D5 A4 D4 A4 D5 A4",
+        "E3 B3 E4 B3 E3 B3 E4 B3"
+      ]
+    },
+    "tensionHats": {
+      "layer": "tension",
+      "drums": true,
+      "bars": [
+        ". h . h . h . h",
+        ". h . h . h . h",
+        ". h . h . h . h",
+        ". h . h . h . h",
+        ". h . h . h . h",
+        ". h . h . h . h",
+        ". h . h . h . h",
+        ". h . h . h . h",
+        ". h . h . h . h",
+        ". h . h . h . h",
+        ". h . h . h . h",
+        ". h . h . h . h",
+        ". h . h . h . h",
+        ". h . h . h . h",
+        ". h . h . h . h",
+        ". h . h . h . h"
+      ]
+    },
+    "suddenDeathPulse": {
+      "layer": "suddenDeath",
+      "waveform": "square",
+      "volume": 0.05,
+      "bars": [
+        "A2 A3 A2 A3 A2 A3 A2 A3",
+        "F2 F3 F2 F3 F2 F3 F2 F3",
+        "C3 C4 C3 C4 C3 C4 C3 C4",
+        "G2 G3 G2 G3 G2 G3 G2 G3",
+        "A2 A3 A2 A3 A2 A3 A2 A3",
+        "F2 F3 F2 F3 F2 F3 F2 F3",
+        "D3 D4 D3 D4 D3 D4 D3 D4",
+        "E2 E3 E2 E3 E2 E3 E2 E3",
+        "A2 A3 A2 A3 A2 A3 A2 A3",
+        "F2 F3 F2 F3 F2 F3 F2 F3",
+        "C3 C4 C3 C4 C3 C4 C3 C4",
+        "G2 G3 G2 G3 G2 G3 G2 G3",
+        "A2 A3 A2 A3 A2 A3 A2 A3",
+        "F2 F3 F2 F3 F2 F3 F2 F3",
+        "D3 D4 D3 D4 D3 D4 D3 D4",
+        "E2 E3 E2 E3 E2 E3 E2 E3"
+      ]
+    },
+    "suddenDeathDrums": {
+      "layer": "suddenDeath",
+      "drums": true,
+      "bars": [
+        "k . k . k . k .",
+        "k . k . k . k .",
+        "k . k . k . k .",
+        "k . k . s s s s",
+        "k . k . k . k .",
+        "k . k . k . k .",
+        "k . k . k . k .",
+        "k . k . s s s s",
+        "k . k . k . k .",
+        "k . k . k . k .",
+        "k . k . k . k .",
+        "k . k . s s s s",
+        "k . k . k . k .",
+        "k . k . k . k .",
+        "k . k . k . k .",
+        "k . k . s s s s"
+      ]
     }
   }
 }

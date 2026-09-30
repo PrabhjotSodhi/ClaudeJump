@@ -68,6 +68,9 @@ export function parseChannel(channel) {
 export class MusicSequencer {
   constructor({ audioContext, destination, noiseBuffer, track, startTime, loops = true }) {
     this.loops = loops;
+    // Channels with a layer play only while it is active. Wanted layers become active on the next beat.
+    this.wantedLayers = new Set();
+    this.activeLayers = new Set();
     this.audioContext = audioContext;
     this.noiseBuffer = noiseBuffer;
     this.track = track;
@@ -94,9 +97,11 @@ export class MusicSequencer {
   }
 
   scheduleStep(stepInLoop, startTime, stepSeconds) {
+    if (stepInLoop % this.track.stepsPerBeat === 0) this.activeLayers = new Set(this.wantedLayers);
     for (const { channel, steps } of this.channels) {
       const step = steps[stepInLoop];
       if (!step) continue;
+      if (channel.layer && !this.activeLayers.has(channel.layer)) continue;
       if (channel.drums) {
         for (const drumName of step) this.playDrum(DRUMS[drumName], startTime);
       } else if (steps[stepInLoop - 1] !== step) {

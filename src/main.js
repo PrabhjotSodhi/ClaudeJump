@@ -89,6 +89,7 @@ async function main() {
     menuTrack,
     matchTrack,
     winJingles,
+    stingers,
     claude,
     muse,
     chatgpt,
@@ -109,6 +110,7 @@ async function main() {
     fetch('data/music/menu.json').then((response) => response.json()),
     fetch('data/music/match.json').then((response) => response.json()),
     fetch('data/music/win-jingles.json').then((response) => response.json()),
+    fetch('data/music/stingers.json').then((response) => response.json()),
     loadSpriteFile('data/sprites/claude.json'),
     loadSpriteFile('data/sprites/muse.json'),
     loadSpriteFile('data/sprites/chatgpt.json'),
@@ -157,6 +159,7 @@ async function main() {
     soundPlayer,
     tracks: { menu: menuTrack, match: matchTrack },
     jingles: winJingles,
+    stingers,
   });
   musicPlayer.start();
   const fullscreen = createFullscreen();

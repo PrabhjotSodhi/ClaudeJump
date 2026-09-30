@@ -11,24 +11,30 @@ const VOLUME_SMOOTHING_SECONDS = 0.05;
 const LOOK_AHEAD_SECONDS = 0.25;
 const PUMP_INTERVAL_MILLISECONDS = 50;
 const START_DELAY_SECONDS = 0.05;
-// While a win jingle plays, the looping track drops to this share of its volume.
-const JINGLE_DUCK_GAIN = 0.2;
-const JINGLE_DUCK_SECONDS = 0.1;
-// The jingle's last notes ring on for this long before the looping track comes back up.
-const JINGLE_TAIL_SECONDS = 0.6;
+// While a stinger or win jingle plays, the looping track drops to this share of its volume.
+const ONE_SHOT_DUCK_GAIN = 0.2;
+const ONE_SHOT_DUCK_SECONDS = 0.1;
+// A one-shot's last notes ring on for this long before the next one starts or the looping track comes back up.
+const ONE_SHOT_TAIL_SECONDS = 0.6;
 
 // Plays looping tracks for whichever scene is showing and crossfades between them. It shares the
 // sound player's audio context, so it stays silent until the sound player is unlocked. It only
 // listens: it never changes game state, and its timing comes from the audio clock.
+// A track's channels may belong to a layer: "tension" joins when the round's time runs low and "suddenDeath" in sudden
+// death, both on the next beat. Stingers and win jingles are one-shots in the track format. They play in turn over the
+// ducked looping track.
 export class MusicPlayer {
-  // jingles holds one short win jingle per character name, in the same format as a track.
-  constructor({ soundPlayer, tracks, jingles = {} }) {
+  // jingles holds one short win jingle per character name. stingers holds matchPoint, finalKnockout and matchWin.
+  constructor({ soundPlayer, tracks, jingles = {}, stingers = {} }) {
     this.soundPlayer = soundPlayer;
     this.tracks = tracks;
     this.jingles = jingles;
-    this.wantedJingleName = null;
-    this.jingleSequencer = null;
-    this.jingleEndTime = 0;
+    this.stingers = stingers;
+    this.wantedLayers = new Set();
+    this.oneShotQueue = [];
+    this.oneShotSequencer = null;
+    this.oneShotEndTime = 0;
+    this.ducked = false;
     this.wantedTrackName = null;
     this.paused = false;
     this.suddenDeath = false;
@@ -41,10 +47,28 @@ export class MusicPlayer {
   // A new scene starts calm: sudden death only speeds up the round that raised it.
   attach(events) {
     this.suddenDeath = false;
+    this.wantedLayers = new Set();
+    this.oneShotQueue = [];
     if (!events) return;
-    events.on('sudden-death-started', () => (this.suddenDeath = true));
-    events.on('round-started', () => (this.suddenDeath = false));
-    events.on('match-won', ({ characterName }) => (this.wantedJingleName = characterName));
+    events.on('sudden-death-started', () => {
+      this.suddenDeath = true;
+      this.wantedLayers.add('suddenDeath');
+    });
+    events.on('round-started', () => {
+      this.suddenDeath = false;
+      this.wantedLayers.clear();
+    });
+    events.on('round-time-low', () => this.wantedLayers.add('tension'));
+    events.on('match-point', () => this.queueOneShot(this.stingers.matchPoint));
+    events.on('final-knockout', () => this.queueOneShot(this.stingers.finalKnockout));
+    events.on('match-won', ({ characterName }) => {
+      this.queueOneShot(this.stingers.matchWin);
+      this.queueOneShot(this.jingles[characterName]);
+    });
+  }
+
+  queueOneShot(track) {
+    if (track) this.oneShotQueue.push(track);
   }
 
   playTrack(trackName) {
@@ -68,8 +92,9 @@ export class MusicPlayer {
       this.updateVolume(audioContext, now);
       if (this.wantedTrackName !== this.playingTrackName) this.crossfadeTo(this.wantedTrackName, audioContext, now);
       const tempoScale = this.suddenDeath ? SUDDEN_DEATH_TEMPO_SCALE : 1;
+      if (this.playingSequencer) this.playingSequencer.wantedLayers = this.wantedLayers;
       this.playingSequencer?.scheduleUntil(now + LOOK_AHEAD_SECONDS, tempoScale);
-      this.updateJingle(audioContext, now);
+      this.updateOneShots(audioContext, now);
       this.retiredSequencers = this.retiredSequencers.filter(({ sequencer, endTime }) => {
         if (endTime > now) return true;
         sequencer.stop();
@@ -80,36 +105,37 @@ export class MusicPlayer {
     }
   }
 
-  // A jingle plays once over the ducked looping track, which comes back up once the jingle has rung out.
-  updateJingle(audioContext, now) {
-    if (this.wantedJingleName) {
-      const jingle = this.jingles[this.wantedJingleName];
-      this.wantedJingleName = null;
-      if (jingle) this.startJingle(jingle, audioContext, now);
+  // One-shots play one after another. The looping track ducks while any play and comes back up once the last has rung
+  // out.
+  updateOneShots(audioContext, now) {
+    if (!this.oneShotSequencer) {
+      if (this.oneShotQueue.length === 0) return;
+      this.startOneShot(this.oneShotQueue.shift(), audioContext, now);
     }
-    if (!this.jingleSequencer) return;
-    this.jingleSequencer.scheduleUntil(now + LOOK_AHEAD_SECONDS);
-    if (!this.jingleSequencer.finished) return;
-    this.jingleEndTime ||= this.jingleSequencer.nextStepTime + JINGLE_TAIL_SECONDS;
-    if (now < this.jingleEndTime) return;
-    this.jingleSequencer.stop();
-    this.jingleSequencer = null;
-    this.jingleEndTime = 0;
-    this.playingSequencer?.fade(JINGLE_DUCK_GAIN, 1, now, JINGLE_DUCK_SECONDS);
+    this.oneShotSequencer.scheduleUntil(now + LOOK_AHEAD_SECONDS);
+    if (!this.oneShotSequencer.finished) return;
+    this.oneShotEndTime ||= this.oneShotSequencer.nextStepTime + ONE_SHOT_TAIL_SECONDS;
+    if (now < this.oneShotEndTime) return;
+    this.oneShotSequencer.stop();
+    this.oneShotSequencer = null;
+    this.oneShotEndTime = 0;
+    if (this.oneShotQueue.length > 0) return;
+    this.playingSequencer?.fade(ONE_SHOT_DUCK_GAIN, 1, now, ONE_SHOT_DUCK_SECONDS);
+    this.ducked = false;
   }
 
-  startJingle(jingle, audioContext, now) {
-    this.jingleSequencer?.stop();
-    this.jingleSequencer = new MusicSequencer({
+  startOneShot(track, audioContext, now) {
+    this.oneShotSequencer = new MusicSequencer({
       audioContext,
       destination: this.musicGain,
       noiseBuffer: this.soundPlayer.getNoiseBuffer(),
-      track: jingle,
+      track,
       startTime: now + START_DELAY_SECONDS,
       loops: false,
     });
-    this.jingleEndTime = 0;
-    this.playingSequencer?.fade(1, JINGLE_DUCK_GAIN, now, JINGLE_DUCK_SECONDS);
+    if (this.ducked) return;
+    this.playingSequencer?.fade(1, ONE_SHOT_DUCK_GAIN, now, ONE_SHOT_DUCK_SECONDS);
+    this.ducked = true;
   }
 
   updateVolume(audioContext, now) {
