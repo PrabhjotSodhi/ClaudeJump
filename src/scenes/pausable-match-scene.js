@@ -1,4 +1,4 @@
-import { rowIndexAt, tapPoint, wrapMenuIndex } from '../ui/menu-kit.js';
+import { MenuMotion, rowIndexAt, tapPoint, wrapMenuIndex } from '../ui/menu-kit.js';
 import { drawPauseMenu, pauseMenuRowRectangles } from '../ui/pause-menu.js';
 import { drawResultsMenu, resultsMenuRowRectangles } from '../ui/results-menu.js';
 import { LevelSelectScene } from './level-select-scene.js';
@@ -45,6 +45,8 @@ export class PausableMatchScene {
     this.previousMenuControls = { up: {}, down: {}, confirm: {}, jump: {} };
     this.resultsMenuOpen = false;
     this.resultsSelectedIndex = 0;
+    this.pauseMotion = new MenuMotion();
+    this.resultsMotion = new MenuMotion();
   }
 
   get pauseMenuOptions() {
@@ -64,6 +66,8 @@ export class PausableMatchScene {
   }
 
   update(inputByPlayerId) {
+    this.pauseMotion.update();
+    this.resultsMotion.update();
     const pausePressed = this.consumeFreshPress(inputByPlayerId, 'pause', this.previousPauseByPlayerId);
 
     if (!this.paused && this.showingResults) {
@@ -103,6 +107,7 @@ export class PausableMatchScene {
     if (tappedIndex >= 0) this.selectedIndex = tappedIndex;
     if (confirmPressed || tappedIndex >= 0) {
       this.events.emit('menu-selected', {});
+      this.pauseMotion.press();
       this.confirmSelection(inputByPlayerId);
     }
   }
@@ -113,6 +118,7 @@ export class PausableMatchScene {
     if (!this.resultsMenuOpen) {
       this.resultsMenuOpen = true;
       this.resultsSelectedIndex = 0;
+      this.resultsMotion = new MenuMotion();
       this.seedMenuBaseline(inputByPlayerId);
       return;
     }
@@ -130,6 +136,7 @@ export class PausableMatchScene {
     if (tappedIndex >= 0) this.resultsSelectedIndex = tappedIndex;
     if (confirmPressed || jumpPressed || tappedIndex >= 0) {
       this.events.emit('menu-selected', {});
+      this.resultsMotion.press();
       this.confirmResultsOption(inputByPlayerId);
     }
   }
@@ -181,6 +188,7 @@ export class PausableMatchScene {
   openMenu(inputByPlayerId) {
     this.paused = true;
     this.selectedIndex = 0;
+    this.pauseMotion = new MenuMotion();
     this.seedMenuBaseline(inputByPlayerId);
   }
 
@@ -202,6 +210,7 @@ export class PausableMatchScene {
   // exactly those controls for exactly that player until they let go and press again.
   resume(inputByPlayerId = {}) {
     this.paused = false;
+    this.pauseMotion.close();
     this.heldOnResumeByPlayerId = {};
     for (const playerId in inputByPlayerId) {
       const input = inputByPlayerId[playerId];
@@ -263,8 +272,14 @@ export class PausableMatchScene {
         matchScene: this.matchScene,
         options: RESULTS_MENU_OPTIONS,
         selectedIndex: this.resultsSelectedIndex,
+        motion: this.resultsMotion,
       });
-    if (this.paused)
-      drawPauseMenu(renderer.uiContext, { options: this.pauseMenuOptions, selectedIndex: this.selectedIndex });
+    if (this.paused || !this.pauseMotion.isClosed) {
+      drawPauseMenu(renderer.uiContext, {
+        options: this.pauseMenuOptions,
+        selectedIndex: this.selectedIndex,
+        motion: this.pauseMotion,
+      });
+    }
   }
 }

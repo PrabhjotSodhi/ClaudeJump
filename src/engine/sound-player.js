@@ -7,6 +7,8 @@ const SCREEN_HALF_WIDTH = 320;
 const DEFAULT_ATTACK_SECONDS = 0.005;
 const NOISE_SECONDS = 1;
 const SILENT_GAIN = 0.0001;
+// Each play shifts every pitch by up to this fraction either way, so repeated hits never sound the same.
+const PITCH_VARIATION = 0.08;
 const PAN_BY_PLAYER_ID = { red: -MAX_PAN, blue: MAX_PAN };
 
 // Sounds lean toward the side of the screen they happen on: the player's side, or the blast's x.
@@ -26,14 +28,23 @@ function defaultCreateAudioContext() {
 
 // Turns scene events into synthesized sounds. It only listens: it never changes game state.
 // A sound definition is a list of voices, each a tiny synth note:
-// { waveform, startFrequency, endFrequency, duration, volume, noiseVolume, attack, delay }.
+// { waveform, startFrequency, endFrequency, duration, volume, noiseVolume, attack, delay, chargePitch }.
+// chargePitch raises the pitch by that fraction times the event's charge, from 0 to 1.
 // Without an audio context (headless browsers, tests) every call does nothing.
 export class SoundPlayer {
-  constructor({ soundDefinitions, eventSounds, storage = null, createAudioContext = defaultCreateAudioContext }) {
+  constructor({
+    soundDefinitions,
+    eventSounds,
+    storage = null,
+    createAudioContext = defaultCreateAudioContext,
+    // Audio only, so any randomness is fine: it never touches game state.
+    random = Math.random,
+  }) {
     this.soundDefinitions = soundDefinitions;
     this.eventSounds = eventSounds;
     this.storage = storage;
     this.createAudioContext = createAudioContext;
+    this.random = random;
     this.soundEnabled = storage ? loadSoundEnabled(storage) : true;
     this.audioContext = null;
     this.masterGain = null;
@@ -44,8 +55,16 @@ export class SoundPlayer {
   attach(events) {
     if (!events) return;
     for (const eventName in this.eventSounds) {
-      events.on(eventName, (eventData) => this.play(this.eventSounds[eventName], panFor(eventData)));
+      events.on(eventName, (eventData) =>
+        this.play(this.soundNameFor(eventName, eventData), panFor(eventData), eventData?.charge ?? 0),
+      );
     }
+  }
+
+  // An event maps to one sound name, or to { by: 'field', <value>: soundName } to pick the sound by a field of the event.
+  soundNameFor(eventName, eventData) {
+    const mapping = this.eventSounds[eventName];
+    return typeof mapping === 'string' ? mapping : mapping[eventData?.[mapping.by]];
   }
 
   // Browsers only allow audio after a user gesture, so call this from key, touch and gamepad input.
@@ -68,15 +87,19 @@ export class SoundPlayer {
     this.soundsPlayedThisTick.clear();
   }
 
-  play(soundName, pan = 0) {
-    if (!this.soundEnabled || !this.audioContext || this.soundsPlayedThisTick.has(soundName)) return;
+  play(soundName, pan = 0, charge = 0) {
+    if (!this.soundEnabled || !this.audioContext || !this.soundDefinitions[soundName]) return;
+    if (this.soundsPlayedThisTick.has(soundName)) return;
     this.soundsPlayedThisTick.add(soundName);
     try {
       const panner = this.audioContext.createStereoPanner();
       panner.pan.value = pan;
       panner.connect(this.getMasterGain());
       const startTime = this.audioContext.currentTime;
-      for (const voice of this.soundDefinitions[soundName]) this.playVoice(voice, panner, startTime);
+      const pitch = 1 + (this.random() * 2 - 1) * PITCH_VARIATION;
+      for (const voice of this.soundDefinitions[soundName]) {
+        this.playVoice(voice, panner, startTime, pitch * (1 + (voice.chargePitch ?? 0) * charge));
+      }
     } catch {
       // Audio must never break the game.
     }
@@ -91,7 +114,7 @@ export class SoundPlayer {
     return this.masterGain;
   }
 
-  playVoice(voice, destination, soundStartTime) {
+  playVoice(voice, destination, soundStartTime, pitch) {
     const startTime = soundStartTime + (voice.delay ?? 0);
     const endTime = startTime + voice.duration;
 
@@ -104,8 +127,8 @@ export class SoundPlayer {
     if (voice.volume) {
       const oscillator = this.audioContext.createOscillator();
       oscillator.type = voice.waveform;
-      oscillator.frequency.setValueAtTime(voice.startFrequency, startTime);
-      oscillator.frequency.exponentialRampToValueAtTime(voice.endFrequency, endTime);
+      oscillator.frequency.setValueAtTime(voice.startFrequency * pitch, startTime);
+      oscillator.frequency.exponentialRampToValueAtTime(voice.endFrequency * pitch, endTime);
       const oscillatorGain = this.audioContext.createGain();
       oscillatorGain.gain.value = voice.volume;
       oscillator.connect(oscillatorGain);

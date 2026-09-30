@@ -175,3 +175,19 @@ test('being hit cancels a charge', () => {
   advance(scene, HITSTOP_TICKS.light + SHOVE_WINDUP_TICKS + 2);
   assert.equal(red.isShoveActive, false, 'the cancelled charge never fires');
 });
+
+test('a charging shove reports a rising charge until it is full', () => {
+  const { scene } = shoveSetup();
+  const charges = [];
+  scene.events.on('shove-charging', ({ playerId, charge }) => charges.push({ playerId, charge }));
+
+  advance(scene, SHOVE_MAX_CHARGE_TICKS * 2, input({ action: true }));
+
+  assert.ok(charges.length >= 3);
+  assert.ok(charges.every(({ playerId }) => playerId === 'red'));
+  assert.ok(
+    charges.every(
+      ({ charge }, index) => charge > 0 && charge < 1 && (index === 0 || charge > charges[index - 1].charge),
+    ),
+  );
+});

@@ -3,7 +3,16 @@ import { EventEmitter } from '../engine/events.js';
 import { DEFAULT_CHARACTER_BY_PLAYER_ID } from '../entities/characters.js';
 import { drawArenaBackground } from '../levels/arena-backgrounds.js';
 import { PLAYERS } from '../levels/versus-arena.js';
-import { drawKeyHints, drawMenuList, KEYCAP_HEIGHT, menuRowRectangles, rowIndexAt, tapPoint } from '../ui/menu-kit.js';
+import {
+  drawKeyHints,
+  drawMenuList,
+  drawWithMenuMotion,
+  KEYCAP_HEIGHT,
+  MenuMotion,
+  menuRowRectangles,
+  rowIndexAt,
+  tapPoint,
+} from '../ui/menu-kit.js';
 import { NO_WATER_LINE_Y } from '../ui/menu-screen.js';
 import { drawPanel } from '../ui/panel.js';
 import { drawText } from '../ui/text.js';
@@ -117,6 +126,7 @@ export class TitleScene {
     this.seed = seed;
     this.options = options;
     this.selectedIndex = 0;
+    this.menuMotion = new MenuMotion();
     this.waterLineY = levels?.find((level) => level.background === BACKGROUND_NAME)?.waterLineY ?? NO_WATER_LINE_Y;
     this.eyesByPlayerId = {};
     for (const { playerId } of LEDGE_STANDERS) {
@@ -130,6 +140,7 @@ export class TitleScene {
   }
 
   update(inputByPlayerId) {
+    this.menuMotion.update();
     for (const eyes of Object.values(this.eyesByPlayerId)) for (const eye of eyes) eye.update(0, 0);
 
     const pressed = { up: false, down: false, confirm: false };
@@ -155,6 +166,7 @@ export class TitleScene {
     if (pressed.down || pressed.up) this.events.emit('menu-moved', {});
     if (pressed.confirm || tappedIndex >= 0) {
       this.events.emit('menu-selected', {});
+      this.menuMotion.press();
       this.confirmSelection();
     }
   }
@@ -300,7 +312,14 @@ function drawTouchHint(context) {
 function drawTitleUi(context, scene, touchActive) {
   drawLogo(context);
   if (scene.sceneManager?.fullscreen?.supported) drawFullscreenButton(context);
-  drawMenuList(context, { options: scene.options, selectedIndex: scene.selectedIndex, topY: MENU_TOP_Y });
-  if (touchActive) drawTouchHint(context);
-  else drawKeyHintPanel(context);
+  drawWithMenuMotion(context, scene.menuMotion, () => {
+    drawMenuList(context, {
+      options: scene.options,
+      selectedIndex: scene.selectedIndex,
+      topY: MENU_TOP_Y,
+      motion: scene.menuMotion,
+    });
+    if (touchActive) drawTouchHint(context);
+    else drawKeyHintPanel(context);
+  });
 }

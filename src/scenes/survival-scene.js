@@ -18,6 +18,7 @@ import { drawParticles, Particles } from '../vfx/particles.js';
 import { PlayerEyes } from '../vfx/player-eyes.js';
 import { ScreenShake } from '../vfx/screen-shake.js';
 import { SeaRipple } from '../vfx/sea-ripple.js';
+import { drawSplashes, Splashes, splashTierFor } from '../vfx/splash.js';
 import { tapPoint } from '../ui/menu-kit.js';
 import { difficultyAt } from './survival-difficulty.js';
 
@@ -109,6 +110,8 @@ export class SurvivalScene {
       getWaterLineY: () => this.waterLineY,
       getTickCount: () => this.runTicks,
     });
+    this.splashes = new Splashes();
+    this.splashes.attach(this.events, { getPlayers: () => this.players, getWaterLineY: () => this.waterLineY });
     this.screenShake = new ScreenShake();
     this.screenShake.attach(this.events);
     this.seaRipple = new SeaRipple();
@@ -385,6 +388,7 @@ export class SurvivalScene {
     this.jumpHeld = jumpPressed;
     this.seaRipple.update();
     this.particles.update();
+    this.splashes.update();
     this.screenShake.update();
 
     if (this.phase === 'over') {
@@ -426,7 +430,12 @@ export class SurvivalScene {
     this.seaY = Math.min(this.seaY, this.cameraTopY + SCREEN_HEIGHT + SEA_MAX_TRAIL_Y);
     if (player.y + player.height >= this.seaY) {
       this.phase = 'over';
-      this.events.emit('player-fell-in-water', { playerId: player.id });
+      const fallSpeed = player.velocityY;
+      this.events.emit('player-fell-in-water', {
+        playerId: player.id,
+        fallSpeed,
+        splashTier: splashTierFor(fallSpeed),
+      });
       this.events.emit('run-ended', { score: this.score });
     }
   }
@@ -470,6 +479,7 @@ export class SurvivalScene {
       .get('players')
       .forEach((player) => player.render(context, { sprites: this.sprites, playerEyes: this.playerEyes }));
     this.entityGroups.get('rockets').forEach((rocket) => rocket.render(context));
+    drawSplashes(context, this);
     drawParticles(context, this);
     context.restore();
     drawSurvivalHud(renderer.uiContext, this);

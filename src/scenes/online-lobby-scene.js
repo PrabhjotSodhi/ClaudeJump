@@ -4,7 +4,7 @@ import { mergeLocalInputs } from '../engine/input.js';
 import { LockstepSession } from '../engine/lockstep-session.js';
 import { SeededRandom } from '../engine/seeded-random.js';
 import { PLAYERS } from '../levels/versus-arena.js';
-import { rowIndexAt, wrapMenuIndex } from '../ui/menu-kit.js';
+import { drawWithMenuMotion, MenuMotion, rowIndexAt, wrapMenuIndex } from '../ui/menu-kit.js';
 import { MENU_BACKGROUND_COLOR, NO_WATER_LINE_Y } from '../ui/menu-screen.js';
 import { CHANGEABLE_ROWS, drawOnlineLobby, lobbyRowLabels, lobbyRowRectangles } from '../ui/online-lobby-view.js';
 import { OnlineLobby } from './online-lobby-state.js';
@@ -37,6 +37,7 @@ export class OnlineLobbyScene {
     this.events = new EventEmitter();
     this.musicTrackName = 'menu';
     this.waterLineY = NO_WATER_LINE_Y;
+    this.menuMotion = new MenuMotion();
     this.backgroundDrawn = false;
     this.rows = isHost ? HOST_ROWS : JOINER_ROWS;
     this.selectedRow = 0;
@@ -67,6 +68,7 @@ export class OnlineLobbyScene {
     this.events = new EventEmitter();
     this.attachConnection();
     this.previousInput = null;
+    this.menuMotion = new MenuMotion();
     this.backgroundDrawn = false;
     this.sceneManager.setScene(this);
     if (this.isHost) {
@@ -125,6 +127,7 @@ export class OnlineLobbyScene {
   }
 
   update(inputByPlayerId) {
+    this.menuMotion.update();
     const input = mergeLocalInputs(inputByPlayerId);
     if (!this.previousInput) {
       this.previousInput = input;
@@ -246,16 +249,19 @@ export class OnlineLobbyScene {
     }
     renderer.clearGameLayer();
     renderer.clearUiLayer();
-    drawOnlineLobby(renderer.uiContext, {
-      code: this.code,
-      lobby: this.lobby,
-      localSeat: this.localSeat,
-      isHost: this.isHost,
-      rows: this.rows,
-      selectedRow: this.selectedRow,
-      sprites: this.sprites,
-      levels: this.levels,
-      touchActive: renderer.touchActive,
-    });
+    drawWithMenuMotion(renderer.uiContext, this.menuMotion, () =>
+      drawOnlineLobby(renderer.uiContext, {
+        code: this.code,
+        lobby: this.lobby,
+        localSeat: this.localSeat,
+        isHost: this.isHost,
+        rows: this.rows,
+        selectedRow: this.selectedRow,
+        sprites: this.sprites,
+        levels: this.levels,
+        touchActive: renderer.touchActive,
+        motion: this.menuMotion,
+      }),
+    );
   }
 }

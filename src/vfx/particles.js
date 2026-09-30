@@ -7,6 +7,7 @@ import {
   CHARGED_SHOVE_EXTRA_SPARK_SPEED,
   CHARGED_SHOVE_EXTRA_SPARKS,
   IMPACT_EFFECTS,
+  SPLASH_TIERS,
   LAUNCH_TRAIL_MIN_SPEED,
   LAUNCH_TRAIL_STRENGTHS,
 } from '../engine/config.js';
@@ -15,7 +16,7 @@ const DUST_COLOR = '#c8ccd4';
 const FIRE_COLOR = '#f77622';
 const BLAST_COLOR = '#ffd23c';
 const CRAB_COLOR = '#e43b44';
-const DROPLET_COLOR = '#b8e0ff';
+const DROPLET_COLORS = ['#c0cbdc', '#2ce8f5', '#ffffff'];
 const PLAYER_HALF_WIDTH = 12;
 const PLAYER_HALF_HEIGHT = 14;
 
@@ -27,7 +28,7 @@ const FULL_CHARGE_SPARKLE = { count: 6, speed: 1.5, ticks: 12, size: 2, gravity:
 const HIT_SPARK_CONE = Math.PI / 2;
 const LAUNCH_TRAIL = { size: 8, ticks: 10 };
 const BLAST_SPARKS = { count: 20, speed: 4.5, ticks: 22, size: 3, gravity: 0.12, arcStart: 0, arcSize: 2 * Math.PI };
-const SPLASH_DROPLETS = { count: 12, speed: 4, ticks: 30, size: 2, gravity: 0.22, arcStart: Math.PI, arcSize: Math.PI };
+const SPLASH_DROPLETS = { ticks: 30, size: 2, gravity: 0.22, arcStart: Math.PI + 0.4, arcSize: Math.PI - 0.8 };
 
 export const HARD_LANDING_SPEED = 9;
 
@@ -109,9 +110,14 @@ export class Particles {
       burst(x, y, BLAST_COLOR, BLAST_SPARKS);
       this.markLaunched(playerIds, strength);
     });
-    events.on('player-fell-in-water', ({ playerId }) => {
+    events.on('player-fell-in-water', ({ playerId, splashTier = 'small' }) => {
       const player = findPlayer(playerId);
-      if (player) burst(centerOf(player).x, getWaterLineY(), DROPLET_COLOR, SPLASH_DROPLETS);
+      if (!player) return;
+      const { dropletCount, dropletSpeed } = SPLASH_TIERS[splashTier];
+      DROPLET_COLORS.forEach((color, colorIndex) => {
+        const count = Math.ceil((dropletCount - colorIndex) / DROPLET_COLORS.length);
+        burst(centerOf(player).x, getWaterLineY(), color, { ...SPLASH_DROPLETS, count, speed: dropletSpeed });
+      });
     });
   }
 

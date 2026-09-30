@@ -1,7 +1,15 @@
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../engine/config.js';
 import { EventEmitter } from '../engine/events.js';
 import { mergeLocalInputs } from '../engine/input.js';
-import { drawKeyHints, drawMenuTitle, KEYCAP_HEIGHT, rowIndexAt, TITLE_HEIGHT } from '../ui/menu-kit.js';
+import {
+  drawKeyHints,
+  drawMenuTitle,
+  drawWithMenuMotion,
+  KEYCAP_HEIGHT,
+  MenuMotion,
+  rowIndexAt,
+  TITLE_HEIGHT,
+} from '../ui/menu-kit.js';
 import { MENU_BACKGROUND_COLOR, NO_WATER_LINE_Y } from '../ui/menu-screen.js';
 import { drawPanel } from '../ui/panel.js';
 import { drawText } from '../ui/text.js';
@@ -72,12 +80,14 @@ export class OnlineJoinScene {
     this.onJoin = onJoin;
     this.onBack = onBack;
     this.entry = new RoomCodeEntry();
+    this.menuMotion = new MenuMotion();
     this.backgroundDrawn = false;
     // Captured on the first tick, so a press still held from the screen before never counts here.
     this.previousInput = null;
   }
 
   update(inputByPlayerId) {
+    this.menuMotion.update();
     const input = mergeLocalInputs(inputByPlayerId);
     if (!this.previousInput) {
       this.previousInput = input;
@@ -116,7 +126,9 @@ export class OnlineJoinScene {
     }
     renderer.clearGameLayer();
     renderer.clearUiLayer();
-    drawJoinUi(renderer.uiContext, this, renderer.touchActive);
+    drawWithMenuMotion(renderer.uiContext, this.menuMotion, () =>
+      drawJoinUi(renderer.uiContext, this, renderer.touchActive),
+    );
   }
 }
 
