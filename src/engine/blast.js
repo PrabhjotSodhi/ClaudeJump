@@ -10,7 +10,7 @@ export function knockBackPlayersInBlast(players, blastCenterX, blastCenterY) {
     if (player.inWater) continue;
     const distanceX = player.x + player.width / 2 - blastCenterX;
     const distanceY = player.y + player.height / 2 - blastCenterY;
-    const distance = Math.hypot(distanceX, distanceY);
+    const distance = Math.sqrt(distanceX * distanceX + distanceY * distanceY);
     if (distance > BLAST_RADIUS) continue;
 
     const knockbackDirectionX = distance === 0 ? 1 : distanceX / distance;

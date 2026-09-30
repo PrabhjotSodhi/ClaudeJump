@@ -1,4 +1,5 @@
 import { Entity } from '../engine/entity.js';
+import { swayOffset } from '../vfx/parachute-sway.js';
 
 export const CRATE_WIDTH = 16;
 export const CRATE_HEIGHT = 16;
@@ -20,20 +21,9 @@ const STRING_COLOR = '#c0cbdc';
 const CANOPY_WIDTH = 16;
 const CANOPY_HEIGHT = 7;
 const STRING_LENGTH = 6;
-const SWAY_MAX_PIXELS = 6;
-const SWAY_PERIOD_TICKS = 70;
-// The sway shrinks with the distance left to fall, so it is gone by the time the crate lands.
-const SWAY_SETTLE_DISTANCE = 120;
 const FOLD_TICKS = 12;
 // Comfortably above the top of the screen so the crate is never visible before it starts falling.
 const FALL_START_Y = -CRATE_HEIGHT;
-
-// Sideways offset in pixels for a crate that has fallen for `fallenTicks` ticks and has
-// `distanceToGround` pixels left. A pure function of its inputs.
-export function swayOffset(fallenTicks, distanceToGround) {
-  const amplitude = SWAY_MAX_PIXELS * Math.min(1, Math.max(0, distanceToGround) / SWAY_SETTLE_DISTANCE);
-  return Math.round(Math.sin((fallenTicks * 2 * Math.PI) / SWAY_PERIOD_TICKS) * amplitude) + 0;
-}
 
 // A crate holding one card. Its marker flashes at the spot it is aimed at, then it drops in from
 // above the screen and stops on whichever platform it reaches first, or falls into the sea if
