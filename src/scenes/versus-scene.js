@@ -20,6 +20,7 @@ import {
   TICK_RATE,
   TILE_SIZE,
   TIMER_URGENT_SECONDS,
+  TIME_LOW_SECONDS,
 } from '../engine/config.js';
 import {
   BLAST_STRENGTH,
@@ -57,7 +58,7 @@ import { drawHeldCardIcons } from '../ui/held-card-icons.js';
 import { Callouts } from '../ui/callouts.js';
 import { drawHud } from '../ui/hud.js';
 import { drawModifierPick } from '../ui/modifier-pick.js';
-import { drawRoundIntro } from '../ui/round-intro.js';
+import { drawRoundIntro, isMatchPoint } from '../ui/round-intro.js';
 import { MatchStats } from '../ui/match-stats.js';
 import { drawPlayerTags } from '../ui/player-tags.js';
 import { WinPips } from '../ui/win-pips.js';
@@ -290,6 +291,7 @@ export class VersusScene {
     this.fightTicks = 0;
     this.suddenDeathPhase = 'none';
     this.events.emit('round-started', {});
+    if (isMatchPoint(this.wins, this.winsNeeded)) this.events.emit('match-point', {});
     if (this.phase === 'ready')
       this.events.emit('countdown-beat', { count: ROUND_COUNTDOWN_TICKS / ROUND_COUNTDOWN_BEAT_TICKS });
   }
@@ -480,6 +482,7 @@ export class VersusScene {
 
   updateSuddenDeath() {
     const countdownTicks = this.suddenDeathCountdownTicks;
+    if (countdownTicks === TIME_LOW_SECONDS * TICK_RATE) this.events.emit('round-time-low', {});
     if (countdownTicks > 0 && countdownTicks <= TIMER_URGENT_SECONDS * TICK_RATE && countdownTicks % TICK_RATE === 0) {
       this.events.emit('timer-ticked', { secondsRemaining: countdownTicks / TICK_RATE });
     }
@@ -920,6 +923,9 @@ export class VersusScene {
     this.ticksRemaining = KNOCKOUT_SLOWMO_TICKS;
     this.knockoutTicks = 1;
     this.knockoutFocusPlayerId = this.players.find((player) => player.inWater)?.id ?? null;
+    const lastStanding = standingPlayers[0];
+    if (lastStanding && this.wins[lastStanding.id] + 1 >= this.winsNeeded)
+      this.events.emit('final-knockout', { playerId: lastStanding.id });
   }
 
   endRound() {
