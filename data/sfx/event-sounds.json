@@ -38,5 +38,15 @@
   "shove-charging": "shove-charge",
   "shove-fully-charged": "charge-ping",
   "shove-clash": "clash",
-  "award-shown": "award"
+  "award-shown": "award",
+  "character-cheered": {
+    "by": "characterName",
+    "claude": "cheer-claude",
+    "muse": "cheer-muse",
+    "chatgpt": "cheer-chatgpt",
+    "gemini": "cheer-gemini",
+    "grok": "cheer-grok",
+    "deepseek": "cheer-deepseek",
+    "mistral": "cheer-mistral"
+  }
 }

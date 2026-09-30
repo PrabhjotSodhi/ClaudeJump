@@ -425,5 +425,197 @@
       "volume": 0.16,
       "delay": 0.16
     }
+  ],
+  "cheer-claude": [
+    {
+      "waveform": "triangle",
+      "startFrequency": 392,
+      "endFrequency": 392,
+      "duration": 0.08,
+      "volume": 0.2
+    },
+    {
+      "waveform": "triangle",
+      "startFrequency": 523,
+      "endFrequency": 523,
+      "duration": 0.08,
+      "volume": 0.2,
+      "delay": 0.08
+    },
+    {
+      "waveform": "triangle",
+      "startFrequency": 659,
+      "endFrequency": 659,
+      "duration": 0.08,
+      "volume": 0.2,
+      "delay": 0.16
+    },
+    {
+      "waveform": "triangle",
+      "startFrequency": 784,
+      "endFrequency": 900,
+      "duration": 0.22,
+      "volume": 0.2,
+      "delay": 0.24
+    }
+  ],
+  "cheer-muse": [
+    {
+      "waveform": "sawtooth",
+      "startFrequency": 120,
+      "endFrequency": 190,
+      "duration": 0.2,
+      "volume": 0.16,
+      "noiseVolume": 0.1
+    },
+    {
+      "waveform": "square",
+      "startFrequency": 260,
+      "endFrequency": 330,
+      "duration": 0.16,
+      "volume": 0.12,
+      "delay": 0.2
+    },
+    {
+      "waveform": "triangle",
+      "startFrequency": 330,
+      "endFrequency": 330,
+      "duration": 0.2,
+      "volume": 0.18,
+      "delay": 0.32
+    }
+  ],
+  "cheer-chatgpt": [
+    {
+      "waveform": "sine",
+      "startFrequency": 880,
+      "endFrequency": 880,
+      "duration": 0.06,
+      "volume": 0.2
+    },
+    {
+      "waveform": "sine",
+      "startFrequency": 1174,
+      "endFrequency": 1174,
+      "duration": 0.06,
+      "volume": 0.2,
+      "delay": 0.07
+    },
+    {
+      "waveform": "sine",
+      "startFrequency": 1568,
+      "endFrequency": 1568,
+      "duration": 0.06,
+      "volume": 0.2,
+      "delay": 0.14
+    },
+    {
+      "waveform": "sine",
+      "startFrequency": 1174,
+      "endFrequency": 1760,
+      "duration": 0.18,
+      "volume": 0.18,
+      "delay": 0.21
+    }
+  ],
+  "cheer-gemini": [
+    {
+      "waveform": "square",
+      "startFrequency": 660,
+      "endFrequency": 660,
+      "duration": 0.16,
+      "volume": 0.1
+    },
+    {
+      "waveform": "square",
+      "startFrequency": 990,
+      "endFrequency": 990,
+      "duration": 0.16,
+      "volume": 0.1
+    },
+    {
+      "waveform": "sine",
+      "startFrequency": 1320,
+      "endFrequency": 1980,
+      "duration": 0.26,
+      "volume": 0.16,
+      "delay": 0.16
+    }
+  ],
+  "cheer-grok": [
+    {
+      "waveform": "sawtooth",
+      "startFrequency": 1200,
+      "endFrequency": 300,
+      "duration": 0.14,
+      "volume": 0.14
+    },
+    {
+      "waveform": "sawtooth",
+      "startFrequency": 400,
+      "endFrequency": 1400,
+      "duration": 0.18,
+      "volume": 0.14,
+      "delay": 0.14
+    },
+    {
+      "waveform": "square",
+      "startFrequency": 1400,
+      "endFrequency": 1400,
+      "duration": 0.1,
+      "volume": 0.1,
+      "delay": 0.32
+    }
+  ],
+  "cheer-deepseek": [
+    {
+      "waveform": "sine",
+      "startFrequency": 200,
+      "endFrequency": 600,
+      "duration": 0.25,
+      "volume": 0.24
+    },
+    {
+      "waveform": "triangle",
+      "startFrequency": 300,
+      "endFrequency": 900,
+      "duration": 0.2,
+      "volume": 0.18,
+      "delay": 0.18
+    },
+    {
+      "waveform": "sine",
+      "startFrequency": 900,
+      "endFrequency": 1200,
+      "duration": 0.16,
+      "volume": 0.14,
+      "delay": 0.38
+    }
+  ],
+  "cheer-mistral": [
+    {
+      "waveform": "sine",
+      "startFrequency": 500,
+      "endFrequency": 900,
+      "duration": 0.28,
+      "volume": 0.1,
+      "noiseVolume": 0.3
+    },
+    {
+      "waveform": "triangle",
+      "startFrequency": 700,
+      "endFrequency": 1050,
+      "duration": 0.1,
+      "volume": 0.18,
+      "delay": 0.24
+    },
+    {
+      "waveform": "triangle",
+      "startFrequency": 1050,
+      "endFrequency": 1400,
+      "duration": 0.16,
+      "volume": 0.18,
+      "delay": 0.34
+    }
   ]
 }
