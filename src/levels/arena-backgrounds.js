@@ -3,6 +3,12 @@ import { SeededRandom } from '../engine/seeded-random.js';
 
 const MIST_BAND_HEIGHT = 12;
 const CONTAINER_HEIGHT = 14;
+const TOWER_LAYERS = [
+  { color: '#3a4466', towerXs: [90, 300, 520], top: 120, baseHalfWidth: 26 },
+  { color: '#262b44', towerXs: [10, 190, 410, 610], top: 170, baseHalfWidth: 30 },
+];
+const TOWER_BOTTOM_Y = 300;
+const STEAM_PUFF_COUNT = 9;
 
 function fillRect(context, color, x, y, width, height) {
   context.fillStyle = color;
@@ -154,11 +160,48 @@ function drawServerFarm(context, random) {
   fillRect(context, '#181425', 0, 296, SCREEN_WIDTH, 1);
 }
 
+// A cooling tower narrows towards its waist, then flares at the rim.
+function drawCoolingTower(context, color, centerX, top, baseHalfWidth) {
+  const height = TOWER_BOTTOM_Y - top;
+  for (let y = top; y < TOWER_BOTTOM_Y; y++) {
+    const halfWidth = baseHalfWidth - Math.round(baseHalfWidth * 0.3 * Math.sin(((y - top) / height) * Math.PI));
+    fillDither(context, color, centerX - halfWidth, y, halfWidth * 2, 1);
+  }
+}
+
+// A plume of dithered puffs that drifts up and to one side from a tower rim and thins as it rises.
+function drawSteamPlume(context, color, centerX, rimY, random) {
+  for (let puff = 0; puff < STEAM_PUFF_COUNT; puff++) {
+    const width = 14 + puff * 3 + Math.floor(random.next() * 6);
+    const x = centerX - width / 2 + puff * 4 + Math.floor(random.next() * 6);
+    fillDither(context, color, x, rimY - 8 - puff * 9, width, 8, puff < 4 ? 'half' : 'quarter');
+  }
+}
+
+function drawCoolingTowers(context, random) {
+  fillRect(context, '#5a6988', 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+  fillDither(context, '#8b9bb4', 0, 200, SCREEN_WIDTH, 100, 'quarter');
+  TOWER_LAYERS.forEach(({ color, towerXs, top, baseHalfWidth }, layerIndex) => {
+    for (const towerX of towerXs) {
+      drawCoolingTower(context, color, towerX, top, baseHalfWidth);
+      if (layerIndex === 0) drawSteamPlume(context, '#3a4466', towerX, top, random);
+    }
+    drawMistBand(context, 250 + layerIndex * 16, '#5a6988');
+  });
+  fillRect(context, '#181425', 0, TOWER_BOTTOM_Y, SCREEN_WIDTH, SCREEN_HEIGHT - TOWER_BOTTOM_Y);
+  for (let x = 20; x < SCREEN_WIDTH; x += 70) {
+    fillRect(context, '#181425', x, 284, 10, 16);
+    fillRect(context, '#181425', x + 4, 272, 2, 12);
+    if (random.next() < 0.5) fillRect(context, '#feae34', x + 3, 290, 2, 2);
+  }
+}
+
 const DRAW_BY_BACKGROUND_NAME = {
   harbor: drawHarbor,
   cave: drawCave,
   rooftops: drawRooftops,
   'server-farm': drawServerFarm,
+  'cooling-towers': drawCoolingTowers,
 };
 
 // Each arena draws the same picture every time, from its own fixed seed.
