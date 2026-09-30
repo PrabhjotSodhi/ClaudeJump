@@ -1,3 +1,4 @@
+import { wrapMenuIndex } from '../ui/menu-kit.js';
 import { drawPauseMenu } from '../ui/pause-menu.js';
 import { drawResultsMenu } from '../ui/results-menu.js';
 import { LevelSelectScene } from './level-select-scene.js';
@@ -75,9 +76,8 @@ export class PausableMatchScene {
     const downPressed = this.consumeFreshPress(inputByPlayerId, 'down', this.previousMenuControls.down);
     const confirmPressed = this.consumeFreshPress(inputByPlayerId, 'confirm', this.previousMenuControls.confirm);
 
-    if (downPressed) this.selectedIndex = (this.selectedIndex + 1) % PAUSE_MENU_OPTIONS.length;
-    if (upPressed)
-      this.selectedIndex = (this.selectedIndex + PAUSE_MENU_OPTIONS.length - 1) % PAUSE_MENU_OPTIONS.length;
+    if (downPressed) this.selectedIndex = wrapMenuIndex(this.selectedIndex, 1, PAUSE_MENU_OPTIONS.length);
+    if (upPressed) this.selectedIndex = wrapMenuIndex(this.selectedIndex, -1, PAUSE_MENU_OPTIONS.length);
     if (confirmPressed) this.confirmSelection(inputByPlayerId);
   }
 
