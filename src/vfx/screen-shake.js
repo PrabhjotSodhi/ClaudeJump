@@ -7,6 +7,8 @@ import { IMPACT_EFFECTS } from '../engine/config.js';
 
 const FALL_SHAKE_PIXELS = 3;
 const FALL_SHAKE_TICKS = 10;
+const COUNT_SHAKE = { pixels: 2, ticks: 6 };
+const GO_SHAKE = { pixels: 3, ticks: 10 };
 
 export class ScreenShake {
   constructor() {
@@ -29,6 +31,10 @@ export class ScreenShake {
     events.on('player-pinched', startHit);
     events.on('dash-hit', startHit);
     events.on('player-fell-in-water', () => this.start(FALL_SHAKE_PIXELS, FALL_SHAKE_TICKS));
+    events.on('countdown-beat', ({ count }) => {
+      const { pixels, ticks } = count === 0 ? GO_SHAKE : COUNT_SHAKE;
+      this.start(pixels, ticks);
+    });
   }
 
   // A smaller shake never cuts short a bigger one that is still running.

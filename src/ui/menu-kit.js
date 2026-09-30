@@ -99,10 +99,11 @@ export function pressSquashPixels(ticksSincePress) {
 // chooses something and close() when the menu leaves. It never blocks input: a press during a
 // slide still counts because the scene handles input as usual.
 export class MenuMotion {
-  constructor() {
+  // Pass `{ closed: true }` for a menu that starts hidden and opens later with a new MenuMotion.
+  constructor({ closed = false } = {}) {
     this.tick = 0;
     this.ticksSincePress = null;
-    this.ticksSinceClose = null;
+    this.ticksSinceClose = closed ? MENU_SLIDE_TICKS : null;
   }
 
   update() {
