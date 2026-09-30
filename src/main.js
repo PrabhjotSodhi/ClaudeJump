@@ -6,6 +6,7 @@ import { Renderer } from './engine/renderer.js';
 import { SceneManager } from './engine/scene-manager.js';
 import { SoundPlayer } from './engine/sound-player.js';
 import { loadSpriteFile } from './engine/sprites.js';
+import { createTouchInput } from './engine/touch-input.js';
 import { loadLevel, stoneColorOverrides } from './levels/level-loader.js';
 import { createLevelThumbnail } from './levels/level-thumbnail.js';
 import { isPortraitOnTouchDevice, pickScale } from './engine/screen-fit.js';
@@ -15,6 +16,7 @@ import { StyleTestScene } from './scenes/style-test-scene.js';
 import { FULLSCREEN_BUTTON, TitleScene } from './scenes/title-scene.js';
 import { SurvivalScene } from './scenes/survival-scene.js';
 import { VersusScene } from './scenes/versus-scene.js';
+import { drawTouchControls } from './ui/touch-controls.js';
 import { drawRotatePrompt, ROTATE_PROMPT_HEIGHT, ROTATE_PROMPT_WIDTH } from './ui/rotate-prompt.js';
 
 // The order of the level select tiles.
@@ -35,6 +37,17 @@ function readLocalStorage() {
 
 function isAnyControlHeld(inputByPlayerId) {
   return Object.values(inputByPlayerId).some((input) => Object.values(input).some(Boolean));
+}
+
+// Survival scrolls, so a player's screen position is their world position minus the camera.
+function playerScreenRectangles(scene) {
+  const matchScene = scene.matchScene ?? scene;
+  return (matchScene.players ?? []).map((player) => ({
+    x: player.x,
+    y: player.y - (matchScene.cameraTopY ?? 0),
+    width: player.width,
+    height: player.height,
+  }));
 }
 
 async function main() {
@@ -88,6 +101,10 @@ async function main() {
   const renderer = new Renderer();
   const keyboardInput = createKeyboardInput(keyMappings);
   const gamepadInput = createGamepadInput(keyMappings.map((mapping) => mapping.id));
+  const touchInput = createTouchInput(
+    canvas,
+    keyMappings.map((mapping) => mapping.id),
+  );
   const soundPlayer = new SoundPlayer({ soundDefinitions, eventSounds, storage: readLocalStorage() });
   const sceneManager = new SceneManager({ soundPlayer });
   const sprites = { claude, muse, chatgpt, gemini, grok, deepseek, mistral, props, blocks };
@@ -166,9 +183,17 @@ async function main() {
       renderRotatePrompt();
       return;
     }
+    renderer.touchActive = touchInput.visible;
     renderer.shakeOffset = { x: 0, y: 0 };
     renderer.seaRippleBytes = null;
     sceneManager.render(renderer);
+    if (touchInput.visible) {
+      drawTouchControls(renderer.uiContext, {
+        pressedButtonIds: touchInput.pressedButtonIds,
+        playerRectangles: playerScreenRectangles(sceneManager.currentScene),
+        showPause: sceneManager.currentScene instanceof PausableMatchScene,
+      });
+    }
     gameWindow.render({
       backgroundCanvas: renderer.backgroundChanged ? renderer.backgroundCanvas : null,
       gameCanvas: renderer.gameCanvas,
@@ -188,7 +213,10 @@ async function main() {
         sceneManager.currentScene?.pauseForFocusLoss?.();
         return;
       }
-      const inputByPlayerId = combineInputs(keyboardInput.sample(), gamepadInput.sample());
+      const keyboardInputs = keyboardInput.sample();
+      const gamepadInputs = gamepadInput.sample();
+      if (isAnyControlHeld(keyboardInputs) || isAnyControlHeld(gamepadInputs)) touchInput.hide();
+      const inputByPlayerId = combineInputs(keyboardInputs, gamepadInputs, touchInput.sample());
       if (isAnyControlHeld(inputByPlayerId)) soundPlayer.unlock();
       sceneManager.update(inputByPlayerId);
     },

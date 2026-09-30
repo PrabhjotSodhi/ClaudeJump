@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { menuRowRectangles } from '../src/ui/menu-kit.js';
 import { TitleScene } from '../src/scenes/title-scene.js';
 import { harborLevel } from './fixtures/harbor-level.mjs';
 
@@ -117,4 +118,16 @@ test('the title shows the sea at the Harbor water line', () => {
   const scene = new TitleScene({ levels: [harborLevel], seed: 0 });
 
   assert.equal(scene.waterLineY, harborLevel.waterLineY);
+});
+
+test('tapping a menu row selects and confirms it', () => {
+  const scene = new TitleScene({ options: threeOptions() });
+  scene.confirmSelection = function confirmSelection() {
+    this.confirmed = this.selectedIndex;
+  };
+  const rows = menuRowRectangles(['A', 'B', 'C'], 176);
+
+  scene.update(inputsWith('red', { tap: { x: 320, y: rows[2].y + 3 } }));
+
+  assert.equal(scene.confirmed, 2);
 });

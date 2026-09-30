@@ -33,6 +33,34 @@ export function menuPanelSize(labels) {
   return { width, height: labels.length * ROW_HEIGHT + 2 * PANEL_PADDING_Y };
 }
 
+// One rectangle per option, spanning the panel, for tapping a row.
+export function menuRowRectangles(labels, topY) {
+  const { width } = menuPanelSize(labels);
+  return labels.map((label, index) => ({
+    x: (SCREEN_WIDTH - width) / 2,
+    y: topY + PANEL_PADDING_Y + index * ROW_HEIGHT,
+    width,
+    height: ROW_HEIGHT,
+  }));
+}
+
+// The row index at a point, or -1.
+export function rowIndexAt(rectangles, point) {
+  if (!point) return -1;
+  return rectangles.findIndex(
+    (rectangle) =>
+      point.x >= rectangle.x &&
+      point.x < rectangle.x + rectangle.width &&
+      point.y >= rectangle.y &&
+      point.y < rectangle.y + rectangle.height,
+  );
+}
+
+// The tap of whichever player touched this tick, or null.
+export function tapPoint(inputByPlayerId) {
+  return Object.values(inputByPlayerId).find((input) => input.tap)?.tap ?? null;
+}
+
 export function wrapMenuIndex(index, step, count) {
   return (((index + step) % count) + count) % count;
 }

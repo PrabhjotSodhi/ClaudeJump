@@ -19,6 +19,8 @@ export class Renderer {
     // Whole pixels the shader moves the background and game layers by. The UI layer never moves.
     this.shakeOffset = { x: 0, y: 0 };
     this.seaRippleBytes = null;
+    // Set by main each frame: the on-screen touch controls are showing.
+    this.touchActive = false;
   }
 
   updateBackground(draw) {
