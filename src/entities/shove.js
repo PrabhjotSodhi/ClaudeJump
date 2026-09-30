@@ -1,3 +1,4 @@
+import { CHARGED_SHOVE_SLIDE_SPEED, SHOVE_SLIDE_SPEED } from './crate.js';
 import { SHOVE_KNOCKBACK_VELOCITY_X, SHOVE_KNOCKBACK_VELOCITY_Y } from './player.js';
 
 export function knockBackShoveTarget({ events, shover, opponent, knockbackScale }) {
@@ -31,4 +32,29 @@ export function resolveShoveHit({ events, players, shover, alreadyHitIds }) {
     alreadyHitIds.add(opponent.id);
     knockBackShoveTarget({ events, shover, opponent, knockbackScale: 1 });
   }
+}
+
+// A landed crate in the shover's hit zone slides away from the shover, once per shove. A fully charged shove pushes harder.
+// alreadyHitIds is the same set resolveShoveHit uses.
+export const CRATE_HIT_ID = 'crate';
+
+export function resolveShoveHitOnCrate({ events, crate, shover, alreadyHitIds }) {
+  const hitZone = shover.shoveHitZone;
+  const touching =
+    crate.landed &&
+    !alreadyHitIds.has(CRATE_HIT_ID) &&
+    crate.x < hitZone.x + hitZone.width &&
+    crate.x + crate.width > hitZone.x &&
+    crate.y < hitZone.y + hitZone.height &&
+    crate.y + crate.height > hitZone.y;
+  if (!touching) return;
+
+  alreadyHitIds.add(CRATE_HIT_ID);
+  const speed = shover.shoveCharge >= 1 ? CHARGED_SHOVE_SLIDE_SPEED : SHOVE_SLIDE_SPEED;
+  crate.slide(shover.facing * speed);
+  events.emit('crate-shoved', {
+    x: crate.x + crate.width / 2,
+    y: crate.y + crate.height / 2,
+    directionX: shover.facing,
+  });
 }

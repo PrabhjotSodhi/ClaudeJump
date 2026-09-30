@@ -15,6 +15,14 @@ function playersInBlast(players, blastCenterX, blastCenterY) {
   });
 }
 
+// The sideways speed a blast gives a landed crate: away from the blast, or 0 when the crate is out of reach.
+export function crateSlideVelocity(crate, blastCenterX, blastCenterY, speed) {
+  const distanceX = crate.x + crate.width / 2 - blastCenterX;
+  const distanceY = crate.y + crate.height / 2 - blastCenterY;
+  if (Math.sqrt(distanceX * distanceX + distanceY * distanceY) > BLAST_RADIUS) return 0;
+  return distanceX < 0 ? -speed : speed;
+}
+
 // Call every tick for a rocket or bomb that has hit something. The first call freezes the projectile, the
 // shooter and every player in reach. The blast goes off, and this returns true, once that freeze is over.
 // A blast with nobody in reach goes off at once.

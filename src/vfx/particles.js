@@ -110,15 +110,18 @@ export class Particles {
       burst(x, y, BLAST_COLOR, BLAST_SPARKS);
       this.markLaunched(playerIds, strength);
     });
-    events.on('player-fell-in-water', ({ playerId, splashTier = 'small' }) => {
-      const player = findPlayer(playerId);
-      if (!player) return;
+    const splashDroplets = (x, splashTier) => {
       const { dropletCount, dropletSpeed } = SPLASH_TIERS[splashTier];
       DROPLET_COLORS.forEach((color, colorIndex) => {
         const count = Math.ceil((dropletCount - colorIndex) / DROPLET_COLORS.length);
-        burst(centerOf(player).x, getWaterLineY(), color, { ...SPLASH_DROPLETS, count, speed: dropletSpeed });
+        burst(x, getWaterLineY(), color, { ...SPLASH_DROPLETS, count, speed: dropletSpeed });
       });
+    };
+    events.on('player-fell-in-water', ({ playerId, splashTier = 'small' }) => {
+      const player = findPlayer(playerId);
+      if (player) splashDroplets(centerOf(player).x, splashTier);
     });
+    events.on('crate-fell-in-water', ({ x }) => splashDroplets(x, 'small'));
   }
 
   burst(x, y, color, style, tickCount) {

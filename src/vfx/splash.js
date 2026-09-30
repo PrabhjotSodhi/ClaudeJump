@@ -43,6 +43,13 @@ export class Splashes {
     });
   }
 
+  // A crate lost to the sea makes a small splash where it went in.
+  attachCrates(events) {
+    events.on('crate-fell-in-water', ({ x, y }) => {
+      this.list.push({ x: Math.round(x), waterLineY: y, tier: 'small', age: 0 });
+    });
+  }
+
   update() {
     for (const splash of this.list) splash.age++;
     this.list = this.list.filter((splash) => splash.age < SPLASH_TIERS[splash.tier].ticks);
