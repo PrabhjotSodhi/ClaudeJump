@@ -1,4 +1,4 @@
-import { drawGlyph } from './touch-controls.js';
+import { drawGlyph, fittingArrowScale } from './touch-controls.js';
 import { drawText } from './text.js';
 
 const BORDER_COLOR = '#3e2731';
@@ -8,7 +8,8 @@ const BUTTON_COLOR = '#3a4466';
 const BUTTON_LIGHT_COLOR = '#5a6988';
 const BUTTON_SHADOW_COLOR = '#262b44';
 const LABEL_COLOR = '#8b9bb4';
-const LABEL_Y = 9;
+const ARROW_FILL = 0.75;
+const LABEL_TEXT_HEIGHT = 5;
 const GLYPH_COLOR = '#c0cbdc';
 const PRESSED_COLOR = '#feae34';
 const PRESSED_GLYPH_COLOR = '#3e2731';
@@ -40,11 +41,19 @@ function drawButton(context, button, isPressed) {
   context.fillRect(x + width - 2, y + 2, 1, height - 4);
 }
 
+// The wordmark sits centered in the empty band between the pause button and the top of the thumb buttons.
+function labelY(buttons) {
+  const pause = buttons.find((button) => button.id === 'pause');
+  const pauseBottom = pause.y + pause.height;
+  const buttonsTop = Math.min(...buttons.filter((button) => button.id !== 'pause').map((button) => button.y));
+  return Math.round((pauseBottom + buttonsTop - LABEL_TEXT_HEIGHT) / 2);
+}
+
 // Draws the controls panel onto its own canvas, so it never covers the game. buttons is the panel
 // layout and pressedButtons the buttons under a finger. showPause hides pause in scenes that cannot pause.
 export function drawPortraitControls(context, { width, height, buttons, pressedButtons, showPause }) {
   drawFrame(context, width, height);
-  drawText(context, 'ClaudeJump', width / 2, LABEL_Y, {
+  drawText(context, 'ClaudeJump', width / 2, labelY(buttons), {
     scale: 1,
     align: 'center',
     color: LABEL_COLOR,
@@ -54,6 +63,11 @@ export function drawPortraitControls(context, { width, height, buttons, pressedB
     if (button.id === 'pause' && !showPause) continue;
     const isPressed = pressedButtons.includes(button);
     drawButton(context, button, isPressed);
-    drawGlyph(context, button, isPressed ? PRESSED_GLYPH_COLOR : GLYPH_COLOR);
+    drawGlyph(
+      context,
+      button,
+      isPressed ? PRESSED_GLYPH_COLOR : GLYPH_COLOR,
+      fittingArrowScale(button.height, ARROW_FILL),
+    );
   }
 }

@@ -27,7 +27,12 @@ function drawArrow(context, centerX, centerY, direction) {
   }
 }
 
-export function drawGlyph(context, button, color) {
+// The whole-number scale at which an arrow fills at most `fraction` of a button's height.
+export function fittingArrowScale(buttonHeight, fraction) {
+  return Math.max(1, Math.floor((buttonHeight * fraction) / (ARROW_DEPTH * 2 - 1)));
+}
+
+export function drawGlyph(context, button, color, arrowScale = 1) {
   const centerX = button.x + button.width / 2;
   const centerY = button.y + button.height / 2;
   context.fillStyle = color;
@@ -43,7 +48,11 @@ export function drawGlyph(context, button, color) {
       outlineColor: null,
     });
   } else {
-    drawArrow(context, centerX, centerY, button.id === 'jump' ? 'up' : button.id);
+    context.save();
+    context.translate(centerX, centerY);
+    context.scale(arrowScale, arrowScale);
+    drawArrow(context, 0, 0, button.id === 'jump' ? 'up' : button.id);
+    context.restore();
   }
 }
 
