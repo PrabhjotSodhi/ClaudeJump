@@ -57,6 +57,7 @@
       "facing": -1
     }
   ],
+  "hazards": [{ "type": "bridge-planks", "row": 14 }],
   "waterLineY": 328,
   "suddenDeathLineY": 160
 }

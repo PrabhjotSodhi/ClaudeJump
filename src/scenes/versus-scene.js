@@ -234,7 +234,8 @@ export class VersusScene {
     this.entityGroups.clear('rockets');
     this.entityGroups.clear('bombs');
     this.entityGroups.clear('hazards');
-    for (const hazard of createHazards(this.level.hazards)) this.entityGroups.add('hazards', hazard);
+    for (const hazard of createHazards(this.level.hazards, { level: this.level, random: this.random }))
+      this.entityGroups.add('hazards', hazard);
     this.restoreBlocks();
     for (const { x, y } of this.level.bouncePads) {
       this.entityGroups.add('bouncePads', new BouncePad({ x, y, lifetimeTicks: Infinity }));
@@ -348,6 +349,11 @@ export class VersusScene {
     this.blocks = [...this.level.blocks];
     this.solidCells = this.level.solidCells.map((row) => [...row]);
     this.brokenTiles = new Set();
+    this.rebuildSolids();
+  }
+
+  removeSolidCell(column, row) {
+    this.solidCells[row][column] = false;
     this.rebuildSolids();
   }
 
