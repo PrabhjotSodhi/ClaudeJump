@@ -141,6 +141,23 @@
       "duration": 0.3,
       "volume": 0.18,
       "delay": 0.24
+    },
+    {
+      "waveform": "square",
+      "startFrequency": 1568,
+      "endFrequency": 1568,
+      "duration": 0.08,
+      "volume": 0.12,
+      "delay": 0.42
+    }
+  ],
+  "timer-tick": [
+    {
+      "waveform": "square",
+      "startFrequency": 880,
+      "endFrequency": 880,
+      "duration": 0.05,
+      "volume": 0.14
     }
   ],
   "sudden-death": [

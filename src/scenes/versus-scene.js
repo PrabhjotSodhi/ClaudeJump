@@ -9,7 +9,9 @@ import {
   SHOVE_CLASH_WIN_KNOCKBACK_MULTIPLIER,
   SHOVE_MAX_CHARGE_TICKS,
   SHOVE_WINDUP_TICKS,
+  TICK_RATE,
   TILE_SIZE,
+  TIMER_URGENT_SECONDS,
 } from '../engine/config.js';
 import { BLAST_STRENGTH, blastIsReady, knockBackPlayersInBlast } from '../engine/blast.js';
 import { EntityGroups } from '../engine/entity-groups.js';
@@ -313,6 +315,10 @@ export class VersusScene {
   }
 
   updateSuddenDeath() {
+    const countdownTicks = this.suddenDeathCountdownTicks;
+    if (countdownTicks > 0 && countdownTicks <= TIMER_URGENT_SECONDS * TICK_RATE && countdownTicks % TICK_RATE === 0) {
+      this.events.emit('timer-ticked', { secondsRemaining: countdownTicks / TICK_RATE });
+    }
     if (this.suddenDeathPhase === 'none' && this.fightTicks >= SUDDEN_DEATH_ROUND_TICKS) {
       this.suddenDeathPhase = 'warning';
       this.events.emit('sudden-death-started', {});

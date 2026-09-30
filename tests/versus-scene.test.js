@@ -260,6 +260,17 @@ test('the sudden death warning starts exactly 1800 ticks after Go!', () => {
   assert.deepEqual(suddenDeathEvents, [{}]);
 });
 
+test('the round timer ticks once a second for the last five seconds', () => {
+  const scene = new VersusScene({ level: harborLevel });
+  advance(scene, READY_TICKS);
+  const secondsRemaining = [];
+  scene.events.on('timer-ticked', (event) => secondsRemaining.push(event.secondsRemaining));
+
+  advance(scene, SUDDEN_DEATH_ROUND_TICKS);
+
+  assert.deepEqual(secondsRemaining, [5, 4, 3, 2, 1]);
+});
+
 test('the sea rises only after the warning ends, and a player standing below it loses the round', () => {
   const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
