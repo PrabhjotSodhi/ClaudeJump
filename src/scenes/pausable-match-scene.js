@@ -48,7 +48,7 @@ export class PausableMatchScene {
     this.resultsMenuOpen = false;
     this.resultsSelectedIndex = 0;
     this.awardReveal = null;
-    this.pauseMotion = new MenuMotion();
+    this.pauseMotion = new MenuMotion({ closed: true });
     this.resultsMotion = new MenuMotion();
   }
 

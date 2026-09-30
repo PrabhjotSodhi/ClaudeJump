@@ -43,6 +43,14 @@ function findPlayer(matchScene, playerId) {
   return matchScene.players.find((player) => player.id === playerId);
 }
 
+test('a match starts with the pause menu hidden', () => {
+  const { scene } = pausedScene();
+  scene.update(neutralInputs());
+
+  assert.equal(scene.paused, false);
+  assert.equal(scene.pauseMotion.isClosed, true);
+});
+
 test('a fresh pause press stops the match from ticking', () => {
   const { scene, matchScene } = pausedScene();
 
