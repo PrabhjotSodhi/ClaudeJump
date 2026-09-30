@@ -3,6 +3,7 @@ import { createGameLoop } from './engine/game-loop.js';
 import { createGamepadInput } from './engine/gamepad-input.js';
 import { createFullscreen } from './engine/fullscreen.js';
 import { combineInputs, createKeyboardInput } from './engine/input.js';
+import { getInputDevice, pickInputDevice, setInputDevice } from './engine/input-device.js';
 import { gameOptions } from './engine/game-options.js';
 import { Renderer } from './engine/renderer.js';
 import { SceneManager } from './engine/scene-manager.js';
@@ -254,7 +255,10 @@ async function main() {
       }
       const keyboardInputs = keyboardInput.sample();
       const gamepadInputs = gamepadInput.sample();
-      if (isAnyControlHeld(keyboardInputs) || isAnyControlHeld(gamepadInputs)) touchInput.hide();
+      const keyboardHeld = isAnyControlHeld(keyboardInputs);
+      const padHeld = isAnyControlHeld(gamepadInputs);
+      if (keyboardHeld || padHeld) touchInput.hide();
+      setInputDevice(pickInputDevice(getInputDevice(), { keyboardHeld, padHeld, touchVisible: touchInput.visible }));
       const inputByPlayerId = combineInputs(
         keyboardInputs,
         gamepadInputs,

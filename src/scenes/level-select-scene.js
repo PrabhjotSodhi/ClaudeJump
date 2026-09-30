@@ -49,8 +49,8 @@ const RANDOM_MARK_COLOR = '#5a6988';
 // Where each voter's prompt sits, as offsets from the screen's center, by how many players voted.
 const STATUS_OFFSETS_X = { 2: [-148, 148], 3: [-200, 0, 200], 4: [-240, -80, 80, 240] };
 const HINTS = [
-  { keys: ['A', 'D', 'S', 'Left', 'Right', 'Down'], label: 'Move' },
-  { keys: ['W', 'Up'], label: 'Vote' },
+  { keys: ['A', 'D', 'S', 'Left', 'Right', 'Down'], pad: ['stick'], label: 'Move' },
+  { keys: ['W', 'Up'], pad: ['south'], label: 'Vote' },
 ];
 const SELECTED_COLOR = '#feae34';
 

@@ -23,8 +23,8 @@ const LINES_GAP = 14;
 const HINT_GAP = 14;
 const LINE_COLOR = '#c0cbdc';
 const HINTS = [
-  { keys: ['Up', 'Down'], label: 'Choose' },
-  { keys: ['Enter', 'A'], label: 'Select' },
+  { keys: ['Up', 'Down'], pad: ['stick'], label: 'Choose' },
+  { keys: ['Enter'], pad: ['south'], label: 'Select' },
 ];
 
 // The stack of title, lines, options and key hints is centered on the screen as one block.

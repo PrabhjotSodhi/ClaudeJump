@@ -54,7 +54,7 @@ const AWARD_FLASH_TICKS = 4;
 
 const MENU_TOP_Y = 172;
 const HINT_GAP = 14;
-const HINTS = [{ keys: ['Enter', 'A'], label: 'Select' }];
+const HINTS = [{ keys: ['Enter'], pad: ['south'], label: 'Select' }];
 
 // The stats panel positions. Two players each get their own side of the screen. More players fill rows of two,
 // left then right, in the order the panels are given.

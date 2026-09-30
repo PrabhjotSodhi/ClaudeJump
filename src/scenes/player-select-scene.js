@@ -1,9 +1,11 @@
 import { SCREEN_HEIGHT, SCREEN_WIDTH, TICK_RATE } from '../engine/config.js';
+import { getInputDevice } from '../engine/input-device.js';
 import { EventEmitter } from '../engine/events.js';
 import { CHARACTERS, HOVER_CHARACTER_BY_PLAYER_ID } from '../entities/characters.js';
 import { PLAYERS } from '../levels/versus-arena.js';
 import {
   drawKeyHints,
+  rowsForDevice,
   drawMenuTitle,
   drawWithMenuMotion,
   KEYCAP_HEIGHT,
@@ -64,6 +66,7 @@ const HINTS_ROW_HEIGHT = 14;
 const KEY_HINT_ROWS = [
   {
     label: 'Red',
+    device: 'keyboard',
     color: PLAYERS.find((spawn) => spawn.id === 'red').color,
     hints: [
       { keys: ['A', 'D'], label: 'Pick' },
@@ -73,6 +76,7 @@ const KEY_HINT_ROWS = [
   },
   {
     label: 'Blue',
+    device: 'keyboard',
     color: PLAYERS.find((spawn) => spawn.id === 'blue').color,
     hints: [
       { keys: ['Left', 'Right'], label: 'Pick' },
@@ -82,11 +86,12 @@ const KEY_HINT_ROWS = [
   },
   {
     label: 'Pads',
+    device: 'pad',
     color: UNJOINED_COLOR,
     hints: [
-      { keys: ['Stick'], label: 'Pick' },
-      { keys: ['A'], label: 'Join or lock in' },
-      { keys: ['Down'], label: 'Back' },
+      { keys: ['Stick'], pad: ['stick'], label: 'Pick' },
+      { keys: ['A'], pad: ['south'], label: 'Join or lock in' },
+      { keys: ['Down'], pad: ['east'], label: 'Back' },
     ],
   },
 ];
@@ -405,10 +410,12 @@ function drawRoster(context, scene, spawn, centerX) {
 }
 
 function drawKeyHintPanel(context) {
-  const height = (KEY_HINT_ROWS.length - 1) * HINTS_ROW_HEIGHT + KEYCAP_HEIGHT + 2 * HINTS_PANEL_PADDING;
+  const rows = rowsForDevice(KEY_HINT_ROWS, getInputDevice());
+  if (rows.length === 0) return;
+  const height = (rows.length - 1) * HINTS_ROW_HEIGHT + KEYCAP_HEIGHT + 2 * HINTS_PANEL_PADDING;
   const left = (SCREEN_WIDTH - HINTS_PANEL_WIDTH) / 2;
   drawPanel(context, left, HINTS_PANEL_TOP_Y, HINTS_PANEL_WIDTH, height);
-  KEY_HINT_ROWS.forEach(({ label, color, hints }, index) => {
+  rows.forEach(({ label, color, hints }, index) => {
     const y = HINTS_PANEL_TOP_Y + HINTS_PANEL_PADDING + index * HINTS_ROW_HEIGHT;
     drawText(context, label, left + HINTS_PANEL_PADDING, y + 3, { scale: 1, color, outlineColor: null });
     drawKeyHints(context, hints, y);
