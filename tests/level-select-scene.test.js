@@ -9,7 +9,7 @@ import { harborLevel } from './fixtures/harbor-level.mjs';
 const otherLevel = { ...harborLevel, name: 'Dock' };
 const twoLevels = [harborLevel, otherLevel];
 const RANDOM_TILE = twoLevels.length;
-const pickedCharacters = { red: findCharacter('muse'), blue: findCharacter('chatgpt') };
+const pickedCharacters = { red: findCharacter('meta'), blue: findCharacter('chatgpt') };
 // Well past the short pause on the picked tile, so a match that never starts fails instead of hanging.
 const MOST_TICKS_BEFORE_MATCH = 120;
 
@@ -107,8 +107,8 @@ test('once both lock, the match waits on the picked tile, then starts with that 
   assert.equal(matchScene.level, otherLevel);
   const red = matchScene.players.find((player) => player.id === 'red');
   const blue = matchScene.players.find((player) => player.id === 'blue');
-  assert.deepEqual([red.character.name, red.color], ['muse', '#ead4aa']);
-  assert.deepEqual([blue.character.name, blue.color], ['chatgpt', '#63c74d']);
+  assert.deepEqual([red.character.name, red.color], ['meta', '#b55088']);
+  assert.deepEqual([blue.character.name, blue.color], ['chatgpt', '#ffffff']);
 });
 
 function pickedLevel({ seed, redPresses = [], bluePresses = [] }) {
@@ -215,7 +215,7 @@ const threeLevels = [harborLevel, otherLevel, { ...harborLevel, name: 'Yard' }];
 function voteWith({ seed, playerIds, votes, levels = threeLevels }) {
   const scenes = [];
   const sceneManager = { setScene: (nextScene) => scenes.push(nextScene) };
-  const characterByPlayerId = Object.fromEntries(playerIds.map((id) => [id, findCharacter('muse')]));
+  const characterByPlayerId = Object.fromEntries(playerIds.map((id) => [id, findCharacter('meta')]));
   const scene = new LevelSelectScene({ sceneManager, levels, characterByPlayerId, seed });
   const idle = () => Object.fromEntries(ALL_PLAYER_IDS.map((id) => [id, noInput()]));
   scene.update(idle());
@@ -278,7 +278,7 @@ test('the match starts with exactly the players who joined', () => {
 test('voting waits for every joined player and no one else', () => {
   const scenes = [];
   const sceneManager = { setScene: (nextScene) => scenes.push(nextScene) };
-  const characterByPlayerId = { red: findCharacter('muse'), green: findCharacter('grok') };
+  const characterByPlayerId = { red: findCharacter('meta'), green: findCharacter('grok') };
   const scene = new LevelSelectScene({ sceneManager, levels: twoLevels, characterByPlayerId, seed: 0 });
   scene.update(neutralInputs());
 

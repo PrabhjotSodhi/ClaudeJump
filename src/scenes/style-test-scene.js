@@ -39,8 +39,8 @@ const COMPOSITE_SIZE = 48;
 
 // Each character hops toward its partner.
 const CAST = [
-  { name: 'claude', partner: 'muse', homeX: 88, groundY: CLUSTER_TOP_Y, firstRestTicks: 20 },
-  { name: 'muse', partner: 'claude', homeX: 140, groundY: CLUSTER_TOP_Y, firstRestTicks: 34 },
+  { name: 'claude', partner: 'meta', homeX: 88, groundY: CLUSTER_TOP_Y, firstRestTicks: 20 },
+  { name: 'meta', partner: 'claude', homeX: 140, groundY: CLUSTER_TOP_Y, firstRestTicks: 34 },
   { name: 'chatgpt', partner: 'gemini', homeX: 176, groundY: CLUSTER_TOP_Y, firstRestTicks: 26 },
   { name: 'gemini', partner: 'chatgpt', homeX: 228, groundY: CLUSTER_TOP_Y, firstRestTicks: 42 },
   { name: 'grok', partner: 'deepseek', homeX: 408, groundY: GIRDER.y, firstRestTicks: 14 },

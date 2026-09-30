@@ -69,7 +69,7 @@ export function poseFrame(pose, ticksInAction, chargeProgress = 0) {
   return frames[Math.floor(ticksInAction / pose.ticksPerFrame) % frames.length];
 }
 
-function chargeProgressOf(player) {
+export function chargeProgressOf(player) {
   return Math.max(
     0,
     Math.min(1, (player.shoveChargeTicks - SHOVE_WINDUP_TICKS) / (SHOVE_MAX_CHARGE_TICKS - SHOVE_WINDUP_TICKS)),

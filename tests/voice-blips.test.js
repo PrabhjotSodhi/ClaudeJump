@@ -68,7 +68,7 @@ test('blips are quieter than the lightest hit sound', () => {
 
 test('a jump speaks in the voice of the character who jumped', () => {
   const players = [
-    { id: 'red', character: CHARACTERS.find(({ name }) => name === 'muse') },
+    { id: 'red', character: CHARACTERS.find(({ name }) => name === 'meta') },
     { id: 'blue', character: CHARACTERS.find(({ name }) => name === 'gemini') },
   ];
   const { audioContext, events } = setUp(players);

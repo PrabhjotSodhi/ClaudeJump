@@ -12,20 +12,20 @@ export const CHARACTERS = [
     ],
   },
   {
-    name: 'muse',
-    displayName: 'Muse',
-    spriteName: 'muse',
-    tagColor: '#ead4aa',
+    name: 'meta',
+    displayName: 'Meta AI',
+    spriteName: 'meta',
+    tagColor: '#b55088',
     eyeFramePositions: [
-      [7, 6],
-      [16, 6],
+      [9, 5],
+      [16, 5],
     ],
   },
   {
     name: 'chatgpt',
     displayName: 'ChatGPT',
     spriteName: 'chatgpt',
-    tagColor: '#63c74d',
+    tagColor: '#ffffff',
     eyeFramePositions: [
       [6, 5],
       [17, 5],
@@ -77,7 +77,7 @@ export function findCharacter(name) {
   return CHARACTERS.find((character) => character.name === name);
 }
 
-export const DEFAULT_CHARACTER_BY_PLAYER_ID = { red: findCharacter('claude'), blue: findCharacter('muse') };
+export const DEFAULT_CHARACTER_BY_PLAYER_ID = { red: findCharacter('claude'), blue: findCharacter('meta') };
 
 // The character each seat hovers on when player select opens.
 export const HOVER_CHARACTER_BY_PLAYER_ID = {

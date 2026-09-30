@@ -14,6 +14,7 @@ import { PICKUP_USES } from '../cards/card-definitions.js';
 import { PhysicsEntity } from '../engine/physics-entity.js';
 import { settings } from '../engine/sound-settings.js';
 import { drawCharacterBody, FRAME_SIZE } from '../vfx/character-body.js';
+import { drawShovel } from '../vfx/shovel.js';
 
 export const PLAYER_WIDTH = 24;
 export const PLAYER_HEIGHT = 28;
@@ -34,7 +35,7 @@ const DASH_TICKS = 10;
 const SLIP_SPEED = 5;
 const SLIP_STEER_SPEED = 0.5;
 export const SHOVE_ACTIVE_TICKS = 6;
-const SHOVE_COOLDOWN_TICKS = 30;
+export const SHOVE_COOLDOWN_TICKS = 30;
 export const SHOVE_HIT_ZONE_WIDTH = 16;
 export const SHOVE_HIT_ZONE_HEIGHT = 20;
 export const SHOVE_KNOCKBACK_VELOCITY_X = 7;
@@ -385,11 +386,6 @@ export class Player extends PhysicsEntity {
   renderAt(context, x, { sprites, playerEyes, characterAnimations }) {
     const drawX = Math.round(x);
     const drawY = Math.round(this.y);
-    if (this.isShoveActive) {
-      const hitZone = this.shoveHitZone;
-      context.fillStyle = this.color;
-      context.fillRect(Math.round(drawX + (hitZone.x - this.x)), Math.round(hitZone.y), hitZone.width, hitZone.height);
-    }
     const squash = this.inWater ? { width: 0, height: 0 } : this.squash;
     const pose = this.inWater || !characterAnimations ? {} : characterAnimations.poseFor(this);
     const sprite = sprites[this.character.spriteName].body;
@@ -408,5 +404,6 @@ export class Player extends PhysicsEntity {
       width: FRAME_SIZE + squash.width + (pose.width ?? 0),
       height: FRAME_SIZE + squash.height + (pose.height ?? 0),
     });
+    drawShovel(context, this, drawX, drawY, sprites.props);
   }
 }

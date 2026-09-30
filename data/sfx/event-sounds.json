@@ -49,7 +49,7 @@
   "character-cheered": {
     "by": "characterName",
     "claude": "cheer-claude",
-    "muse": "cheer-muse",
+    "meta": "cheer-meta",
     "chatgpt": "cheer-chatgpt",
     "gemini": "cheer-gemini",
     "grok": "cheer-grok",

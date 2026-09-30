@@ -232,7 +232,7 @@ test('a joiner asks the host to ready up and waits for the host to say so', () =
     type: 'lobby-state',
     snapshot: {
       levelName: 'random',
-      seats: [{ characterName: 'claude', ready: false }, { characterName: 'muse', ready: false }, null, null],
+      seats: [{ characterName: 'claude', ready: false }, { characterName: 'meta', ready: false }, null, null],
     },
     seat: 1,
   });
@@ -260,7 +260,7 @@ test('a joiner builds the match from the host setup with their own player', () =
       levelName: 'random',
       seats: [
         { characterName: 'claude', ready: true },
-        { characterName: 'muse', ready: true },
+        { characterName: 'meta', ready: true },
         { characterName: 'gemini', ready: true },
         null,
       ],
@@ -275,7 +275,7 @@ test('a joiner builds the match from the host setup with their own player', () =
       levelName: 'cave',
       players: [
         { id: 'red', characterName: 'claude' },
-        { id: 'blue', characterName: 'muse' },
+        { id: 'blue', characterName: 'meta' },
         { id: 'green', characterName: 'gemini' },
       ],
     },

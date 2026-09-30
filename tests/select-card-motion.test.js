@@ -66,11 +66,11 @@ test('observing seats starts a slide for a join, a hop for a new character and a
 
   assert.deepEqual(motion.observeSeats([seat('claude'), null, null, null]), [{ seat: 0, kind: 'joined' }]);
   assert.deepEqual(motion.observeSeats([seat('claude'), null, null, null]), []);
-  assert.deepEqual(motion.observeSeats([seat('muse'), seat('grok'), null, null]), [
+  assert.deepEqual(motion.observeSeats([seat('meta'), seat('grok'), null, null]), [
     { seat: 0, kind: 'changed' },
     { seat: 1, kind: 'joined' },
   ]);
-  assert.deepEqual(motion.observeSeats([seat('muse', true), seat('grok'), null, null]), [{ seat: 0, kind: 'cheered' }]);
+  assert.deepEqual(motion.observeSeats([seat('meta', true), seat('grok'), null, null]), [{ seat: 0, kind: 'cheered' }]);
   for (let tick = 0; tick < 10; tick++) motion.update();
   assert.ok(motion.pose(0).offsetY > 0);
   assert.equal(motion.pose(1).offsetY, 0);
