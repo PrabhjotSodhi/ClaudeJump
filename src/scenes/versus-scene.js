@@ -66,7 +66,9 @@ function blockOverlaps(block, rectangle) {
 function blockIsInBlast(block, blastCenterX, blastCenterY) {
   const nearestX = Math.max(block.x, Math.min(blastCenterX, block.x + block.size));
   const nearestY = Math.max(block.y, Math.min(blastCenterY, block.y + block.size));
-  return Math.hypot(nearestX - blastCenterX, nearestY - blastCenterY) <= BLOCK_BLAST_RADIUS;
+  const distanceX = nearestX - blastCenterX;
+  const distanceY = nearestY - blastCenterY;
+  return Math.sqrt(distanceX * distanceX + distanceY * distanceY) <= BLOCK_BLAST_RADIUS;
 }
 
 const SUDDEN_DEATH_ROUND_TICKS = 1800; // 30 seconds; the round timer and the warning start point
