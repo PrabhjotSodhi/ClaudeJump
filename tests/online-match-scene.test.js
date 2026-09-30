@@ -79,7 +79,7 @@ test('a disconnect shows a message and returns to the title after a few seconds'
   pair.network.transports.get('red').close();
 
   assert.equal(scene.session.status, 'disconnected');
-  assert.deepEqual(scene.messageLines(), ['red disconnected', 'Returning to the title']);
+  assert.deepEqual(scene.messageLines(), ['P1 disconnected', 'Returning to the title']);
   for (let tick = 0; tick < ONLINE_MESSAGE_TICKS - 1; tick++) scene.update(RUN_RIGHT);
   assert.equal(pair.joiner.currentScene, scene);
   scene.update(RUN_RIGHT);

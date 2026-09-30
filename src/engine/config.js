@@ -16,3 +16,5 @@ export const STALL_TIMEOUT_TICKS = 600;
 export const ONLINE_MESSAGE_TICKS = 240;
 // The stall message only shows once the wait is long enough to notice.
 export const STALL_MESSAGE_TICKS = 30;
+// Hashes still waiting for a slow device are forgotten after this many hash intervals.
+export const HASH_KEEP_INTERVALS = 4;

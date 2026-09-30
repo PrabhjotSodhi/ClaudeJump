@@ -1,4 +1,4 @@
-import { HASH_INTERVAL_TICKS, INPUT_DELAY_TICKS, STALL_TIMEOUT_TICKS } from './config.js';
+import { HASH_INTERVAL_TICKS, HASH_KEEP_INTERVALS, INPUT_DELAY_TICKS, STALL_TIMEOUT_TICKS } from './config.js';
 
 const CONTROL_NAMES = ['left', 'right', 'jump', 'up', 'down', 'action'];
 
@@ -124,7 +124,11 @@ export class LockstepSession {
   }
 
   collectHash(playerId, tick, hash) {
-    if (!Number.isInteger(tick) || this.hashesByTick.size > this.playerIds.length * 4) return;
+    if (!Number.isInteger(tick)) return;
+    const oldestKeptTick = this.currentTick - HASH_KEEP_INTERVALS * this.hashIntervalTicks;
+    for (const storedTick of this.hashesByTick.keys()) {
+      if (storedTick <= oldestKeptTick) this.hashesByTick.delete(storedTick);
+    }
     const hashes = this.hashesByTick.get(tick) ?? {};
     hashes[playerId] = hash;
     this.hashesByTick.set(tick, hashes);

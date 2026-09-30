@@ -236,3 +236,20 @@ test('inputs from an unknown peer or for a past tick are ignored', () => {
     assert.deepEqual(host.setsByTick[tick].blue, blue.sampledAtTick[tick - INPUT_DELAY_TICKS]);
   }
 });
+
+test('hashes that never arrive do not stop later desyncs from being caught', () => {
+  const match = startMatch({
+    playerCount: 2,
+    shapeMessage: ({ data }) => (data.type === 'hash' && data.tick <= 660 ? 'drop' : 0),
+  });
+  run(match, { steps: 3000, untilTick: 700 });
+  for (const peer of match.peers) assert.equal(peer.session.status, 'running');
+
+  match.peers[1].scene.players[0].x += 1;
+  run(match, { steps: 1000, untilTick: 900 });
+
+  for (const peer of match.peers) {
+    assert.equal(peer.session.status, 'desynced');
+    assert.equal(peer.session.desyncTick, 720);
+  }
+});
