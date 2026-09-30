@@ -1,26 +1,22 @@
-import { SCREEN_WIDTH } from '../engine/config.js';
-import { drawMenuBackdrop, drawMenuOptions } from './menu-options.js';
-import { drawText } from './text.js';
+import { SCREEN_HEIGHT } from '../engine/config.js';
+import { drawKeyHints, drawMenuList, drawMenuTitle, KEYCAP_HEIGHT, menuPanelSize, TITLE_HEIGHT } from './menu-kit.js';
+import { drawMenuBackdrop } from './menu-options.js';
 
-const TITLE_Y = 124;
-const TITLE_SCALE = 4;
-const OPTIONS_TOP_Y = 184;
-const OPTIONS_LEFT_X = 290;
-const HINT_Y = 260;
-const SELECTED_OPTION_COLOR = '#feae34';
+const TITLE_GAP = 14;
+const HINT_GAP = 14;
+const HINTS = [
+  { keys: ['Enter', 'A'], label: 'Select' },
+  { keys: ['Esc', 'Start'], label: 'Resume' },
+];
 
 export function drawPauseMenu(context, { options, selectedIndex }) {
   drawMenuBackdrop(context);
 
-  drawText(context, 'Paused', SCREEN_WIDTH / 2, TITLE_Y, { scale: TITLE_SCALE, align: 'center' });
+  const panelHeight = menuPanelSize(options.map((option) => option.label)).height;
+  const stackHeight = TITLE_HEIGHT + TITLE_GAP + panelHeight + HINT_GAP + KEYCAP_HEIGHT;
+  const titleY = Math.floor((SCREEN_HEIGHT - stackHeight) / 2);
 
-  drawMenuOptions(context, {
-    options,
-    selectedIndex,
-    topY: OPTIONS_TOP_Y,
-    leftX: OPTIONS_LEFT_X,
-    selectedColor: SELECTED_OPTION_COLOR,
-  });
-
-  drawText(context, 'Enter to select', SCREEN_WIDTH / 2, HINT_Y, { align: 'center' });
+  drawMenuTitle(context, 'Paused', titleY);
+  const panelBottomY = drawMenuList(context, { options, selectedIndex, topY: titleY + TITLE_HEIGHT + TITLE_GAP });
+  drawKeyHints(context, HINTS, panelBottomY + HINT_GAP);
 }
