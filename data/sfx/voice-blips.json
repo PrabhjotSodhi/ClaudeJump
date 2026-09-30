@@ -1,0 +1,383 @@
+{
+  "events": {
+    "player-jumped": { "blip": "jump", "playerField": "playerId" },
+    "player-shoved": { "blip": "hit", "playerField": "targetId" },
+    "dash-hit": { "blip": "hit", "playerField": "playerIds" },
+    "rocket-exploded": { "blip": "hit", "playerField": "playerIds" },
+    "bomb-exploded": { "blip": "hit", "playerField": "playerIds" },
+    "trap-sprung": { "blip": "hit", "playerField": "targetId" },
+    "player-burned": { "blip": "hit", "playerField": "playerId" },
+    "player-pinched": { "blip": "hit", "playerField": "playerId" },
+    "player-fell-in-water": { "blip": "fall", "playerField": "playerId" },
+    "round-won": { "blip": "win", "playerField": "playerId" }
+  },
+  "characters": {
+    "claude": {
+      "jump": [
+        {
+          "waveform": "square",
+          "startFrequency": 520,
+          "endFrequency": 780,
+          "duration": 0.07,
+          "volume": 0.05,
+          "attack": 0.01
+        }
+      ],
+      "hit": [
+        {
+          "waveform": "square",
+          "startFrequency": 676,
+          "endFrequency": 364,
+          "duration": 0.09,
+          "volume": 0.05,
+          "attack": 0.01
+        }
+      ],
+      "fall": [
+        {
+          "waveform": "square",
+          "startFrequency": 780,
+          "endFrequency": 260,
+          "duration": 0.32,
+          "volume": 0.05,
+          "attack": 0.01
+        }
+      ],
+      "win": [
+        {
+          "waveform": "square",
+          "startFrequency": 520,
+          "endFrequency": 520,
+          "duration": 0.08,
+          "volume": 0.05,
+          "attack": 0.01
+        },
+        {
+          "waveform": "square",
+          "startFrequency": 780,
+          "endFrequency": 780,
+          "duration": 0.14,
+          "volume": 0.05,
+          "attack": 0.01,
+          "delay": 0.09
+        }
+      ]
+    },
+    "muse": {
+      "jump": [
+        {
+          "waveform": "triangle",
+          "startFrequency": 170,
+          "endFrequency": 255,
+          "duration": 0.07,
+          "volume": 0.1,
+          "attack": 0.01,
+          "noiseVolume": 0.03
+        }
+      ],
+      "hit": [
+        {
+          "waveform": "triangle",
+          "startFrequency": 221,
+          "endFrequency": 119,
+          "duration": 0.09,
+          "volume": 0.1,
+          "attack": 0.01,
+          "noiseVolume": 0.03
+        }
+      ],
+      "fall": [
+        {
+          "waveform": "triangle",
+          "startFrequency": 255,
+          "endFrequency": 85,
+          "duration": 0.32,
+          "volume": 0.1,
+          "attack": 0.01,
+          "noiseVolume": 0.03
+        }
+      ],
+      "win": [
+        {
+          "waveform": "triangle",
+          "startFrequency": 170,
+          "endFrequency": 170,
+          "duration": 0.08,
+          "volume": 0.1,
+          "attack": 0.01,
+          "noiseVolume": 0.03
+        },
+        {
+          "waveform": "triangle",
+          "startFrequency": 255,
+          "endFrequency": 255,
+          "duration": 0.14,
+          "volume": 0.1,
+          "attack": 0.01,
+          "noiseVolume": 0.03,
+          "delay": 0.09
+        }
+      ]
+    },
+    "chatgpt": {
+      "jump": [
+        {
+          "waveform": "sine",
+          "startFrequency": 440,
+          "endFrequency": 660,
+          "duration": 0.07,
+          "volume": 0.09,
+          "attack": 0.01
+        }
+      ],
+      "hit": [
+        {
+          "waveform": "sine",
+          "startFrequency": 572,
+          "endFrequency": 308,
+          "duration": 0.09,
+          "volume": 0.09,
+          "attack": 0.01
+        }
+      ],
+      "fall": [
+        {
+          "waveform": "sine",
+          "startFrequency": 660,
+          "endFrequency": 220,
+          "duration": 0.32,
+          "volume": 0.09,
+          "attack": 0.01
+        }
+      ],
+      "win": [
+        {
+          "waveform": "sine",
+          "startFrequency": 440,
+          "endFrequency": 440,
+          "duration": 0.08,
+          "volume": 0.09,
+          "attack": 0.01
+        },
+        {
+          "waveform": "sine",
+          "startFrequency": 660,
+          "endFrequency": 660,
+          "duration": 0.14,
+          "volume": 0.09,
+          "attack": 0.01,
+          "delay": 0.09
+        }
+      ]
+    },
+    "gemini": {
+      "jump": [
+        {
+          "waveform": "sine",
+          "startFrequency": 900,
+          "endFrequency": 1350,
+          "duration": 0.07,
+          "volume": 0.07,
+          "attack": 0.01
+        }
+      ],
+      "hit": [
+        {
+          "waveform": "sine",
+          "startFrequency": 1170,
+          "endFrequency": 630,
+          "duration": 0.09,
+          "volume": 0.07,
+          "attack": 0.01
+        }
+      ],
+      "fall": [
+        {
+          "waveform": "sine",
+          "startFrequency": 1350,
+          "endFrequency": 450,
+          "duration": 0.32,
+          "volume": 0.07,
+          "attack": 0.01
+        }
+      ],
+      "win": [
+        {
+          "waveform": "sine",
+          "startFrequency": 900,
+          "endFrequency": 900,
+          "duration": 0.08,
+          "volume": 0.07,
+          "attack": 0.01
+        },
+        {
+          "waveform": "sine",
+          "startFrequency": 1350,
+          "endFrequency": 1350,
+          "duration": 0.14,
+          "volume": 0.07,
+          "attack": 0.01,
+          "delay": 0.09
+        }
+      ]
+    },
+    "grok": {
+      "jump": [
+        {
+          "waveform": "sawtooth",
+          "startFrequency": 230,
+          "endFrequency": 345,
+          "duration": 0.07,
+          "volume": 0.04,
+          "attack": 0.01,
+          "noiseVolume": 0.02
+        }
+      ],
+      "hit": [
+        {
+          "waveform": "sawtooth",
+          "startFrequency": 299,
+          "endFrequency": 161,
+          "duration": 0.09,
+          "volume": 0.04,
+          "attack": 0.01,
+          "noiseVolume": 0.02
+        }
+      ],
+      "fall": [
+        {
+          "waveform": "sawtooth",
+          "startFrequency": 345,
+          "endFrequency": 115,
+          "duration": 0.32,
+          "volume": 0.04,
+          "attack": 0.01,
+          "noiseVolume": 0.02
+        }
+      ],
+      "win": [
+        {
+          "waveform": "sawtooth",
+          "startFrequency": 230,
+          "endFrequency": 230,
+          "duration": 0.08,
+          "volume": 0.04,
+          "attack": 0.01,
+          "noiseVolume": 0.02
+        },
+        {
+          "waveform": "sawtooth",
+          "startFrequency": 345,
+          "endFrequency": 345,
+          "duration": 0.14,
+          "volume": 0.04,
+          "attack": 0.01,
+          "noiseVolume": 0.02,
+          "delay": 0.09
+        }
+      ]
+    },
+    "deepseek": {
+      "jump": [
+        {
+          "waveform": "triangle",
+          "startFrequency": 330,
+          "endFrequency": 495,
+          "duration": 0.07,
+          "volume": 0.09,
+          "attack": 0.01
+        }
+      ],
+      "hit": [
+        {
+          "waveform": "triangle",
+          "startFrequency": 429,
+          "endFrequency": 231,
+          "duration": 0.09,
+          "volume": 0.09,
+          "attack": 0.01
+        }
+      ],
+      "fall": [
+        {
+          "waveform": "triangle",
+          "startFrequency": 495,
+          "endFrequency": 165,
+          "duration": 0.32,
+          "volume": 0.09,
+          "attack": 0.01
+        }
+      ],
+      "win": [
+        {
+          "waveform": "triangle",
+          "startFrequency": 330,
+          "endFrequency": 330,
+          "duration": 0.08,
+          "volume": 0.09,
+          "attack": 0.01
+        },
+        {
+          "waveform": "triangle",
+          "startFrequency": 495,
+          "endFrequency": 495,
+          "duration": 0.14,
+          "volume": 0.09,
+          "attack": 0.01,
+          "delay": 0.09
+        }
+      ]
+    },
+    "mistral": {
+      "jump": [
+        {
+          "waveform": "square",
+          "startFrequency": 700,
+          "endFrequency": 1050,
+          "duration": 0.07,
+          "volume": 0.045,
+          "attack": 0.01
+        }
+      ],
+      "hit": [
+        {
+          "waveform": "square",
+          "startFrequency": 910,
+          "endFrequency": 490,
+          "duration": 0.09,
+          "volume": 0.045,
+          "attack": 0.01
+        }
+      ],
+      "fall": [
+        {
+          "waveform": "square",
+          "startFrequency": 1050,
+          "endFrequency": 350,
+          "duration": 0.32,
+          "volume": 0.045,
+          "attack": 0.01
+        }
+      ],
+      "win": [
+        {
+          "waveform": "square",
+          "startFrequency": 700,
+          "endFrequency": 700,
+          "duration": 0.08,
+          "volume": 0.045,
+          "attack": 0.01
+        },
+        {
+          "waveform": "square",
+          "startFrequency": 1050,
+          "endFrequency": 1050,
+          "duration": 0.14,
+          "volume": 0.045,
+          "attack": 0.01,
+          "delay": 0.09
+        }
+      ]
+    }
+  }
+}

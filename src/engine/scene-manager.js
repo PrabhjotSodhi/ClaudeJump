@@ -12,7 +12,7 @@ export class SceneManager {
 
   setScene(scene) {
     this.currentScene = scene;
-    this.soundPlayer?.attach(scene.events);
+    this.soundPlayer?.attach(scene.events, () => (scene.matchScene ?? scene).players ?? []);
     this.musicPlayer?.attach(scene.events);
     this.musicPlayer?.playTrack(scene.musicTrackName);
   }

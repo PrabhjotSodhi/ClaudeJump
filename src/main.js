@@ -85,6 +85,7 @@ async function main() {
     keyMappings,
     soundDefinitions,
     eventSounds,
+    voiceBlips,
     menuTrack,
     matchTrack,
     winJingles,
@@ -104,6 +105,7 @@ async function main() {
     fetch('data/config/key-mappings.json').then((response) => response.json()),
     fetch('data/sfx/sounds.json').then((response) => response.json()),
     fetch('data/sfx/event-sounds.json').then((response) => response.json()),
+    fetch('data/sfx/voice-blips.json').then((response) => response.json()),
     fetch('data/music/menu.json').then((response) => response.json()),
     fetch('data/music/match.json').then((response) => response.json()),
     fetch('data/music/win-jingles.json').then((response) => response.json()),
@@ -150,7 +152,7 @@ async function main() {
     Object.assign(settings, loadSettings(storage));
     loadKeyBindings(storage);
   }
-  const soundPlayer = new SoundPlayer({ soundDefinitions, eventSounds, storage });
+  const soundPlayer = new SoundPlayer({ soundDefinitions, eventSounds, voiceBlips, storage });
   const musicPlayer = new MusicPlayer({
     soundPlayer,
     tracks: { menu: menuTrack, match: matchTrack },

@@ -10,6 +10,8 @@ const SILENT_GAIN = 0.0001;
 // Each play shifts every pitch by up to this fraction either way, so repeated hits never sound the same.
 const PITCH_VARIATION = 0.08;
 const PAN_BY_PLAYER_ID = { red: -MAX_PAN, blue: MAX_PAN };
+// Voice blips that are still sounding. A new one is dropped while this many are, so voices never pile up.
+const MAX_BLIPS_AT_ONCE = 2;
 
 // Sounds lean toward the side of the screen they happen on: the player's side, or the blast's x.
 export function panFor(eventData) {
@@ -31,10 +33,14 @@ function defaultCreateAudioContext() {
 // { waveform, startFrequency, endFrequency, duration, volume, noiseVolume, attack, delay, chargePitch }.
 // chargePitch raises the pitch by that fraction times the event's charge, from 0 to 1.
 // Without an audio context (headless browsers, tests) every call does nothing.
+// voiceBlips gives each character its own short voice for some events:
+// { events: { eventName: { blip, playerField } }, characters: { characterName: { blip: [voice, ...] } } }.
+// playerField names the event field holding the player id, or a list of ids.
 export class SoundPlayer {
   constructor({
     soundDefinitions,
     eventSounds,
+    voiceBlips = { events: {}, characters: {} },
     storage = null,
     createAudioContext = defaultCreateAudioContext,
     // Audio only, so any randomness is fine: it never touches game state.
@@ -42,6 +48,8 @@ export class SoundPlayer {
   }) {
     this.soundDefinitions = soundDefinitions;
     this.eventSounds = eventSounds;
+    this.voiceBlips = voiceBlips;
+    this.blipEndTimes = [];
     this.storage = storage;
     this.createAudioContext = createAudioContext;
     this.random = random;
@@ -52,12 +60,21 @@ export class SoundPlayer {
     this.soundsPlayedThisTick = new Set();
   }
 
-  attach(events) {
+  // getPlayers returns the scene's players, so a voice blip can find who is speaking.
+  attach(events, getPlayers = () => []) {
     if (!events) return;
     for (const eventName in this.eventSounds) {
       events.on(eventName, (eventData) =>
         this.play(this.soundNameFor(eventName, eventData), panFor(eventData), eventData?.charge ?? 0),
       );
+    }
+    for (const [eventName, { blip, playerField }] of Object.entries(this.voiceBlips.events)) {
+      events.on(eventName, (eventData) => {
+        for (const playerId of [eventData?.[playerField]].flat()) {
+          const character = getPlayers().find((player) => player.id === playerId)?.character;
+          if (character) this.playBlip(character.name, blip, panFor({ playerId }));
+        }
+      });
     }
   }
 
@@ -92,6 +109,21 @@ export class SoundPlayer {
     if (!this.audioContext || !this.soundDefinitions[soundName]) return;
     if (this.soundsPlayedThisTick.has(soundName)) return;
     this.soundsPlayedThisTick.add(soundName);
+    this.playVoices(this.soundDefinitions[soundName], pan, charge);
+  }
+
+  playBlip(characterName, blipName, pan = 0) {
+    if (!this.soundEnabled || settings.effectsVolume === 0 || !this.audioContext) return;
+    const voices = this.voiceBlips.characters[characterName]?.[blipName];
+    if (!voices) return;
+    const now = this.audioContext.currentTime;
+    this.blipEndTimes = this.blipEndTimes.filter((endTime) => endTime > now);
+    if (this.blipEndTimes.length >= MAX_BLIPS_AT_ONCE) return;
+    this.blipEndTimes.push(now + Math.max(...voices.map((voice) => (voice.delay ?? 0) + voice.duration)));
+    this.playVoices(voices, pan);
+  }
+
+  playVoices(voices, pan = 0, charge = 0) {
     try {
       const panner = this.audioContext.createStereoPanner();
       panner.pan.value = pan;
@@ -99,7 +131,7 @@ export class SoundPlayer {
       const startTime = this.audioContext.currentTime;
       const pitch = 1 + (this.random() * 2 - 1) * PITCH_VARIATION;
       const volume = volumeScale(settings.effectsVolume);
-      for (const voice of this.soundDefinitions[soundName]) {
+      for (const voice of voices) {
         this.playVoice(voice, panner, startTime, pitch * (1 + (voice.chargePitch ?? 0) * charge), volume);
       }
     } catch {
