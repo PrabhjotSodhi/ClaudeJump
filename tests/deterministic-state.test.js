@@ -89,7 +89,7 @@ function findUnsafeMath(source) {
 }
 
 // Audio never touches game state, so it may use any math.
-const AUDIO_FILES = new Set(['sound-player.js']);
+const AUDIO_FILES = new Set(['sound-player.js', 'music-sequencer.js', 'music-player.js']);
 
 function updateCodeFiles() {
   const files = [

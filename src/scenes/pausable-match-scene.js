@@ -5,12 +5,13 @@ import { LevelSelectScene } from './level-select-scene.js';
 import { PlayerSelectScene } from './player-select-scene.js';
 import { TitleScene } from './title-scene.js';
 
-// The sound row shows the current setting, so the list is built fresh each time it is used.
-function pauseMenuOptions(soundEnabled) {
+// The sound and music rows show the current setting, so the list is built fresh each time it is used.
+function pauseMenuOptions(soundEnabled, musicEnabled) {
   return [
     { id: 'resume', label: 'Resume' },
     { id: 'title', label: 'Return to title' },
     { id: 'sound', label: soundEnabled ? 'Sound: On' : 'Sound: Off' },
+    { id: 'music', label: musicEnabled ? 'Music: On' : 'Music: Off' },
   ];
 }
 
@@ -34,6 +35,7 @@ export class PausableMatchScene {
     this.matchScene = matchScene;
     // Menu sounds ride on the match's events so one sound player hears both.
     this.events = matchScene.events;
+    this.musicTrackName = 'match';
     this.paused = false;
     this.selectedIndex = 0;
     this.previousPauseByPlayerId = {};
@@ -43,7 +45,10 @@ export class PausableMatchScene {
   }
 
   get pauseMenuOptions() {
-    return pauseMenuOptions(this.sceneManager.soundPlayer?.soundEnabled ?? true);
+    return pauseMenuOptions(
+      this.sceneManager.soundPlayer?.soundEnabled ?? true,
+      this.sceneManager.musicPlayer?.musicEnabled ?? true,
+    );
   }
 
   get waterLineY() {
@@ -230,6 +235,8 @@ export class PausableMatchScene {
       this.resume(inputByPlayerId);
     } else if (option.id === 'sound') {
       this.sceneManager.soundPlayer?.toggleSound();
+    } else if (option.id === 'music') {
+      this.sceneManager.musicPlayer?.toggleMusic();
     } else if (option.id === 'title') {
       this.sceneManager.setScene(
         new TitleScene({
