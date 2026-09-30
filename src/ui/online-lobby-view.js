@@ -143,6 +143,8 @@ function drawPlayerCard(context, view, seatIndex) {
     drawEmptyCard(context, card);
     return;
   }
+  context.save();
+  context.translate(view.cardMotion.slideOffsetX(seatIndex, card), 0);
   const spawn = PLAYERS[seatIndex];
   const character = findCharacter(seat.characterName) ?? CHARACTERS[0];
   const centerX = card.x + card.width / 2;
@@ -187,14 +189,15 @@ function drawPlayerCard(context, view, seatIndex) {
   context.fillRect(ledgeX + 1, ledgeY + 1, LEDGE_WIDTH - 2, LEDGE_HEIGHT - 2);
   context.fillStyle = '#a09088';
   context.fillRect(ledgeX + 1, ledgeY + 1, LEDGE_WIDTH - 2, 1);
+  const pose = view.cardMotion.pose(seatIndex);
   drawCharacterBody(context, {
     sprite: view.sprites[character.spriteName].body,
     eyeFramePositions: character.eyeFramePositions,
     eyes: PORTRAIT_EYES,
     centerX,
-    bottomY: CHARACTER_BOTTOM_Y,
-    width: FRAME_SIZE,
-    height: FRAME_SIZE,
+    bottomY: CHARACTER_BOTTOM_Y - pose.offsetY,
+    width: pose.width,
+    height: pose.height,
   });
 
   drawText(context, character.displayName, centerX, NAME_Y, {
@@ -211,6 +214,7 @@ function drawPlayerCard(context, view, seatIndex) {
     color: seat.ready ? SELECTED_COLOR : DIM_COLOR,
     outlineColor: null,
   });
+  context.restore();
 }
 
 function drawLevelPanel(context, view, x) {
@@ -254,7 +258,7 @@ function drawStatusPanel(context, view, x) {
   });
 }
 
-// view: { code, lobby, localSeat, isHost, rows, selectedRow, sprites, levels, touchActive, motion }.
+// view: { code, lobby, localSeat, isHost, rows, selectedRow, sprites, levels, touchActive, motion, cardMotion }.
 export function drawOnlineLobby(context, view) {
   drawCode(context, view.code);
   for (let seatIndex = 0; seatIndex < PLAYERS.length; seatIndex++) drawPlayerCard(context, view, seatIndex);
