@@ -7,14 +7,14 @@ import { SceneManager } from './engine/scene-manager.js';
 import { loadSpriteFile } from './engine/sprites.js';
 import { loadLevel, stoneColorOverrides } from './levels/level-loader.js';
 import { createLevelThumbnail } from './levels/level-thumbnail.js';
-import { isPortraitOnTouchDevice } from './engine/screen-fit.js';
-import { createWindow } from './engine/window.js';
+import { isPortraitOnTouchDevice, pickScale } from './engine/screen-fit.js';
+import { createWindow, readSafeAreaInsets } from './engine/window.js';
 import { PausableMatchScene } from './scenes/pausable-match-scene.js';
 import { StyleTestScene } from './scenes/style-test-scene.js';
 import { FULLSCREEN_BUTTON, TitleScene } from './scenes/title-scene.js';
 import { SurvivalScene } from './scenes/survival-scene.js';
 import { VersusScene } from './scenes/versus-scene.js';
-import { drawRotatePrompt } from './ui/rotate-prompt.js';
+import { drawRotatePrompt, ROTATE_PROMPT_HEIGHT, ROTATE_PROMPT_WIDTH } from './ui/rotate-prompt.js';
 
 // The order of the level select tiles.
 const LEVEL_FILE_NAMES = ['harbor', 'rooftops', 'cave', 'server-farm', 'cooling-towers', 'bridge', 'quarry'];
@@ -121,11 +121,36 @@ async function main() {
     );
   }
 
+  const rotatePromptCanvas = document.getElementById('rotate-prompt');
+  const rotatePromptContext = rotatePromptCanvas.getContext('2d');
+
+  // The prompt replaces the game canvas with its own small canvas at the largest whole-number scale.
+  function renderRotatePrompt() {
+    const devicePixelRatio = window.devicePixelRatio || 1;
+    const scale = pickScale({
+      width: innerWidth,
+      height: innerHeight,
+      devicePixelRatio,
+      insets: readSafeAreaInsets(),
+      logicalWidth: ROTATE_PROMPT_WIDTH,
+      logicalHeight: ROTATE_PROMPT_HEIGHT,
+    });
+    rotatePromptCanvas.style.width = `${(ROTATE_PROMPT_WIDTH * scale) / devicePixelRatio}px`;
+    rotatePromptCanvas.style.height = `${(ROTATE_PROMPT_HEIGHT * scale) / devicePixelRatio}px`;
+    drawRotatePrompt(rotatePromptContext, rotateIcon.icon);
+  }
+
   function renderFrame(timestamp) {
+    const rotatePromptShown = showingRotatePrompt();
+    canvas.style.display = rotatePromptShown ? 'none' : 'block';
+    rotatePromptCanvas.style.display = rotatePromptShown ? 'block' : 'none';
+    if (rotatePromptShown) {
+      renderRotatePrompt();
+      return;
+    }
     renderer.shakeOffset = { x: 0, y: 0 };
     renderer.seaRippleBytes = null;
     sceneManager.render(renderer);
-    if (showingRotatePrompt()) drawRotatePrompt(renderer.uiContext, rotateIcon.icon);
     gameWindow.render({
       backgroundCanvas: renderer.backgroundChanged ? renderer.backgroundCanvas : null,
       gameCanvas: renderer.gameCanvas,

@@ -24,7 +24,7 @@ function createProgram(webglContext, vertexShaderSource, fragmentShaderSource) {
 }
 
 // The page pads the body by the safe-area insets, so the padding is what the canvas must stay out of.
-function readSafeAreaInsets() {
+export function readSafeAreaInsets() {
   const style = getComputedStyle(document.body);
   return {
     left: parseFloat(style.paddingLeft),

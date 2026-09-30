@@ -1,32 +1,40 @@
-import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../engine/config.js';
 import { drawText } from './text.js';
 
-const OUTLINE_COLOR = '#181425';
+// The rotate prompt has its own small portrait layout so it can be scaled up to fill a phone held upright.
+export const ROTATE_PROMPT_WIDTH = 120;
+export const ROTATE_PROMPT_HEIGHT = 160;
+
+const BACKGROUND_COLOR = '#181425';
+const TITLE_LINES = ['Turn your', 'phone', 'sideways'];
+const TITLE_LINE_HEIGHT = 14;
 const ICON_TO_TITLE_GAP = 16;
-const TITLE_TO_BODY_GAP = 12;
-const TITLE_HEIGHT = 20;
-const BODY_HEIGHT = 10;
+const TITLE_TO_BODY_GAP = 8;
+const BODY_HEIGHT = 5;
 
 export function drawRotatePrompt(context, iconCanvas) {
-  context.fillStyle = OUTLINE_COLOR;
-  context.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+  context.fillStyle = BACKGROUND_COLOR;
+  context.fillRect(0, 0, ROTATE_PROMPT_WIDTH, ROTATE_PROMPT_HEIGHT);
 
-  const stackHeight = iconCanvas.height + ICON_TO_TITLE_GAP + TITLE_HEIGHT + TITLE_TO_BODY_GAP + BODY_HEIGHT;
-  const iconY = Math.floor((SCREEN_HEIGHT - stackHeight) / 2);
+  const stackHeight =
+    iconCanvas.height + ICON_TO_TITLE_GAP + TITLE_LINES.length * TITLE_LINE_HEIGHT + TITLE_TO_BODY_GAP + BODY_HEIGHT;
+  const iconY = Math.floor((ROTATE_PROMPT_HEIGHT - stackHeight) / 2);
   context.imageSmoothingEnabled = false;
-  context.drawImage(iconCanvas, Math.floor((SCREEN_WIDTH - iconCanvas.width) / 2), iconY);
+  context.drawImage(iconCanvas, Math.floor((ROTATE_PROMPT_WIDTH - iconCanvas.width) / 2), iconY);
 
   const titleY = iconY + iconCanvas.height + ICON_TO_TITLE_GAP;
-  drawText(context, 'Turn your phone sideways', SCREEN_WIDTH / 2, titleY, {
-    scale: 2,
-    align: 'center',
-    color: '#feae34',
-    outlineColor: OUTLINE_COLOR,
+  TITLE_LINES.forEach((line, lineIndex) => {
+    drawText(context, line, ROTATE_PROMPT_WIDTH / 2, titleY + lineIndex * TITLE_LINE_HEIGHT, {
+      scale: 2,
+      align: 'center',
+      color: '#feae34',
+      outlineColor: BACKGROUND_COLOR,
+    });
   });
-  drawText(context, 'ClaudeJump plays in landscape', SCREEN_WIDTH / 2, titleY + TITLE_HEIGHT + TITLE_TO_BODY_GAP, {
+  const bodyY = titleY + TITLE_LINES.length * TITLE_LINE_HEIGHT + TITLE_TO_BODY_GAP;
+  drawText(context, 'Plays in landscape', ROTATE_PROMPT_WIDTH / 2, bodyY, {
     scale: 1,
     align: 'center',
     color: '#c0cbdc',
-    outlineColor: OUTLINE_COLOR,
+    outlineColor: BACKGROUND_COLOR,
   });
 }
