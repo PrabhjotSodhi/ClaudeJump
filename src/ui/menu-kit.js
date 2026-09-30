@@ -1,4 +1,6 @@
 import { SCREEN_WIDTH } from '../engine/config.js';
+import { getInputDevice } from '../engine/input-device.js';
+import { drawGlyph, GLYPH_SIZE } from './hint-glyphs.js';
 import { drawPanel } from './panel.js';
 import { drawText, measureText } from './text.js';
 
@@ -211,27 +213,53 @@ function drawKeycap(context, keyName, x, y) {
   return width;
 }
 
-function hintWidth({ keys, label }) {
-  const keysWidth = keys.reduce((total, keyName) => total + keycapWidth(keyName), 0) + (keys.length - 1) * KEY_GAP;
-  return keysWidth + KEY_LABEL_GAP + measureText(label) * BODY_SCALE;
+// What one hint shows for a device: keyboard key names as text, pad and touch as glyph names.
+// A hint without `pad` shows its keys on a pad. Touch shows one tap icon unless the hint has `touch`.
+export function hintItems(hint, device) {
+  if (device === 'touch') return (hint.touch ?? ['tap']).map((glyph) => ({ glyph }));
+  if (device === 'pad' && hint.pad) return hint.pad.map((glyph) => ({ glyph }));
+  return hint.keys.map((text) => ({ text }));
 }
 
-// Each hint is { keys: ['Enter', 'A'], label: 'Select' }: one keycap per key, then the label.
-// List keyboard and gamepad keys together so both kinds of player read the same row.
+// The hint rows for a device. A row with a `device` shows only for that device, other rows always show.
+export function rowsForDevice(rows, device) {
+  return rows.filter((row) => !row.device || row.device === device);
+}
+
+function itemWidth(item) {
+  return item.glyph ? GLYPH_SIZE : keycapWidth(item.text);
+}
+
+function hintWidth(items, label) {
+  const itemsWidth = items.reduce((total, item) => total + itemWidth(item), 0) + (items.length - 1) * KEY_GAP;
+  return itemsWidth + KEY_LABEL_GAP + measureText(label) * BODY_SCALE;
+}
+
+// Each hint is { keys: ['Enter'], pad: ['south'], label: 'Select' }: one icon per key, then the label.
+// The keys show for the keyboard, `pad` for a gamepad and a tap icon for touch, following whichever
+// device sent input last.
 export function drawKeyHints(context, hints, y) {
-  const totalWidth = hints.reduce((total, hint) => total + hintWidth(hint), 0) + (hints.length - 1) * HINT_GAP;
+  const device = getInputDevice();
+  const shown = hints.map((hint) => ({ items: hintItems(hint, device), label: hint.label }));
+  const totalWidth =
+    shown.reduce((total, { items, label }) => total + hintWidth(items, label), 0) + (shown.length - 1) * HINT_GAP;
   let x = Math.floor((SCREEN_WIDTH - totalWidth) / 2);
-  for (const hint of hints) {
-    hint.keys.forEach((keyName, index) => {
+  for (const { items, label } of shown) {
+    items.forEach((item, index) => {
       if (index > 0) x += KEY_GAP;
-      x += drawKeycap(context, keyName, x, y);
+      if (item.glyph) {
+        drawGlyph(context, item.glyph, x, y + Math.floor((KEYCAP_HEIGHT - GLYPH_SIZE) / 2));
+        x += GLYPH_SIZE;
+      } else {
+        x += drawKeycap(context, item.text, x, y);
+      }
     });
     x += KEY_LABEL_GAP;
-    drawText(context, hint.label, x, y + 1 + KEYCAP_PADDING_Y, {
+    drawText(context, label, x, y + 1 + KEYCAP_PADDING_Y, {
       scale: BODY_SCALE,
       color: UNSELECTED_COLOR,
       outlineColor: null,
     });
-    x += measureText(hint.label) * BODY_SCALE + HINT_GAP;
+    x += measureText(label) * BODY_SCALE + HINT_GAP;
   }
 }

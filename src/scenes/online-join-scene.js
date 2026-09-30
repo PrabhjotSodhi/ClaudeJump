@@ -40,8 +40,8 @@ const LETTER_COLOR = '#c0cbdc';
 const DISABLED_COLOR = '#5a6988';
 const EMPTY_BAR_COLOR = '#3a4466';
 const HINTS = [
-  { keys: ['Left', 'Right', 'Up', 'Down'], label: 'Move' },
-  { keys: ['Enter', 'A'], label: 'Choose' },
+  { keys: ['Left', 'Right', 'Up', 'Down'], pad: ['stick'], label: 'Move' },
+  { keys: ['Enter'], pad: ['south'], label: 'Choose' },
 ];
 const TILE_LABELS = { [DELETE_ITEM]: 'Del', [JOIN_ITEM]: 'Join', [BACK_ITEM]: 'Back' };
 

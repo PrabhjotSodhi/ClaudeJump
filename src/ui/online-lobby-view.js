@@ -47,9 +47,9 @@ const RANDOM_MARK_SCALE = 6;
 const RANDOM_MARK_TOP_Y = 14;
 
 const HINTS = [
-  { keys: ['Up', 'Down'], label: 'Choose' },
-  { keys: ['Left', 'Right'], label: 'Change' },
-  { keys: ['Enter', 'A'], label: 'Select' },
+  { keys: ['Up', 'Down'], pad: ['stick'], label: 'Choose' },
+  { keys: ['Left', 'Right'], pad: ['stick'], label: 'Change' },
+  { keys: ['Enter'], pad: ['south'], label: 'Select' },
 ];
 const TOUCH_HINT = 'Tap a row. Tap its sides to change';
 
