@@ -1,6 +1,8 @@
 export const SCREEN_WIDTH = 640;
 export const SCREEN_HEIGHT = 360;
 export const TICK_RATE = 60;
+// The round timer grows, turns red and ticks once a second for this long before sudden death.
+export const TIMER_URGENT_SECONDS = 5;
 export const TILE_SIZE = 16;
 export const LEVEL_COLUMNS = 40;
 export const LEVEL_ROWS = 23;

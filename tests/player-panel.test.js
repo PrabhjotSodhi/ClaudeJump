@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { SCREEN_WIDTH } from '../src/engine/config.js';
 import { PLAYER_PANEL_BOTTOM, playerPanelBoxes } from '../src/ui/player-panel.js';
-import { TIMER_PANEL } from '../src/ui/hud.js';
+import { TIMER_PANEL, TIMER_PANEL_URGENT } from '../src/ui/hud.js';
 import { arenaLevels } from './fixtures/arena-levels.mjs';
 
 function overlaps(a, b) {
@@ -25,7 +25,8 @@ for (const playerCount of [2, 3, 4]) {
       for (const value of [box.x, box.y, box.width, box.height]) assert.ok(Number.isInteger(value));
       assert.ok(box.x >= 0 && box.x + box.width <= SCREEN_WIDTH);
       assert.ok(box.y + box.height <= PLAYER_PANEL_BOTTOM);
-      assert.ok(!overlaps(box, TIMER_PANEL), `panel ${index} covers the timer`);
+      for (const timerBox of [TIMER_PANEL, TIMER_PANEL_URGENT])
+        assert.ok(!overlaps(box, timerBox), `panel ${index} covers the timer`);
       boxes.slice(index + 1).forEach((other) => assert.ok(!overlaps(box, other), `panel ${index} overlaps another`));
     });
   });
@@ -43,7 +44,14 @@ test('the first player is leftmost and the panels run left to right in seat orde
 
 test('panels cover no block or spawn in any arena, only hanging chains', () => {
   for (const [name, level] of Object.entries(arenaLevels)) {
-    for (const box of playerPanelBoxes(4)) {
+    const boxes = [
+      ...playerPanelBoxes(2),
+      ...playerPanelBoxes(3),
+      ...playerPanelBoxes(4),
+      TIMER_PANEL,
+      TIMER_PANEL_URGENT,
+    ];
+    for (const box of boxes) {
       const coveredTiles = level.tiles.filter(
         (tile) => tile.name !== 'chain' && overlaps(box, { x: tile.x, y: tile.y, width: 16, height: 16 }),
       );
@@ -51,5 +59,13 @@ test('panels cover no block or spawn in any arena, only hanging chains', () => {
       for (const spawn of level.spawns)
         assert.ok(spawn.y > box.y + box.height, `${name} ${spawn.id} spawns under a panel`);
     }
+  }
+});
+
+test('the timer grows for the last seconds and stays centered on whole pixels', () => {
+  assert.ok(TIMER_PANEL_URGENT.width > TIMER_PANEL.width && TIMER_PANEL_URGENT.height > TIMER_PANEL.height);
+  for (const box of [TIMER_PANEL, TIMER_PANEL_URGENT]) {
+    assert.ok(Number.isInteger(box.x) && Number.isInteger(box.width));
+    assert.equal(box.x + box.width / 2, SCREEN_WIDTH / 2);
   }
 });
