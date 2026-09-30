@@ -1,5 +1,7 @@
 import { CARD_NAMES } from '../cards/card-definitions.js';
 import {
+  KNOCKOUT_SLOWMO_STEP_INTERVAL,
+  KNOCKOUT_SLOWMO_TICKS,
   SCREEN_WIDTH,
   SHOVE_CHARGE_REPORT_INTERVAL_TICKS,
   SHOVE_CLASH_BOUNCE_VELOCITY_X,
@@ -39,6 +41,7 @@ import { MatchStats } from '../ui/match-stats.js';
 import { drawPlayerTags } from '../ui/player-tags.js';
 import { WinPips } from '../ui/win-pips.js';
 import { ClashSparks, drawClashSparks } from '../vfx/clash-sparks.js';
+import { knockoutZoom } from '../vfx/knockout-zoom.js';
 import { PlayerEyes } from '../vfx/player-eyes.js';
 import { drawParticles, HARD_LANDING_SPEED, Particles } from '../vfx/particles.js';
 import { SeaRipple } from '../vfx/sea-ripple.js';
@@ -194,6 +197,8 @@ export class VersusScene {
       this.ticksRemaining = READY_TICKS;
     }
     this.winnerId = null;
+    this.knockoutTicks = 0;
+    this.knockoutFocusPlayerId = null;
     this.dashHitPairIds.clear();
     this.shoveHitIdsByShoverId.clear();
     this.shoveClashPairIds.clear();
@@ -260,11 +265,15 @@ export class VersusScene {
   update(inputByPlayerId) {
     this.tickCount++;
     this.ticksRemaining--;
-    this.screenShake.update();
-    this.seaRipple.update();
-    this.particles.update();
-    this.splashes.update();
-    this.playerEyes.update();
+    if (this.knockoutTicks > 0) this.knockoutTicks++;
+    const worldSteps = this.phase !== 'knockout' || this.knockoutTicks % KNOCKOUT_SLOWMO_STEP_INTERVAL === 0;
+    if (worldSteps) {
+      this.screenShake.update();
+      this.seaRipple.update();
+      this.particles.update();
+      this.splashes.update();
+      this.playerEyes.update();
+    }
     switch (this.phase) {
       case 'ready':
         if (this.ticksRemaining <= 0) {
@@ -282,6 +291,14 @@ export class VersusScene {
         this.updateBananas();
         this.updateCrates();
         this.checkRoundEnd();
+        break;
+      case 'knockout':
+        if (worldSteps) {
+          this.updatePlayers(null);
+          this.updateRockets();
+          this.updateBombs();
+        }
+        if (this.ticksRemaining <= 0) this.endRound();
         break;
       case 'point':
         this.updatePlayers(null);
@@ -691,6 +708,14 @@ export class VersusScene {
     const standingPlayers = this.players.filter((player) => !player.inWater);
     if (standingPlayers.length > 1) return;
 
+    this.phase = 'knockout';
+    this.ticksRemaining = KNOCKOUT_SLOWMO_TICKS;
+    this.knockoutTicks = 1;
+    this.knockoutFocusPlayerId = this.players.find((player) => player.inWater)?.id ?? null;
+  }
+
+  endRound() {
+    const standingPlayers = this.players.filter((player) => !player.inWater);
     this.phase = 'point';
     this.ticksRemaining = POINT_PAUSE_TICKS;
     if (standingPlayers.length === 0) return;
@@ -718,6 +743,7 @@ export class VersusScene {
     }
 
     renderer.shakeOffset = this.screenShake.offset;
+    renderer.zoom = knockoutZoom(this);
     renderer.seaRippleBytes = this.seaRipple.toBytes();
     renderer.clearGameLayer();
     for (const tile of this.level.tiles) {

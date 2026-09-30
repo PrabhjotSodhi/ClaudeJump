@@ -87,6 +87,8 @@ export function createWindow(canvas, vertexShaderSource, fragmentShaderSource) {
   webglContext.uniform2f(webglContext.getUniformLocation(program, 'u_resolution'), SCREEN_WIDTH, SCREEN_HEIGHT);
   const waterLineUniformLocation = webglContext.getUniformLocation(program, 'u_waterLine');
   const shakeOffsetUniformLocation = webglContext.getUniformLocation(program, 'u_shakeOffset');
+  const zoomFactorUniformLocation = webglContext.getUniformLocation(program, 'u_zoomFactor');
+  const zoomOriginUniformLocation = webglContext.getUniformLocation(program, 'u_zoomOrigin');
   const timeUniformLocation = webglContext.getUniformLocation(program, 'u_time');
 
   addEventListener('resize', () => resizeToFitWindow(canvas, webglContext));
@@ -107,7 +109,7 @@ export function createWindow(canvas, vertexShaderSource, fragmentShaderSource) {
   }
 
   return {
-    render({ backgroundCanvas, gameCanvas, uiCanvas, shakeOffset, seaRippleBytes, waterLineY, timeSeconds }) {
+    render({ backgroundCanvas, gameCanvas, uiCanvas, shakeOffset, zoom, seaRippleBytes, waterLineY, timeSeconds }) {
       if (backgroundCanvas) uploadLayer('background', backgroundCanvas);
       uploadLayer('game', gameCanvas);
       uploadLayer('ui', uiCanvas);
@@ -124,6 +126,8 @@ export function createWindow(canvas, vertexShaderSource, fragmentShaderSource) {
         seaRippleBytes ?? flatSea,
       );
       webglContext.uniform2f(shakeOffsetUniformLocation, shakeOffset.x, shakeOffset.y);
+      webglContext.uniform1f(zoomFactorUniformLocation, zoom.factor);
+      webglContext.uniform2f(zoomOriginUniformLocation, zoom.originX, zoom.originY);
       webglContext.uniform1f(waterLineUniformLocation, waterLineY);
       webglContext.uniform1f(timeUniformLocation, timeSeconds);
       webglContext.drawArrays(webglContext.TRIANGLE_STRIP, 0, 4);

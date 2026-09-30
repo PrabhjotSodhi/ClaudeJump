@@ -5,6 +5,8 @@ import {
   drawKeyHints,
   drawMenuList,
   drawMenuTitle,
+  drawWithMenuMotion,
+  MenuMotion,
   KEYCAP_HEIGHT,
   menuPanelSize,
   menuRowRectangles,
@@ -48,12 +50,14 @@ export class OnlineMenuScene {
     this.lines = lines;
     this.options = options;
     this.selectedIndex = 0;
+    this.menuMotion = new MenuMotion();
     this.backgroundDrawn = false;
     // Captured on the first tick, so a press still held from the screen before never counts here.
     this.previousInput = null;
   }
 
   update(inputByPlayerId) {
+    this.menuMotion.update();
     const input = mergeLocalInputs(inputByPlayerId);
     if (!this.previousInput) {
       this.previousInput = input;
@@ -72,6 +76,7 @@ export class OnlineMenuScene {
     if (tappedIndex >= 0) this.selectedIndex = tappedIndex;
     if (isFresh('confirm') || tappedIndex >= 0) {
       this.events.emit('menu-selected', {});
+      this.menuMotion.press();
       this.options[this.selectedIndex].onSelect(inputByPlayerId);
     }
   }
@@ -88,16 +93,23 @@ export class OnlineMenuScene {
     renderer.clearUiLayer();
     const context = renderer.uiContext;
     const { titleY, linesY, menuTopY, hintY } = onlineMenuLayout(this);
-    drawMenuTitle(context, this.title, titleY);
-    this.lines.forEach((line, index) => {
-      drawText(context, line, SCREEN_WIDTH / 2, linesY + index * LINE_HEIGHT, {
-        scale: 1,
-        align: 'center',
-        color: LINE_COLOR,
-        outlineColor: null,
+    drawWithMenuMotion(context, this.menuMotion, () => {
+      drawMenuTitle(context, this.title, titleY);
+      this.lines.forEach((line, index) => {
+        drawText(context, line, SCREEN_WIDTH / 2, linesY + index * LINE_HEIGHT, {
+          scale: 1,
+          align: 'center',
+          color: LINE_COLOR,
+          outlineColor: null,
+        });
       });
+      drawMenuList(context, {
+        options: this.options,
+        selectedIndex: this.selectedIndex,
+        topY: menuTopY,
+        motion: this.menuMotion,
+      });
+      if (!renderer.touchActive) drawKeyHints(context, HINTS, hintY);
     });
-    drawMenuList(context, { options: this.options, selectedIndex: this.selectedIndex, topY: menuTopY });
-    if (!renderer.touchActive) drawKeyHints(context, HINTS, hintY);
   }
 }

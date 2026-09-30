@@ -7,6 +7,7 @@ import {
   menuPanelSize,
   menuRowRectangles,
   TITLE_HEIGHT,
+  drawWithMenuMotion,
 } from './menu-kit.js';
 import { drawMenuBackdrop } from './menu-options.js';
 
@@ -31,12 +32,14 @@ export function pauseMenuRowRectangles(options) {
   );
 }
 
-export function drawPauseMenu(context, { options, selectedIndex }) {
+export function drawPauseMenu(context, { options, selectedIndex, motion }) {
   drawMenuBackdrop(context);
 
   const { titleY, menuTopY } = pauseLayout(options);
 
-  drawMenuTitle(context, 'Paused', titleY);
-  const panelBottomY = drawMenuList(context, { options, selectedIndex, topY: menuTopY });
-  drawKeyHints(context, HINTS, panelBottomY + HINT_GAP);
+  drawWithMenuMotion(context, motion, () => {
+    drawMenuTitle(context, 'Paused', titleY);
+    const panelBottomY = drawMenuList(context, { options, selectedIndex, topY: menuTopY, motion });
+    drawKeyHints(context, HINTS, panelBottomY + HINT_GAP);
+  });
 }
