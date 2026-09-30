@@ -7,6 +7,7 @@ import { PlayerSelectScene, START_COUNTDOWN_TICKS } from '../src/scenes/player-s
 import { TitleScene } from '../src/scenes/title-scene.js';
 import { VersusScene } from '../src/scenes/versus-scene.js';
 import { harborLevel } from './fixtures/harbor-level.mjs';
+import { ROUND_COUNTDOWN_TICKS as READY_TICKS } from '../src/engine/config.js';
 
 function noInput() {
   return {
@@ -279,7 +280,6 @@ test('Return to title, then Versus, opens a player select that can run a tick', 
   assert.doesNotThrow(() => currentScene.update(neutralInputs()));
 });
 
-const READY_TICKS = 60;
 const POINT_PAUSE_TICKS = 90;
 const RESULTS_DELAY_TICKS = 60;
 

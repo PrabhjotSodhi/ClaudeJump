@@ -5,8 +5,7 @@ import { Bomb } from '../src/entities/bomb.js';
 import { Rocket } from '../src/entities/rocket.js';
 import { VersusScene } from '../src/scenes/versus-scene.js';
 import { harborLevel } from './fixtures/harbor-level.mjs';
-
-const READY_TICKS = 60;
+import { ROUND_COUNTDOWN_TICKS as READY_TICKS } from '../src/engine/config.js';
 
 function input(overrides = {}) {
   return { left: false, right: false, jump: false, action: false, ...overrides };

@@ -4,8 +4,7 @@ import { HITSTOP_TICKS, SHOVE_MAX_CHARGE_TICKS, SHOVE_WINDUP_TICKS } from '../sr
 import { SHOVE_KNOCKBACK_VELOCITY_X, SHOVE_KNOCKBACK_VELOCITY_Y } from '../src/entities/player.js';
 import { VersusScene } from '../src/scenes/versus-scene.js';
 import { harborLevel } from './fixtures/harbor-level.mjs';
-
-const READY_TICKS = 60;
+import { ROUND_COUNTDOWN_TICKS as READY_TICKS } from '../src/engine/config.js';
 
 function input(overrides = {}) {
   return { left: false, right: false, jump: false, action: false, ...overrides };

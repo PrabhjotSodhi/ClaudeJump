@@ -88,6 +88,19 @@ export const KNOCKOUT_ZOOM = 2;
 export const KNOCKOUT_ZOOM_IN_TICKS = 12;
 export const KNOCKOUT_ZOOM_OUT_TICKS = 20;
 
+// A round opens with 3, 2, 1 counted in the ready phase, where nobody can move, then GO! shows while the fight has
+// already started. The whole intro must stay under two seconds.
+export const ROUND_COUNTDOWN_BEATS = 3;
+export const ROUND_COUNTDOWN_BEAT_TICKS = 28;
+export const ROUND_COUNTDOWN_TICKS = ROUND_COUNTDOWN_BEATS * ROUND_COUNTDOWN_BEAT_TICKS;
+export const ROUND_GO_TICKS = 30;
+
+// A knockout callout names what happened. A rocket or banana counts as the cause if it hit the player within
+// CALLOUT_CAUSE_TICKS of the fall, and a knockout with fewer than CLUTCH_SECONDS left on the round timer is a clutch.
+// A callout stays on screen for CALLOUT_TICKS.
+export const CALLOUT_CAUSE_TICKS = 90;
+export const CALLOUT_TICKS = 60;
+
 // Online matches. A press is scheduled this many ticks ahead so it can cross the network before it is needed.
 export const INPUT_DELAY_TICKS = 4;
 export const HASH_INTERVAL_TICKS = 60;
