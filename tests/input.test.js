@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { combineInputs, createKeyboardInput } from '../src/engine/input.js';
+import { combineInputs, createKeyboardInput, isAnyControlPressed } from '../src/engine/input.js';
 
 function input({
   left = false,
@@ -34,7 +34,7 @@ test('combineInputs stays false when neither source presses a control', () => {
 
   const combined = combineInputs(keyboard, gamepad);
 
-  assert.deepEqual(combined.red, input());
+  assert.deepEqual(combined.red, { ...input(), tap: null });
 });
 
 test('combineInputs presses pause when either source presses it', () => {
@@ -126,4 +126,20 @@ test('Enter and Space press confirm for every player, and jump keys do not', () 
     assert.equal(inputs.red.confirm, true);
     assert.equal(inputs.blue.confirm, true);
   }
+});
+
+test('combineInputs merges three sources and keeps the tap point', () => {
+  const keyboard = { red: input() };
+  const gamepad = { red: input() };
+  const touch = { red: { ...input({ jump: true }), tap: { x: 10, y: 20 } } };
+
+  const combined = combineInputs(keyboard, gamepad, touch);
+
+  assert.equal(combined.red.jump, true);
+  assert.deepEqual(combined.red.tap, { x: 10, y: 20 });
+});
+
+test('isAnyControlPressed sees any pressed control and ignores taps', () => {
+  assert.equal(isAnyControlPressed({ red: input(), blue: input({ left: true }) }), true);
+  assert.equal(isAnyControlPressed({ red: { ...input(), tap: { x: 1, y: 1 } }, blue: input() }), false);
 });

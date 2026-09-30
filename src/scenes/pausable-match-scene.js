@@ -1,6 +1,6 @@
-import { wrapMenuIndex } from '../ui/menu-kit.js';
-import { drawPauseMenu } from '../ui/pause-menu.js';
-import { drawResultsMenu } from '../ui/results-menu.js';
+import { rowIndexAt, tapPoint, wrapMenuIndex } from '../ui/menu-kit.js';
+import { drawPauseMenu, pauseMenuRowRectangles } from '../ui/pause-menu.js';
+import { drawResultsMenu, resultsMenuRowRectangles } from '../ui/results-menu.js';
 import { LevelSelectScene } from './level-select-scene.js';
 import { PlayerSelectScene } from './player-select-scene.js';
 import { TitleScene } from './title-scene.js';
@@ -78,7 +78,9 @@ export class PausableMatchScene {
 
     if (downPressed) this.selectedIndex = wrapMenuIndex(this.selectedIndex, 1, PAUSE_MENU_OPTIONS.length);
     if (upPressed) this.selectedIndex = wrapMenuIndex(this.selectedIndex, -1, PAUSE_MENU_OPTIONS.length);
-    if (confirmPressed) this.confirmSelection(inputByPlayerId);
+    const tappedIndex = rowIndexAt(pauseMenuRowRectangles(PAUSE_MENU_OPTIONS), tapPoint(inputByPlayerId));
+    if (tappedIndex >= 0) this.selectedIndex = tappedIndex;
+    if (confirmPressed || tappedIndex >= 0) this.confirmSelection(inputByPlayerId);
   }
 
   // The first tick the results show only records what is held, so the jump that ended the last
@@ -99,7 +101,9 @@ export class PausableMatchScene {
     const optionCount = RESULTS_MENU_OPTIONS.length;
     if (downPressed) this.resultsSelectedIndex = (this.resultsSelectedIndex + 1) % optionCount;
     if (upPressed) this.resultsSelectedIndex = (this.resultsSelectedIndex + optionCount - 1) % optionCount;
-    if (confirmPressed || jumpPressed) this.confirmResultsOption(inputByPlayerId);
+    const tappedIndex = rowIndexAt(resultsMenuRowRectangles(RESULTS_MENU_OPTIONS), tapPoint(inputByPlayerId));
+    if (tappedIndex >= 0) this.resultsSelectedIndex = tappedIndex;
+    if (confirmPressed || jumpPressed || tappedIndex >= 0) this.confirmResultsOption(inputByPlayerId);
   }
 
   confirmResultsOption(inputByPlayerId) {

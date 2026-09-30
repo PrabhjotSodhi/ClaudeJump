@@ -1,10 +1,11 @@
 import { SCREEN_HEIGHT, SCREEN_WIDTH, TICK_RATE } from './engine/config.js';
 import { createGameLoop } from './engine/game-loop.js';
 import { createGamepadInput } from './engine/gamepad-input.js';
-import { combineInputs, createKeyboardInput } from './engine/input.js';
+import { combineInputs, createKeyboardInput, isAnyControlPressed } from './engine/input.js';
 import { Renderer } from './engine/renderer.js';
 import { SceneManager } from './engine/scene-manager.js';
 import { loadSpriteFile } from './engine/sprites.js';
+import { createTouchInput } from './engine/touch-input.js';
 import { loadLevel, stoneColorOverrides } from './levels/level-loader.js';
 import { createLevelThumbnail } from './levels/level-thumbnail.js';
 import { isPortraitOnTouchDevice, pickScale } from './engine/screen-fit.js';
@@ -14,6 +15,7 @@ import { StyleTestScene } from './scenes/style-test-scene.js';
 import { FULLSCREEN_BUTTON, TitleScene } from './scenes/title-scene.js';
 import { SurvivalScene } from './scenes/survival-scene.js';
 import { VersusScene } from './scenes/versus-scene.js';
+import { drawTouchControls } from './ui/touch-controls.js';
 import { drawRotatePrompt, ROTATE_PROMPT_HEIGHT, ROTATE_PROMPT_WIDTH } from './ui/rotate-prompt.js';
 
 // The order of the level select tiles.
@@ -71,6 +73,10 @@ async function main() {
   const renderer = new Renderer();
   const keyboardInput = createKeyboardInput(keyMappings);
   const gamepadInput = createGamepadInput(keyMappings.map((mapping) => mapping.id));
+  const touchInput = createTouchInput(
+    canvas,
+    keyMappings.map((mapping) => mapping.id),
+  );
   const sceneManager = new SceneManager();
   const sprites = { claude, muse, chatgpt, gemini, grok, deepseek, mistral, props, blocks };
   // Survival builds its platforms from the Harbor stone, the first level file.
@@ -151,6 +157,7 @@ async function main() {
     renderer.shakeOffset = { x: 0, y: 0 };
     renderer.seaRippleBytes = null;
     sceneManager.render(renderer);
+    if (touchInput.visible) drawTouchControls(renderer.uiContext, touchInput.pressedButtonIds);
     gameWindow.render({
       backgroundCanvas: renderer.backgroundChanged ? renderer.backgroundCanvas : null,
       gameCanvas: renderer.gameCanvas,
@@ -170,7 +177,10 @@ async function main() {
         sceneManager.currentScene?.pauseForFocusLoss?.();
         return;
       }
-      sceneManager.update(combineInputs(keyboardInput.sample(), gamepadInput.sample()));
+      const keyboardInputs = keyboardInput.sample();
+      const gamepadInputs = gamepadInput.sample();
+      if (isAnyControlPressed(keyboardInputs) || isAnyControlPressed(gamepadInputs)) touchInput.hide();
+      sceneManager.update(combineInputs(keyboardInputs, gamepadInputs, touchInput.sample()));
     },
     render: renderFrame,
   });

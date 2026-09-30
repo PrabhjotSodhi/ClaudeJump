@@ -2,7 +2,7 @@ import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../engine/config.js';
 import { DEFAULT_CHARACTER_BY_PLAYER_ID } from '../entities/characters.js';
 import { drawArenaBackground } from '../levels/arena-backgrounds.js';
 import { PLAYERS } from '../levels/versus-arena.js';
-import { drawKeyHints, drawMenuList, KEYCAP_HEIGHT } from '../ui/menu-kit.js';
+import { drawKeyHints, drawMenuList, KEYCAP_HEIGHT, menuRowRectangles, rowIndexAt, tapPoint } from '../ui/menu-kit.js';
 import { NO_WATER_LINE_Y } from '../ui/menu-screen.js';
 import { drawPanel } from '../ui/panel.js';
 import { drawText } from '../ui/text.js';
@@ -136,7 +136,15 @@ export class TitleScene {
     const optionCount = this.options.length;
     if (pressed.down) this.selectedIndex = (this.selectedIndex + 1) % optionCount;
     if (pressed.up) this.selectedIndex = (this.selectedIndex + optionCount - 1) % optionCount;
-    if (pressed.confirm) this.confirmSelection();
+    const tappedIndex = rowIndexAt(
+      menuRowRectangles(
+        this.options.map((option) => option.label),
+        MENU_TOP_Y,
+      ),
+      tapPoint(inputByPlayerId),
+    );
+    if (tappedIndex >= 0) this.selectedIndex = tappedIndex;
+    if (pressed.confirm || tappedIndex >= 0) this.confirmSelection();
   }
 
   confirmSelection() {
