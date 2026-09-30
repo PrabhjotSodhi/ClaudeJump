@@ -1,4 +1,5 @@
 import { ROUND_COUNTDOWN_BEAT_TICKS, ROUND_GO_TICKS, SCREEN_WIDTH } from '../engine/config.js';
+import { drawPlayHints, playHintRows } from './play-hints.js';
 import { drawModifierIcon, MODIFIER_ICON_SIZE } from './modifier-icons.js';
 import { drawText, measureText, TEXT_GLYPH_HEIGHT } from './text.js';
 
@@ -8,7 +9,7 @@ const GO_SCALES = [12, 9, 8, 7];
 const SCALE_TICKS = 2;
 const NAME_Y = 108;
 const NAME_SCALE = 2;
-const CONTROLS_Y = 166;
+const CONTROLS_Y = 172;
 const MODIFIER_Y = 140;
 const MODIFIER_ICON_SCALE = 2;
 const MODIFIER_GAP = 8;
@@ -20,13 +21,6 @@ const GO_COLOR = '#feae34';
 const NAME_COLOR = '#c0cbdc';
 const MATCH_POINT_COLOR = '#e43b44';
 const MATCH_POINT_BLINK_COLOR = '#feae34';
-
-const CONTROLS_LABEL_BY_PLAYER_ID = {
-  red: 'Red: WASD',
-  blue: 'Blue: Arrows',
-  green: 'Green: Pad 3',
-  yellow: 'Yellow: Pad 4',
-};
 
 // True when any player is one win short of taking the match.
 export function isMatchPoint(wins, winsNeeded) {
@@ -88,8 +82,8 @@ export function drawRoundIntro(context, scene) {
   const firstRound = Object.values(scene.wins).every((playerWins) => playerWins === 0);
   if (firstRound) {
     drawCentered(context, scene.level.name, NAME_Y, { scale: NAME_SCALE, color: NAME_COLOR });
-    const controls = scene.players.map((player) => CONTROLS_LABEL_BY_PLAYER_ID[player.id]).join('    ');
-    drawCentered(context, controls, CONTROLS_Y, { scale: 1, color: NAME_COLOR, outlineColor: null });
+    const playerIds = scene.players.map((player) => player.id);
+    drawPlayHints(context, playHintRows(playerIds, { shove: true }), CONTROLS_Y);
   } else if (isMatchPoint(scene.wins, scene.winsNeeded)) {
     const blinkOn = Math.floor(scene.tickCount / MATCH_POINT_BLINK_TICKS) % 2 === 0;
     drawCentered(context, 'Match point', NAME_Y, {

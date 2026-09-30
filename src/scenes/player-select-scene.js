@@ -1,14 +1,11 @@
 import { SCREEN_HEIGHT, SCREEN_WIDTH, TICK_RATE } from '../engine/config.js';
-import { getInputDevice } from '../engine/input-device.js';
 import { EventEmitter } from '../engine/events.js';
 import { CHARACTERS, HOVER_CHARACTER_BY_PLAYER_ID } from '../entities/characters.js';
 import { PLAYERS } from '../levels/versus-arena.js';
 import {
-  drawKeyHints,
-  rowsForDevice,
+  drawKeyHintPanel,
   drawMenuTitle,
   drawWithMenuMotion,
-  KEYCAP_HEIGHT,
   MenuMotion,
   rowIndexAt,
   tapPoint,
@@ -61,8 +58,6 @@ const UNJOINED_COLOR = '#c0cbdc';
 
 const HINTS_PANEL_WIDTH = 360;
 const HINTS_PANEL_TOP_Y = ROSTER_BOTTOM_Y + 12;
-const HINTS_PANEL_PADDING = 8;
-const HINTS_ROW_HEIGHT = 14;
 const KEY_HINT_ROWS = [
   {
     label: 'Red',
@@ -112,8 +107,8 @@ const KEY_HINT_ROWS = [
 const JOIN_TEXT_BY_PLAYER_ID = {
   red: 'Press jump to join',
   blue: 'Press jump to join',
-  green: 'Press A on pad 3',
-  yellow: 'Press A on pad 4',
+  green: 'Press jump on pad 3',
+  yellow: 'Press jump on pad 4',
 };
 
 // Each card goes through these states in order, one jump press apart.
@@ -421,23 +416,10 @@ function drawRoster(context, scene, spawn, centerX) {
   });
 }
 
-function drawKeyHintPanel(context) {
-  const rows = rowsForDevice(KEY_HINT_ROWS, getInputDevice());
-  if (rows.length === 0) return;
-  const height = (rows.length - 1) * HINTS_ROW_HEIGHT + KEYCAP_HEIGHT + 2 * HINTS_PANEL_PADDING;
-  const left = (SCREEN_WIDTH - HINTS_PANEL_WIDTH) / 2;
-  drawPanel(context, left, HINTS_PANEL_TOP_Y, HINTS_PANEL_WIDTH, height);
-  rows.forEach(({ label, color, hints }, index) => {
-    const y = HINTS_PANEL_TOP_Y + HINTS_PANEL_PADDING + index * HINTS_ROW_HEIGHT;
-    drawText(context, label, left + HINTS_PANEL_PADDING, y + 3, { scale: 1, color, outlineColor: null });
-    drawKeyHints(context, hints, y);
-  });
-}
-
 function drawPlayerSelectUi(context, scene) {
   drawMenuTitle(context, 'Player Select', TITLE_Y);
   for (const spawn of PLAYERS) drawPlayerCard(context, scene, spawn);
-  drawKeyHintPanel(context);
+  drawKeyHintPanel(context, KEY_HINT_ROWS, { topY: HINTS_PANEL_TOP_Y, width: HINTS_PANEL_WIDTH });
   if (scene.countdownTicksRemaining !== null) {
     drawText(
       context,

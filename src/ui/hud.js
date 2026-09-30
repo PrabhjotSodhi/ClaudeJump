@@ -5,6 +5,7 @@ import { drawPanel } from './panel.js';
 import { drawPlayerPanel, PLAYER_PANEL_BOTTOM, playerPanelBoxes } from './player-panel.js';
 import { drawKeyHints, drawMenuTitle, menuPanelSize } from './menu-kit.js';
 import { drawMenuBackdrop } from './menu-options.js';
+import { drawPlayHints, playHintRows } from './play-hints.js';
 import { drawText, measureText } from './text.js';
 
 const WARNING_MARKER_FLASH_TICKS = 20;
@@ -54,6 +55,9 @@ const OVER_FIRST_ROW_OFFSET_Y = 12;
 const OVER_ROW_HEIGHT = 14;
 const OVER_ROW_COLOR = '#c0cbdc';
 const OVER_HINT_GAP = 12;
+// Survival has no round intro, so its move and jump hints show for the start of each run.
+const SURVIVAL_HINT_TICKS = 180;
+const SURVIVAL_HINT_Y = 48;
 
 function displayName(scene, playerId) {
   return scene.players.find((player) => player.id === playerId).character.displayName;
@@ -232,5 +236,8 @@ export function drawSurvivalHud(context, scene) {
     labelColor: blinkOn ? NEW_BEST_COLOR : SCORE_LABEL_COLOR,
   });
   drawHeightMeter(context, scene);
+  if (scene.phase === 'playing' && scene.runTicks < SURVIVAL_HINT_TICKS) {
+    drawPlayHints(context, playHintRows(['red'], { shove: false }), SURVIVAL_HINT_Y);
+  }
   if (scene.phase === 'over') drawRunOver(context, scene);
 }

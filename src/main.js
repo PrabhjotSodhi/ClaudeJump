@@ -3,7 +3,7 @@ import { createGameLoop } from './engine/game-loop.js';
 import { createGamepadInput } from './engine/gamepad-input.js';
 import { createFullscreen } from './engine/fullscreen.js';
 import { combineInputs, createKeyboardInput } from './engine/input.js';
-import { getInputDevice, pickInputDevice, setInputDevice } from './engine/input-device.js';
+import { getInputDevice, padTypeFromId, pickInputDevice, setInputDevice, setPadType } from './engine/input-device.js';
 import { gameOptions } from './engine/game-options.js';
 import { Renderer } from './engine/renderer.js';
 import { SceneManager } from './engine/scene-manager.js';
@@ -256,6 +256,10 @@ async function main() {
       const keyboardHeld = isAnyControlHeld(keyboardInputs);
       const padHeld = isAnyControlHeld(gamepadInputs);
       if (keyboardHeld || padHeld) touchInput.hide();
+      if (padHeld) {
+        const heldPadIndex = Object.values(gamepadInputs).findIndex((input) => Object.values(input).some(Boolean));
+        setPadType(padTypeFromId(navigator.getGamepads()[heldPadIndex]?.id ?? ''));
+      }
       setInputDevice(pickInputDevice(getInputDevice(), { keyboardHeld, padHeld, touchVisible: touchControlsShown() }));
       const portraitLayout = gameWindow.portraitLayout;
       const touchInputs = portraitLayout
