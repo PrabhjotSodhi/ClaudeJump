@@ -31,6 +31,9 @@ const SURVIVAL_FIELDS = [
   'rocketWarnings',
 ];
 
+// Fixed references that never change during play.
+const IGNORED_ENTITY_FIELDS = new Set(['character', 'sprites']);
+
 const RANDOM_FIELDS = ['random', 'rocketRandom', 'crabRandom'];
 
 const floatBuffer = new Float64Array(1);
@@ -91,11 +94,10 @@ class Hasher {
     }
   }
 
-  // Only the plain values of an entity: references such as a player's character are fixed data.
   foldEntity(entity) {
     this.foldString(entity.constructor.name);
     for (const [key, value] of Object.entries(entity)) {
-      if (typeof value === 'object' && value !== null) continue;
+      if (IGNORED_ENTITY_FIELDS.has(key)) continue;
       this.foldString(key);
       this.foldValue(value);
     }

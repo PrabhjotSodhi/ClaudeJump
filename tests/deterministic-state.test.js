@@ -61,6 +61,21 @@ test('the hash changes as the game plays on and when the seed or the inputs diff
   assert.notEqual(stateHash(sameSeed), stateHash(movedRight));
 });
 
+test('nested entity state, such as a platform effect or a player timer object, changes the hash', () => {
+  const scene = new VersusScene({ level: arenaLevels.harbor, startInFightPhase: true, seed: REPLAY_SEED });
+  const platform = scene.entityGroups.get('platforms')[0];
+  const player = scene.players[0];
+  const before = stateHash(scene);
+  platform.effect = { kind: 'fire', ticks: 10 };
+  const withEffect = stateHash(scene);
+  platform.effect.ticks = 9;
+  const effectTicked = stateHash(scene);
+  player.timers = { cooldowns: [1, 2] };
+  const withTimers = stateHash(scene);
+  player.timers.cooldowns[1] = 3;
+  assert.equal(new Set([before, withEffect, effectTicked, withTimers, stateHash(scene)]).size, 5);
+});
+
 const UNSAFE_MATH =
   /Math\.(sin|cos|tan|asin|acos|atan|atan2|sinh|cosh|tanh|asinh|acosh|atanh|exp|expm1|log|log2|log10|log1p|pow|hypot|cbrt|random)\b|\*\*/;
 
@@ -73,6 +88,9 @@ function findUnsafeMath(source) {
   return problems;
 }
 
+// Audio never touches game state, so it may use any math.
+const AUDIO_FILES = new Set(['sound-player.js']);
+
 function updateCodeFiles() {
   const files = [
     'src/scenes/versus-scene.js',
@@ -81,7 +99,9 @@ function updateCodeFiles() {
     'src/scenes/pausable-match-scene.js',
   ];
   for (const directory of ['src/engine', 'src/entities', 'src/cards']) {
-    for (const fileName of readdirSync(directory)) files.push(`${directory}/${fileName}`);
+    for (const fileName of readdirSync(directory)) {
+      if (!AUDIO_FILES.has(fileName)) files.push(`${directory}/${fileName}`);
+    }
   }
   return files;
 }
