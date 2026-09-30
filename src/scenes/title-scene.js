@@ -23,21 +23,16 @@ const BACKGROUND_NAME = 'harbor';
 const LEDGE_TOP_Y = 130;
 const LEDGE_BLOCK_SIZE = 32;
 const LEDGE_BLOCK_GAP = 2;
-// One entry per block, left to right: the sprite name and how far the block sits below the ledge top.
-const LEDGE_BLOCKS = [
-  { spriteName: 'block-big-0', dropY: 0 },
-  { spriteName: 'block-big-1', dropY: 2 },
-  { spriteName: 'block-big-0', dropY: 0 },
-];
+const LEDGE_BLOCK_SPRITE_NAMES = ['block-big-0', 'block-big-1', 'block-big-0'];
 const LEDGE_BLOCK_STRIDE = LEDGE_BLOCK_SIZE + LEDGE_BLOCK_GAP;
-const LEDGE_WIDTH = LEDGE_BLOCKS.length * LEDGE_BLOCK_STRIDE - LEDGE_BLOCK_GAP;
+const LEDGE_WIDTH = LEDGE_BLOCK_SPRITE_NAMES.length * LEDGE_BLOCK_STRIDE - LEDGE_BLOCK_GAP;
 const LEDGE_LEFT_X = (SCREEN_WIDTH - LEDGE_WIDTH) / 2;
-// The left character faces right. The right one is mirrored to face left.
+// The white outline row of each body overlaps the top edge of its block so the feet read as touching.
+const CHARACTER_SINK_PIXELS = 1;
 const LEDGE_STANDERS = [
-  { playerId: 'red', blockIndex: 0, isMirrored: false },
-  { playerId: 'blue', blockIndex: 2, isMirrored: true },
+  { playerId: 'red', blockIndex: 0 },
+  { playerId: 'blue', blockIndex: 2 },
 ];
-const CHARACTER_BREATH_TICKS = 45;
 
 const MENU_TOP_Y = 176;
 
@@ -115,7 +110,6 @@ export class TitleScene {
     this.options = options;
     this.selectedIndex = 0;
     this.waterLineY = levels?.find((level) => level.background === BACKGROUND_NAME)?.waterLineY ?? NO_WATER_LINE_Y;
-    this.tick = 0;
     this.eyesByPlayerId = {};
     for (const { playerId } of LEDGE_STANDERS) {
       this.eyesByPlayerId[playerId] = EYE_STIFFNESSES.map((stiffness) => new GooglyEye(stiffness));
@@ -128,7 +122,6 @@ export class TitleScene {
   }
 
   update(inputByPlayerId) {
-    this.tick++;
     for (const eyes of Object.values(this.eyesByPlayerId)) for (const eye of eyes) eye.update(0, 0);
 
     const pressed = { up: false, down: false, confirm: false };
@@ -175,32 +168,43 @@ export class TitleScene {
 }
 
 function drawLedgeAndCharacters(context, scene) {
-  LEDGE_BLOCKS.forEach(({ spriteName, dropY }, index) => {
-    context.drawImage(
-      scene.sprites.stoneBlocks[spriteName],
-      LEDGE_LEFT_X + index * LEDGE_BLOCK_STRIDE,
-      LEDGE_TOP_Y + dropY,
-    );
+  LEDGE_BLOCK_SPRITE_NAMES.forEach((spriteName, index) => {
+    context.drawImage(scene.sprites.stoneBlocks[spriteName], LEDGE_LEFT_X + index * LEDGE_BLOCK_STRIDE, LEDGE_TOP_Y);
   });
 
-  // Breathing: the bodies are one pixel shorter on every other stretch of ticks.
-  const height = FRAME_SIZE - (Math.floor(scene.tick / CHARACTER_BREATH_TICKS) % 2);
-  for (const { playerId, blockIndex, isMirrored } of LEDGE_STANDERS) {
+  for (const { playerId, blockIndex } of LEDGE_STANDERS) {
     const character = DEFAULT_CHARACTER_BY_PLAYER_ID[playerId];
-    context.save();
-    context.translate(LEDGE_LEFT_X + blockIndex * LEDGE_BLOCK_STRIDE + LEDGE_BLOCK_SIZE / 2, 0);
-    if (isMirrored) context.scale(-1, 1);
+    const sprite = scene.sprites[character.spriteName].body;
     drawCharacterBody(context, {
-      sprite: scene.sprites[character.spriteName].body,
+      sprite,
       eyeFramePositions: character.eyeFramePositions,
       eyes: scene.eyesByPlayerId[playerId],
-      centerX: 0,
-      bottomY: LEDGE_TOP_Y + 1,
+      centerX: LEDGE_LEFT_X + blockIndex * LEDGE_BLOCK_STRIDE + LEDGE_BLOCK_SIZE / 2,
+      bottomY: LEDGE_TOP_Y + bottomPaddingRows(sprite) + CHARACTER_SINK_PIXELS,
       width: FRAME_SIZE,
-      height,
+      height: FRAME_SIZE,
     });
-    context.restore();
   }
+}
+
+const bottomPaddingRowsBySprite = new Map();
+
+// The empty rows under a sprite's lowest opaque pixel, so the feet rest exactly on the ledge top.
+function bottomPaddingRows(sprite) {
+  if (!bottomPaddingRowsBySprite.has(sprite)) {
+    const canvas = document.createElement('canvas');
+    canvas.width = sprite.width;
+    canvas.height = sprite.height;
+    const context = canvas.getContext('2d');
+    context.drawImage(sprite, 0, 0);
+    const pixels = context.getImageData(0, 0, sprite.width, sprite.height).data;
+    let lowestOpaqueRow = 0;
+    for (let index = 3; index < pixels.length; index += 4) {
+      if (pixels[index] > 0) lowestOpaqueRow = Math.floor(index / 4 / sprite.width);
+    }
+    bottomPaddingRowsBySprite.set(sprite, sprite.height - 1 - lowestOpaqueRow);
+  }
+  return bottomPaddingRowsBySprite.get(sprite);
 }
 
 // Four corner brackets, the common shorthand for a fullscreen toggle, so no new art is needed.
