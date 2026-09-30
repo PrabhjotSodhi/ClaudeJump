@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { mapTouchesToInput, TOUCH_BUTTONS } from '../src/engine/touch-input.js';
+import {
+  createTouchInput,
+  mapTouchesToInput,
+  TOUCH_BUTTONS,
+  TWO_PLAYER_TOUCH_BUTTONS,
+} from '../src/engine/touch-input.js';
 
 function centerOf(buttonId) {
   const button = TOUCH_BUTTONS.find((candidate) => candidate.id === buttonId);
@@ -40,4 +45,43 @@ test('a touch between buttons presses nothing and a tap is passed through', () =
 
   assert.deepEqual(pressedControls(input), []);
   assert.deepEqual(input.tap, { x: 320, y: 180 });
+});
+
+function clusterCenterOf(playerId, buttonId) {
+  const button = TWO_PLAYER_TOUCH_BUTTONS.find(
+    (candidate) => candidate.playerId === playerId && candidate.id === buttonId,
+  );
+  return { x: button.x + button.width / 2, y: button.y + button.height / 2 };
+}
+
+// A canvas that shows the game one to one, and a touch list the test fills.
+function sampleTwoPlayers(points) {
+  const listeners = {};
+  const canvas = {
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 640, height: 360 }),
+    addEventListener: (name, listener) => (listeners[name] = listener),
+  };
+  const touchInput = createTouchInput(canvas, ['red', 'blue']);
+  const touches = points.map((point) => ({ clientX: point.x, clientY: point.y }));
+  listeners.touchstart({ touches, changedTouches: touches });
+  return touchInput.sample(TWO_PLAYER_TOUCH_BUTTONS);
+}
+
+test('touches on each side map only to that player when both press at once', () => {
+  const inputByPlayerId = sampleTwoPlayers([
+    clusterCenterOf('red', 'right'),
+    clusterCenterOf('red', 'jump'),
+    clusterCenterOf('blue', 'left'),
+    clusterCenterOf('blue', 'action'),
+  ]);
+
+  assert.deepEqual(pressedControls(inputByPlayerId.red), ['confirm', 'jump', 'right']);
+  assert.deepEqual(pressedControls(inputByPlayerId.blue), ['action', 'down', 'left']);
+});
+
+test('a lone touch on one side leaves the other player untouched', () => {
+  const inputByPlayerId = sampleTwoPlayers([clusterCenterOf('blue', 'jump')]);
+
+  assert.deepEqual(pressedControls(inputByPlayerId.red), []);
+  assert.deepEqual(pressedControls(inputByPlayerId.blue), ['confirm', 'jump']);
 });
