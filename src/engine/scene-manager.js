@@ -1,11 +1,13 @@
 export class SceneManager {
+  // The fullscreen control, if any, lets menus show and flip fullscreen and hide it where it is missing.
   // The sound player, if any, listens to every scene's events. It is also on the manager so
   // menus can show and flip the sound setting. The music player follows each scene's
   // musicTrackName and pauses down while a scene reports it is paused.
-  constructor({ soundPlayer = null, musicPlayer = null } = {}) {
+  constructor({ soundPlayer = null, musicPlayer = null, fullscreen = null } = {}) {
     this.currentScene = null;
     this.soundPlayer = soundPlayer;
     this.musicPlayer = musicPlayer;
+    this.fullscreen = fullscreen;
   }
 
   setScene(scene) {

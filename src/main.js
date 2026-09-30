@@ -1,6 +1,7 @@
 import { SCREEN_HEIGHT, SCREEN_WIDTH, TICK_RATE } from './engine/config.js';
 import { createGameLoop } from './engine/game-loop.js';
 import { createGamepadInput } from './engine/gamepad-input.js';
+import { createFullscreen } from './engine/fullscreen.js';
 import { combineInputs, createKeyboardInput } from './engine/input.js';
 import { Renderer } from './engine/renderer.js';
 import { SceneManager } from './engine/scene-manager.js';
@@ -133,7 +134,8 @@ async function main() {
     storage: readLocalStorage(),
   });
   musicPlayer.start();
-  const sceneManager = new SceneManager({ soundPlayer, musicPlayer });
+  const fullscreen = createFullscreen();
+  const sceneManager = new SceneManager({ soundPlayer, musicPlayer, fullscreen });
   const sprites = { claude, muse, chatgpt, gemini, grok, deepseek, mistral, props, blocks };
   // Survival builds its platforms from the Harbor stone, the first level file.
   sprites.stoneBlocks = levels[0].tileSprites;
@@ -269,21 +271,10 @@ async function main() {
     });
   }
 
-  function toggleFullscreen() {
-    // Can throw or reject if the browser denies the request (no user gesture, disabled by
-    // policy, etc.); there is nothing more to do about it than leave the game windowed.
-    try {
-      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
-      else canvas.requestFullscreen().catch(() => {});
-    } catch {
-      // ignored
-    }
-  }
-
   canvas.addEventListener('contextmenu', (event) => event.preventDefault());
 
   addEventListener('keydown', (event) => {
-    if (event.code === 'KeyF') toggleFullscreen();
+    if (event.code === 'KeyF' && !event.repeat) fullscreen.toggle();
     if (event.code === 'KeyM' && !event.repeat) soundPlayer.toggleSound();
   });
 
@@ -293,7 +284,7 @@ async function main() {
 
   // The title screen draws its own fullscreen button; this just hit-tests a click against it.
   canvas.addEventListener('click', (event) => {
-    if (!(sceneManager.currentScene instanceof TitleScene)) return;
+    if (!(sceneManager.currentScene instanceof TitleScene) || !fullscreen.supported) return;
     const bounds = canvas.getBoundingClientRect();
     const clickX = ((event.clientX - bounds.left) / bounds.width) * SCREEN_WIDTH;
     const clickY = ((event.clientY - bounds.top) / bounds.height) * SCREEN_HEIGHT;
@@ -303,7 +294,7 @@ async function main() {
       clickX <= button.x + button.width &&
       clickY >= button.y &&
       clickY <= button.y + button.height;
-    if (withinButton) toggleFullscreen();
+    if (withinButton) fullscreen.toggle();
   });
 
   // Exposed for devtools and automated checks.
