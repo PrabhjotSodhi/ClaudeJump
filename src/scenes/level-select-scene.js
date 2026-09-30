@@ -2,6 +2,7 @@ import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../engine/config.js';
 import { SeededRandom } from '../engine/seeded-random.js';
 import { THUMBNAIL_HEIGHT, THUMBNAIL_WIDTH } from '../levels/level-thumbnail.js';
 import { PLAYERS } from '../levels/versus-arena.js';
+import { drawKeyHints, drawMenuTitle, wrapMenuIndex } from '../ui/menu-kit.js';
 import { MENU_BACKGROUND_COLOR, NO_WATER_LINE_Y } from '../ui/menu-screen.js';
 import { drawPanel } from '../ui/panel.js';
 import { drawText } from '../ui/text.js';
@@ -10,30 +11,36 @@ import { EYE_STIFFNESSES, GooglyEye } from '../vfx/googly-eyes.js';
 import { PausableMatchScene } from './pausable-match-scene.js';
 import { VersusScene } from './versus-scene.js';
 
-const TITLE_Y = 60;
-const TITLE_SCALE = 6;
+const TITLE_Y = 14;
 
-const GRID_COLUMNS = 3;
-const GRID_TOP_Y = 114;
-const TILE_GAP_X = 24;
-const TILE_GAP_Y = 18;
-const GRID_LEFT_X = (SCREEN_WIDTH - GRID_COLUMNS * THUMBNAIL_WIDTH - (GRID_COLUMNS - 1) * TILE_GAP_X) / 2;
-// The panel border drawn around every thumbnail, and the cursor ring drawn around that.
+const MAX_CARDS_PER_ROW = 4;
+const GRID_TOP_Y = 34;
+const GRID_BOTTOM_Y = 316;
+const TILE_GAP_X = 16;
+const TILE_GAP_Y = 8;
+// The panel border drawn around every thumbnail. The selected tile's border turns into the selection frame.
 const TILE_BORDER = 2;
-const CURSOR_GAP = 1;
-const CURSOR_THICKNESS = 2;
-const CAPTION_BOTTOM_MARGIN = 14;
-const CAPTION_COLOR = '#ffffff';
+const SELECTED_LIFT = 2;
+const CAPTION_HEIGHT = 12;
+const CAPTION_GLYPH_HEIGHT = 5;
+const CAPTION_COLOR = '#c0cbdc';
+const DIM_COLOR = '#181425';
+const DIM_ALPHA = 0.4;
 const BADGE_MARGIN = 4;
 
 const RANDOM_LABEL = 'Random';
-const RANDOM_MARK_SCALE = 8;
-const RANDOM_MARK_TOP_Y = 16;
+const RANDOM_MARK_SCALE = 6;
+const RANDOM_MARK_TOP_Y = 14;
 const RANDOM_MARK_COLOR = '#5a6988';
 
-const STATUS_Y = 330;
+const STATUS_Y = 322;
 const STATUS_OFFSET_X = 148;
-const PICKED_COLOR = '#feae34';
+const HINT_Y = 340;
+const HINTS = [
+  { keys: ['A', 'D', 'S', 'Left', 'Right', 'Down'], label: 'Move' },
+  { keys: ['W', 'Up'], label: 'Vote' },
+];
+const SELECTED_COLOR = '#feae34';
 
 // How long the picked tile flashes before the match starts, and how fast it flashes.
 const REVEAL_TICKS = 60;
@@ -81,8 +88,9 @@ export class LevelSelectScene {
       const input = inputByPlayerId[spawn.id] ?? {};
       const previous = this.previousInput[spawn.id];
       if (!this.lockedByPlayerId[spawn.id]) {
-        if (input.left && !previous.left) this.moveCursor(spawn.id, -1);
-        if (input.right && !previous.right) this.moveCursor(spawn.id, 1);
+        if (input.left && !previous.left) this.moveAlongRow(spawn.id, -1);
+        if (input.right && !previous.right) this.moveAlongRow(spawn.id, 1);
+        if (input.down && !previous.down) this.moveDown(spawn.id);
         if (input.jump && !previous.jump) this.lockedByPlayerId[spawn.id] = true;
       }
       this.previousInput[spawn.id] = { ...input };
@@ -94,9 +102,23 @@ export class LevelSelectScene {
     }
   }
 
-  moveCursor(playerId, direction) {
-    const tileCount = this.levels.length + 1;
-    this.cursorByPlayerId[playerId] = (this.cursorByPlayerId[playerId] + direction + tileCount) % tileCount;
+  // Left and right wrap inside the cursor's row, which may be a shorter last row.
+  moveAlongRow(playerId, direction) {
+    const cardCount = this.levels.length + 1;
+    const { columns } = levelSelectLayout(cardCount);
+    const cursor = this.cursorByPlayerId[playerId];
+    const rowStart = cursor - (cursor % columns);
+    const rowLength = Math.min(columns, cardCount - rowStart);
+    this.cursorByPlayerId[playerId] = rowStart + wrapMenuIndex(cursor - rowStart, direction, rowLength);
+  }
+
+  // Down keeps the column and wraps from the last row to the first. A column missing from the last row skips it.
+  moveDown(playerId) {
+    const cardCount = this.levels.length + 1;
+    const { columns } = levelSelectLayout(cardCount);
+    const cursor = this.cursorByPlayerId[playerId];
+    const below = cursor + columns;
+    this.cursorByPlayerId[playerId] = below < cardCount ? below : cursor % columns;
   }
 
   // Every vote for a level is one ticket for it, and a Random vote is one ticket for every level.
@@ -141,26 +163,45 @@ function drawLevelSelectBackground(context) {
   context.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 }
 
-// Top left corner of the thumbnail inside a tile's border. A last row that is not full sits centered.
-function tilePosition(tileIndex, tileCount) {
-  const column = tileIndex % GRID_COLUMNS;
-  const row = Math.floor(tileIndex / GRID_COLUMNS);
-  const tilesInRow = Math.min(GRID_COLUMNS, tileCount - row * GRID_COLUMNS);
-  const rowIndent = ((GRID_COLUMNS - tilesInRow) * (THUMBNAIL_WIDTH + TILE_GAP_X)) / 2;
-  return {
-    x: GRID_LEFT_X + rowIndent + column * (THUMBNAIL_WIDTH + TILE_GAP_X),
-    y: GRID_TOP_Y + row * (THUMBNAIL_HEIGHT + TILE_GAP_Y),
-  };
+// Cards fill rows evenly, at most MAX_CARDS_PER_ROW to a row, and a last row that is not full sits
+// centered. Each tile is the thumbnail's top left corner, inside its border. Each bounds box holds the
+// border, the thumbnail, the caption and the lift of a selected tile, so no two may overlap.
+export function levelSelectLayout(cardCount) {
+  const rows = Math.ceil(cardCount / MAX_CARDS_PER_ROW);
+  const columns = Math.ceil(cardCount / rows);
+  const tileWidth = THUMBNAIL_WIDTH + TILE_BORDER * 2;
+  const tileHeight = THUMBNAIL_HEIGHT + TILE_BORDER * 2 + CAPTION_HEIGHT;
+  const gridHeight = rows * tileHeight + (rows - 1) * TILE_GAP_Y;
+  const gridTopY = GRID_TOP_Y + Math.floor((GRID_BOTTOM_Y - GRID_TOP_Y - gridHeight) / 2);
+  const tiles = [];
+  const bounds = [];
+  for (let index = 0; index < cardCount; index++) {
+    const row = Math.floor(index / columns);
+    const cardsInRow = Math.min(columns, cardCount - row * columns);
+    const rowWidth = cardsInRow * tileWidth + (cardsInRow - 1) * TILE_GAP_X;
+    const boundsX = (SCREEN_WIDTH - rowWidth) / 2 + (index % columns) * (tileWidth + TILE_GAP_X);
+    const boundsY = gridTopY + row * (tileHeight + TILE_GAP_Y);
+    tiles.push({ x: boundsX + TILE_BORDER, y: boundsY + TILE_BORDER });
+    bounds.push({ x: boundsX, y: boundsY - SELECTED_LIFT, width: tileWidth, height: tileHeight + SELECTED_LIFT });
+  }
+  return { rows, columns, tiles, bounds };
 }
 
-function drawTile(context, x, y, level, captionColor) {
-  drawPanel(
-    context,
-    x - TILE_BORDER,
-    y - TILE_BORDER,
-    THUMBNAIL_WIDTH + TILE_BORDER * 2,
-    THUMBNAIL_HEIGHT + TILE_BORDER * 2,
-  );
+function drawFrame(context, x, y) {
+  context.fillStyle = SELECTED_COLOR;
+  const width = THUMBNAIL_WIDTH + TILE_BORDER * 2;
+  const height = THUMBNAIL_HEIGHT + TILE_BORDER * 2;
+  context.fillRect(x, y, width, TILE_BORDER);
+  context.fillRect(x, y + height - TILE_BORDER, width, TILE_BORDER);
+  context.fillRect(x, y, TILE_BORDER, height);
+  context.fillRect(x + width - TILE_BORDER, y, TILE_BORDER, height);
+}
+
+function drawTile(context, x, y, level, { selected, dimmed }) {
+  const panelX = x - TILE_BORDER;
+  const panelY = y - TILE_BORDER;
+  drawPanel(context, panelX, panelY, THUMBNAIL_WIDTH + TILE_BORDER * 2, THUMBNAIL_HEIGHT + TILE_BORDER * 2);
+  if (selected) drawFrame(context, panelX, panelY);
   if (level) {
     context.imageSmoothingEnabled = false;
     context.drawImage(level.thumbnail, x, y);
@@ -171,32 +212,21 @@ function drawTile(context, x, y, level, captionColor) {
       color: RANDOM_MARK_COLOR,
     });
   }
-  const caption = level ? level.name : RANDOM_LABEL;
-  drawText(context, caption, x + THUMBNAIL_WIDTH / 2, y + THUMBNAIL_HEIGHT - CAPTION_BOTTOM_MARGIN, {
-    align: 'center',
-    color: captionColor,
-  });
+  if (dimmed) {
+    context.globalAlpha = DIM_ALPHA;
+    context.fillStyle = DIM_COLOR;
+    context.fillRect(x, y, THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT);
+    context.globalAlpha = 1;
+  }
 }
 
-// A ring around the tile's border. Given two colors, the left half takes the first and the right half the second.
-function drawRing(context, x, y, colors) {
-  const inset = TILE_BORDER + CURSOR_GAP + CURSOR_THICKNESS;
-  const ringX = x - inset;
-  const ringY = y - inset;
-  const ringWidth = THUMBNAIL_WIDTH + inset * 2;
-  const ringHeight = THUMBNAIL_HEIGHT + inset * 2;
-  colors.forEach((color, index) => {
-    const halfWidth = ringWidth / colors.length;
-    context.save();
-    context.beginPath();
-    context.rect(ringX + index * halfWidth, ringY, halfWidth, ringHeight);
-    context.clip();
-    context.fillStyle = color;
-    context.fillRect(ringX, ringY, ringWidth, CURSOR_THICKNESS);
-    context.fillRect(ringX, ringY + ringHeight - CURSOR_THICKNESS, ringWidth, CURSOR_THICKNESS);
-    context.fillRect(ringX, ringY, CURSOR_THICKNESS, ringHeight);
-    context.fillRect(ringX + ringWidth - CURSOR_THICKNESS, ringY, CURSOR_THICKNESS, ringHeight);
-    context.restore();
+// The caption stays put when its tile lifts, so it sits at the tile's resting position.
+function drawCaption(context, x, restingY, level, selected) {
+  const captionY = restingY + THUMBNAIL_HEIGHT + TILE_BORDER + Math.floor((CAPTION_HEIGHT - CAPTION_GLYPH_HEIGHT) / 2);
+  drawText(context, level ? level.name : RANDOM_LABEL, x + THUMBNAIL_WIDTH / 2, captionY, {
+    align: 'center',
+    color: selected ? SELECTED_COLOR : CAPTION_COLOR,
+    outlineColor: null,
   });
 }
 
@@ -215,34 +245,27 @@ function drawBadge(context, x, y, playerIndex, character, sprites) {
 }
 
 function drawLevelSelectUi(context, scene) {
-  drawText(context, 'Level Select', SCREEN_WIDTH / 2, TITLE_Y, { scale: TITLE_SCALE, align: 'center' });
+  drawMenuTitle(context, 'Level Select', TITLE_Y);
 
+  const cardCount = scene.levels.length + 1;
+  const { tiles } = levelSelectLayout(cardCount);
   const pickedIndex = scene.levels.indexOf(scene.pickedLevel);
-  for (let tileIndex = 0; tileIndex <= scene.levels.length; tileIndex++) {
-    const { x, y } = tilePosition(tileIndex, scene.levels.length + 1);
-    drawTile(context, x, y, scene.levels[tileIndex], tileIndex === pickedIndex ? PICKED_COLOR : CAPTION_COLOR);
-
+  const flashOn = Math.floor(scene.revealTicksRemaining / REVEAL_FLASH_TICKS) % 2 === 0;
+  for (let tileIndex = 0; tileIndex < cardCount; tileIndex++) {
     const playersHere = PLAYERS.filter((spawn) => scene.cursorByPlayerId[spawn.id] === tileIndex);
-    if (scene.pickedLevel) {
-      const flashOn = Math.floor(scene.revealTicksRemaining / REVEAL_FLASH_TICKS) % 2 === 0;
-      if (tileIndex === pickedIndex && flashOn) drawRing(context, x, y, [PICKED_COLOR]);
-    } else if (playersHere.length > 0) {
-      drawRing(
-        context,
-        x,
-        y,
-        playersHere.map((spawn) => scene.characterByPlayerId[spawn.id].tagColor),
-      );
-    }
+    const isSelected = scene.pickedLevel ? tileIndex === pickedIndex : playersHere.length > 0;
+    const isLit = scene.pickedLevel ? isSelected && flashOn : isSelected;
+    const restingY = tiles[tileIndex].y;
+    const x = tiles[tileIndex].x;
+    const y = restingY - (isLit ? SELECTED_LIFT : 0);
+    drawTile(context, x, y, scene.levels[tileIndex], { selected: isLit, dimmed: !isSelected });
+    drawCaption(context, x, restingY, scene.levels[tileIndex], isSelected);
     for (const spawn of playersHere) {
       drawBadge(context, x, y, PLAYERS.indexOf(spawn), scene.characterByPlayerId[spawn.id], scene.sprites);
     }
   }
 
-  if (scene.pickedLevel) {
-    drawText(context, scene.pickedLevel.name, SCREEN_WIDTH / 2, STATUS_Y, { align: 'center', color: PICKED_COLOR });
-    return;
-  }
+  if (scene.pickedLevel) return;
   PLAYERS.forEach((spawn, playerIndex) => {
     const centerX = SCREEN_WIDTH / 2 + (playerIndex === 0 ? -STATUS_OFFSET_X : STATUS_OFFSET_X);
     const locked = scene.lockedByPlayerId[spawn.id];
@@ -251,4 +274,5 @@ function drawLevelSelectUi(context, scene) {
       color: scene.characterByPlayerId[spawn.id].tagColor,
     });
   });
+  drawKeyHints(context, HINTS, HINT_Y);
 }
