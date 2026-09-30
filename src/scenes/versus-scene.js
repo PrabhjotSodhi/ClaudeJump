@@ -342,7 +342,13 @@ export class VersusScene {
       alreadyHitIds.add(opponent.id);
       opponent.freeze('light', SHOVE_KNOCKBACK_VELOCITY_X * shover.facing, SHOVE_KNOCKBACK_VELOCITY_Y);
       shover.freeze('light');
-      this.events.emit('player-shoved', { shoverId: shover.id, targetId: opponent.id, strength: 'light' });
+      this.events.emit('player-shoved', {
+        shoverId: shover.id,
+        targetId: opponent.id,
+        directionX: shover.facing,
+        directionY: 0,
+        strength: 'light',
+      });
     }
   }
 
@@ -458,7 +464,13 @@ export class VersusScene {
       const awayFromCenterDirection = player.x + player.width / 2 < bouncePad.x + bouncePad.width / 2 ? -1 : 1;
       const flingDirection = movingDirection === 0 ? awayFromCenterDirection : -movingDirection;
       player.freeze('light', BOUNCE_PAD_FLING_VELOCITY_X * flingDirection, BOUNCE_PAD_FLING_VELOCITY_Y);
-      this.events.emit('trap-sprung', { ownerId: bouncePad.ownerId, targetId: player.id, strength: 'light' });
+      this.events.emit('trap-sprung', {
+        ownerId: bouncePad.ownerId,
+        targetId: player.id,
+        directionX: 0,
+        directionY: -1,
+        strength: 'light',
+      });
       this.entityGroups.remove('bouncePads', bouncePad);
       return;
     }

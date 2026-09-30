@@ -10,6 +10,16 @@ export const SEA_COLUMN_WIDTH = SCREEN_WIDTH / SEA_COLUMN_COUNT;
 // How many ticks a hit freezes the hitter, the player hit and the projectile, by how hard the hit is.
 export const HITSTOP_TICKS = { light: 3, medium: 4, heavy: 6 };
 
+// How a hit looks, by how hard it is: how far and how long the screen kicks, and how many sparks fly.
+export const IMPACT_EFFECTS = {
+  light: { shakePixels: 2, shakeTicks: 8, sparkCount: 6, sparkSpeed: 3 },
+  medium: { shakePixels: 3, shakeTicks: 10, sparkCount: 10, sparkSpeed: 4 },
+  heavy: { shakePixels: 4, shakeTicks: 12, sparkCount: 16, sparkSpeed: 5 },
+};
+// Medium and heavy hits leave a trail behind the player until their knockback drops below this speed.
+export const LAUNCH_TRAIL_STRENGTHS = ['medium', 'heavy'];
+export const LAUNCH_TRAIL_MIN_SPEED = 2.5;
+
 // Online matches. A press is scheduled this many ticks ahead so it can cross the network before it is needed.
 export const INPUT_DELAY_TICKS = 4;
 export const HASH_INTERVAL_TICKS = 60;

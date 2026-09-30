@@ -398,7 +398,9 @@ test('a shove knocks the player in front away and pops them upward', () => {
   scene.update({ red: noInput(), blue: noInput() }); // release the jump/action keys held from spawn
   scene.update({ red: { left: false, right: false, jump: false, action: true }, blue: noInput() });
 
-  assert.deepEqual(shoveEvents, [{ shoverId: 'red', targetId: 'blue', strength: 'light' }]);
+  assert.deepEqual(shoveEvents, [
+    { shoverId: 'red', targetId: 'blue', directionX: 1, directionY: 0, strength: 'light' },
+  ]);
   advance(scene, HITSTOP_TICKS.light);
   assert.ok(blue.knockbackVelocityX > 0, 'the shove knocks blue away from red');
   assert.ok(blue.velocityY < 0, 'the shove pops blue upward');
@@ -707,7 +709,9 @@ test('the opponent touching a bounce pad trap emits one trap-sprung with the own
 
   for (let tick = 0; tick < 10; tick++) scene.update(neutralInputs());
 
-  assert.deepEqual(trapEvents, [{ ownerId: 'blue', targetId: 'red', strength: 'light' }]);
+  assert.deepEqual(trapEvents, [
+    { ownerId: 'blue', targetId: 'red', directionX: 0, directionY: -1, strength: 'light' },
+  ]);
 });
 
 test('landing on a neutral level bounce pad emits no trap-sprung', () => {
@@ -1196,6 +1200,44 @@ test('a rocket blast shakes the picture by whole pixels, then the shake settles'
   advance(scene, 12);
   assert.deepEqual(scene.screenShake.offset, { x: 0, y: 0 });
   assert.equal(fallenPlayer.inWater, false);
+});
+
+test('a hit kicks the picture in the direction it went, harder for stronger hits, then settles', () => {
+  const scene = new VersusScene({ level: harborLevel });
+  scene.events.emit('player-shoved', {
+    shoverId: 'red',
+    targetId: 'blue',
+    directionX: -1,
+    directionY: 0,
+    strength: 'light',
+  });
+  const lightKick = scene.screenShake.offset;
+  assert.ok(lightKick.x < 0 && lightKick.y === 0);
+  assert.ok(Number.isInteger(lightKick.x));
+
+  for (let tick = 0; tick < 8; tick++) scene.screenShake.update();
+  assert.deepEqual(scene.screenShake.offset, { x: 0, y: 0 });
+
+  scene.events.emit('player-shoved', {
+    shoverId: 'red',
+    targetId: 'blue',
+    directionX: -1,
+    directionY: 0,
+    strength: 'heavy',
+  });
+  assert.ok(scene.screenShake.offset.x < lightKick.x);
+});
+
+test('a bounce pad kicks the picture upward', () => {
+  const scene = new VersusScene({ level: harborLevel });
+  scene.events.emit('trap-sprung', {
+    ownerId: 'blue',
+    targetId: 'red',
+    directionX: 0,
+    directionY: -1,
+    strength: 'light',
+  });
+  assert.ok(scene.screenShake.offset.y < 0 && scene.screenShake.offset.x === 0);
 });
 
 test('falling in the sea shakes the picture', () => {
