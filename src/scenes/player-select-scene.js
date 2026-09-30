@@ -264,7 +264,9 @@ export class PlayerSelectScene {
 
     renderer.clearGameLayer();
     renderer.clearUiLayer();
-    drawWithMenuMotion(renderer.uiContext, this.menuMotion, () => drawPlayerSelectUi(renderer.uiContext, this));
+    drawWithMenuMotion(renderer.uiContext, this.menuMotion, () =>
+      drawPlayerSelectUi(renderer.uiContext, this, renderer.touchActive ? 2 : 1),
+    );
   }
 }
 
@@ -273,12 +275,12 @@ function drawPlayerSelectBackground(context) {
   context.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 }
 
-function drawPlayerCard(context, scene, spawn) {
+function drawPlayerCard(context, scene, spawn, textScale) {
   const state = scene.stateByPlayerId[spawn.id];
   const seatIndex = PLAYERS.indexOf(spawn);
   const box = playerCardBox(seatIndex);
   if (state === 'unjoined') {
-    drawEmptySelectCard(context, box, spawn, [JOIN_TEXT_BY_PLAYER_ID[spawn.id]]);
+    drawEmptySelectCard(context, box, spawn, [JOIN_TEXT_BY_PLAYER_ID[spawn.id]], textScale);
     return;
   }
   context.save();
@@ -292,13 +294,15 @@ function drawPlayerCard(context, scene, spawn) {
     canPick: state === 'picking',
     status:
       state === 'ready' ? { text: 'READY!', color: SELECTED_COLOR } : { text: 'Not ready', color: NOT_READY_COLOR },
+    textScale,
   });
   context.restore();
 }
 
-function drawPlayerSelectUi(context, scene) {
+// Touch means a phone, where the card text is drawn at textScale 2 so it stays readable.
+function drawPlayerSelectUi(context, scene, textScale) {
   drawMenuTitle(context, 'Player Select', TITLE_Y);
-  for (const spawn of PLAYERS) drawPlayerCard(context, scene, spawn);
+  for (const spawn of PLAYERS) drawPlayerCard(context, scene, spawn, textScale);
   drawKeyHintPanel(context, KEY_HINT_ROWS, { topY: HINTS_PANEL_TOP_Y, width: HINTS_PANEL_WIDTH });
   if (scene.countdownTicksRemaining !== null) {
     drawText(
