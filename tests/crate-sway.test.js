@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { swayOffset } from '../src/entities/crate.js';
+import { swayOffset } from '../src/vfx/parachute-sway.js';
 
 test('the sway is the same for the same tick count and distance', () => {
   assert.equal(swayOffset(17, 90), swayOffset(17, 90));

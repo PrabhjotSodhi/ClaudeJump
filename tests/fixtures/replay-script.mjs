@@ -19,7 +19,7 @@ function buildInput({ left = false, right = false, jump = false, down = false, a
   return { left, right, jump, down, action, pause: false };
 }
 
-function scriptForTick(tick) {
+export function scriptForTick(tick) {
   const red = {};
   const blue = {};
 
