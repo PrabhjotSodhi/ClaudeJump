@@ -33,6 +33,7 @@ import { drawHud } from '../ui/hud.js';
 import { MatchStats } from '../ui/match-stats.js';
 import { drawPlayerTags } from '../ui/player-tags.js';
 import { WinPips } from '../ui/win-pips.js';
+import { ClashSparks, drawClashSparks } from '../vfx/clash-sparks.js';
 import { PlayerEyes } from '../vfx/player-eyes.js';
 import { drawParticles, HARD_LANDING_SPEED, Particles } from '../vfx/particles.js';
 import { SeaRipple } from '../vfx/sea-ripple.js';
@@ -135,6 +136,12 @@ export class VersusScene {
     // Display-only, created here for the same reason: it must never miss a player-wrapped event.
     this.playerEyes = new PlayerEyes();
     this.playerEyes.attach(this.events, () => this.players);
+    this.clashSparks = new ClashSparks();
+    this.clashSparks.attach(
+      this.events,
+      () => this.players,
+      () => this.tickCount,
+    );
     this.wrapPuffTracker = new WrapPuffTracker();
     this.wrapPuffTracker.attach(
       this.events,
@@ -678,6 +685,7 @@ export class VersusScene {
     drawWrapPuffs(renderer.gameContext, this);
     this.entityGroups.renderAll(renderer.gameContext, { sprites: this.sprites, playerEyes: this.playerEyes });
     drawParticles(renderer.gameContext, this);
+    drawClashSparks(renderer.gameContext, this);
     drawHeldCardIcons(renderer.gameContext, this);
     drawPlayerTags(renderer.gameContext, this);
 
