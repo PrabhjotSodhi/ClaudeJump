@@ -22,6 +22,7 @@ export class Bomb extends Entity {
     this.velocityY = BOMB_THROW_VELOCITY_Y;
     this.ticksRemaining = BOMB_FUSE_TICKS;
     this.exploded = false;
+    this.hitstopTicksRemaining = null;
   }
 
   overlaps(rectangle) {

@@ -1,5 +1,5 @@
 import { SCREEN_HEIGHT, SCREEN_WIDTH, TILE_SIZE } from '../engine/config.js';
-import { knockBackPlayersInBlast } from '../engine/blast.js';
+import { BLAST_STRENGTH, blastIsReady, knockBackPlayersInBlast } from '../engine/blast.js';
 import { EntityGroups } from '../engine/entity-groups.js';
 import { EventEmitter } from '../engine/events.js';
 import { SeededRandom } from '../engine/seeded-random.js';
@@ -317,7 +317,7 @@ export class SurvivalScene {
   updateCrabs(player) {
     for (const crab of this.entityGroups.get('crabs')) {
       crab.update();
-      if (player.inWater || !player.overlaps(crab)) continue;
+      if (player.inWater || player.isFrozen || !player.overlaps(crab)) continue;
       const feetY = player.y + player.height;
       if (player.previousY + player.height <= crab.y && feetY >= crab.y) {
         player.launchUpward(CRAB_STOMP_VELOCITY_Y);
@@ -325,8 +325,9 @@ export class SurvivalScene {
         this.events.emit('crab-stomped', { x: crab.x + crab.width / 2, y: crab.y });
       } else if (player.knockbackVelocityX === 0) {
         const awayDirection = Math.sign(player.x + player.width / 2 - (crab.x + crab.width / 2)) || -player.facing;
-        player.applyKnockback(CRAB_KNOCKBACK_VELOCITY_X * awayDirection, CRAB_KNOCKBACK_VELOCITY_Y);
-        this.events.emit('player-pinched', { playerId: player.id });
+        player.freeze('light', CRAB_KNOCKBACK_VELOCITY_X * awayDirection, CRAB_KNOCKBACK_VELOCITY_Y);
+        crab.freeze('light');
+        this.events.emit('player-pinched', { playerId: player.id, strength: 'light' });
       }
     }
   }
@@ -353,10 +354,11 @@ export class SurvivalScene {
     for (const rocket of this.entityGroups.get('rockets')) {
       rocket.update(this.players, []);
       if (rocket.exploded) {
+        if (!blastIsReady(rocket, this.players, rocket.shooterId)) continue;
         const blastCenterX = rocket.x + rocket.width / 2;
         const blastCenterY = rocket.y + rocket.height / 2;
         const playerIds = knockBackPlayersInBlast(this.players, blastCenterX, blastCenterY);
-        this.events.emit('rocket-exploded', { x: blastCenterX, y: blastCenterY, playerIds });
+        this.events.emit('rocket-exploded', { x: blastCenterX, y: blastCenterY, playerIds, strength: BLAST_STRENGTH });
         this.entityGroups.remove('rockets', rocket);
       } else if (rocket.x > SCREEN_WIDTH || rocket.x + rocket.width < 0) {
         this.entityGroups.remove('rockets', rocket);

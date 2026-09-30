@@ -21,6 +21,7 @@ export class Rocket extends Entity {
     this.velocityY = 0;
     this.ticksRemaining = LIFETIME_TICKS;
     this.exploded = false;
+    this.hitstopTicksRemaining = null;
   }
 
   explode() {

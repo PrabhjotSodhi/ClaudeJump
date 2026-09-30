@@ -1,6 +1,6 @@
 import { CARD_NAMES } from '../cards/card-definitions.js';
 import { SCREEN_WIDTH, TILE_SIZE } from '../engine/config.js';
-import { knockBackPlayersInBlast } from '../engine/blast.js';
+import { BLAST_STRENGTH, blastIsReady, knockBackPlayersInBlast } from '../engine/blast.js';
 import { EntityGroups } from '../engine/entity-groups.js';
 import { EventEmitter } from '../engine/events.js';
 import { SeededRandom } from '../engine/seeded-random.js';
@@ -32,12 +32,6 @@ import { drawParticles, HARD_LANDING_SPEED, Particles } from '../vfx/particles.j
 import { SeaRipple } from '../vfx/sea-ripple.js';
 import { ScreenShake } from '../vfx/screen-shake.js';
 import { drawWrapPuffs, WrapPuffTracker } from '../vfx/wrap-puff.js';
-
-// How many ticks all game logic freezes after each kind of hit. Overlapping hits take the longer
-// pause, they never add up.
-const SHOVE_HIT_PAUSE_TICKS = 3;
-const DASH_HIT_PAUSE_TICKS = 4;
-const BLAST_HIT_PAUSE_TICKS = 6;
 
 const WINS_NEEDED = 5;
 const READY_TICKS = 60;
@@ -113,7 +107,6 @@ export class VersusScene {
     // Elapsed scene ticks, kept across rounds. Display-only effects (like the held card flash)
     // time themselves off it instead of off rendered frames.
     this.tickCount = 0;
-    this.hitPauseTicksRemaining = 0;
     // Display-only, and created here for the same reason as the stats: it must never miss an event.
     this.screenShake = new ScreenShake();
     this.screenShake.attach(this.events);
@@ -185,7 +178,6 @@ export class VersusScene {
     this.fightTicks = 0;
     this.suddenDeathPhase = 'none';
     this.events.emit('round-started', {});
-    this.hitPauseTicksRemaining = 0;
   }
 
   // Blocks broken in a round are gone until the next one. The level itself is never changed, so the next round
@@ -257,10 +249,6 @@ export class VersusScene {
         }
         break;
       case 'fight':
-        if (this.hitPauseTicksRemaining > 0) {
-          this.hitPauseTicksRemaining--;
-          break;
-        }
         this.fightTicks++;
         this.updateSuddenDeath();
         this.updatePlayers(inputByPlayerId);
@@ -283,11 +271,6 @@ export class VersusScene {
         this.updateBombs();
         break;
     }
-  }
-
-  requestHitPause(ticks) {
-    if (this.phase !== 'fight') return;
-    this.hitPauseTicksRemaining = Math.max(this.hitPauseTicksRemaining, ticks);
   }
 
   updateSuddenDeath() {
@@ -327,7 +310,6 @@ export class VersusScene {
         const hitZone = player.shoveHitZone;
         this.breakBlocksWhere((block) => blockOverlaps(block, hitZone));
       }
-      if (player.isShoveActive) this.resolveShoveHit(player);
       if (player.dashTicksRemaining > 0 && !player.inWater) {
         const reachedBody = {
           x: player.x - DASH_BREAK_REACH,
@@ -343,6 +325,8 @@ export class VersusScene {
       }
       this.wrapPlayerAroundScreen(player);
     }
+    // Hits resolve once everyone has moved, so a freeze lasts the same number of ticks for every player.
+    for (const player of this.players) if (player.isShoveActive) this.resolveShoveHit(player);
     this.resolvePlayerCollisions();
   }
 
@@ -356,9 +340,9 @@ export class VersusScene {
       if (!opponent.overlaps(hitZone)) continue;
 
       alreadyHitIds.add(opponent.id);
-      opponent.applyKnockback(SHOVE_KNOCKBACK_VELOCITY_X * shover.facing, SHOVE_KNOCKBACK_VELOCITY_Y);
-      this.requestHitPause(SHOVE_HIT_PAUSE_TICKS);
-      this.events.emit('player-shoved', { shoverId: shover.id, targetId: opponent.id });
+      opponent.freeze('light', SHOVE_KNOCKBACK_VELOCITY_X * shover.facing, SHOVE_KNOCKBACK_VELOCITY_Y);
+      shover.freeze('light');
+      this.events.emit('player-shoved', { shoverId: shover.id, targetId: opponent.id, strength: 'light' });
     }
   }
 
@@ -373,7 +357,7 @@ export class VersusScene {
     for (const rocket of this.entityGroups.get('rockets')) {
       rocket.update(this.players, platforms);
       wrapAroundScreen(rocket);
-      if (rocket.exploded) this.resolveRocketExplosion(rocket);
+      if (rocket.exploded && blastIsReady(rocket, this.players, rocket.shooterId)) this.resolveRocketExplosion(rocket);
     }
   }
 
@@ -381,12 +365,11 @@ export class VersusScene {
     const blastCenterX = rocket.x + rocket.width / 2;
     const blastCenterY = rocket.y + rocket.height / 2;
     const playerIds = this.resolveBlast(blastCenterX, blastCenterY);
-    this.events.emit('rocket-exploded', { x: blastCenterX, y: blastCenterY, playerIds });
+    this.events.emit('rocket-exploded', { x: blastCenterX, y: blastCenterY, playerIds, strength: BLAST_STRENGTH });
     this.entityGroups.remove('rockets', rocket);
   }
 
   resolveBlast(blastCenterX, blastCenterY) {
-    this.requestHitPause(BLAST_HIT_PAUSE_TICKS);
     const knockedPlayerIds = knockBackPlayersInBlast(this.players, blastCenterX, blastCenterY);
     this.breakBlocksWhere((block) => blockIsInBlast(block, blastCenterX, blastCenterY));
     return knockedPlayerIds;
@@ -403,12 +386,12 @@ export class VersusScene {
     for (const bomb of this.entityGroups.get('bombs')) {
       bomb.update(this.players, platforms, this.waterLineY);
       wrapAroundScreen(bomb);
-      if (!bomb.exploded) continue;
+      if (!bomb.exploded || !blastIsReady(bomb, this.players, bomb.throwerId)) continue;
 
       const blastCenterX = bomb.x + bomb.width / 2;
       const blastCenterY = bomb.y + bomb.height / 2;
       const playerIds = this.resolveBlast(blastCenterX, blastCenterY);
-      this.events.emit('bomb-exploded', { x: blastCenterX, y: blastCenterY, playerIds });
+      this.events.emit('bomb-exploded', { x: blastCenterX, y: blastCenterY, playerIds, strength: BLAST_STRENGTH });
       this.entityGroups.remove('bombs', bomb);
     }
   }
@@ -474,9 +457,8 @@ export class VersusScene {
       const movingDirection = Math.sign(player.velocityX + player.knockbackVelocityX);
       const awayFromCenterDirection = player.x + player.width / 2 < bouncePad.x + bouncePad.width / 2 ? -1 : 1;
       const flingDirection = movingDirection === 0 ? awayFromCenterDirection : -movingDirection;
-      player.applyKnockback(BOUNCE_PAD_FLING_VELOCITY_X * flingDirection, BOUNCE_PAD_FLING_VELOCITY_Y);
-      this.events.emit('trap-sprung', { ownerId: bouncePad.ownerId, targetId: player.id });
-      this.requestHitPause(SHOVE_HIT_PAUSE_TICKS);
+      player.freeze('light', BOUNCE_PAD_FLING_VELOCITY_X * flingDirection, BOUNCE_PAD_FLING_VELOCITY_Y);
+      this.events.emit('trap-sprung', { ownerId: bouncePad.ownerId, targetId: player.id, strength: 'light' });
       this.entityGroups.remove('bouncePads', bouncePad);
       return;
     }
@@ -557,10 +539,9 @@ export class VersusScene {
       const rightPlayer = leftPlayer === playerA ? playerB : playerA;
       if (!this.dashHitPairIds.has(pairId)) {
         this.dashHitPairIds.add(pairId);
-        leftPlayer.applyKnockback(-DASH_KNOCKBACK_VELOCITY_X, 0);
-        rightPlayer.applyKnockback(DASH_KNOCKBACK_VELOCITY_X, 0);
-        this.requestHitPause(DASH_HIT_PAUSE_TICKS);
-        this.events.emit('dash-hit', { playerIds: [playerA.id, playerB.id] });
+        leftPlayer.freeze('medium', -DASH_KNOCKBACK_VELOCITY_X, 0);
+        rightPlayer.freeze('medium', DASH_KNOCKBACK_VELOCITY_X, 0);
+        this.events.emit('dash-hit', { playerIds: [playerA.id, playerB.id], strength: 'medium' });
       }
     }
 

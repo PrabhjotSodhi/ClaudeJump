@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { SCREEN_WIDTH } from '../src/engine/config.js';
+import { HITSTOP_TICKS, SCREEN_WIDTH } from '../src/engine/config.js';
 import { Crate } from '../src/entities/crate.js';
 import { Platform } from '../src/entities/platform.js';
 import { Rocket } from '../src/entities/rocket.js';
@@ -27,8 +27,6 @@ function findPlayer(scene, id) {
 
 const READY_TICKS = 60;
 const DASH_KNOCKBACK_VELOCITY_X = 8;
-const DASH_HIT_PAUSE_TICKS = 4;
-const SHOVE_HIT_PAUSE_TICKS = 3;
 
 test('falling in the sea scores the other player', () => {
   const scene = new VersusScene({ level: harborLevel });
@@ -133,7 +131,6 @@ test('two players walking into each other pass through and end up overlapping', 
   assert.ok(red.x > blue.x, 'red walked through blue to the other side');
   assert.equal(red.knockbackVelocityX, 0);
   assert.equal(blue.knockbackVelocityX, 0);
-  assert.equal(scene.hitPauseTicksRemaining, 0);
 });
 
 test('a player walking into a standing player does not move them', () => {
@@ -179,7 +176,7 @@ test('a player landing on another player passes through, with no bounce, knockba
   for (let tick = 0; tick < 20; tick++) {
     scene.update(neutralInputs());
     redPeakUpwardSpeed = Math.max(redPeakUpwardSpeed, -red.velocityY);
-    assert.equal(scene.hitPauseTicksRemaining, 0, `no hit pause on tick ${tick}`);
+    assert.equal(red.isFrozen, false, `no freeze on tick ${tick}`);
   }
 
   assert.equal(redPeakUpwardSpeed, 0, 'the lander never bounces up');
@@ -343,8 +340,9 @@ test('a dash into the opponent knocks them away', () => {
   }
 
   assert.equal(dashHitEvents.length, 1, 'the dash carries red into blue');
+  assert.equal(dashHitEvents[0].strength, 'medium');
+  advance(scene, HITSTOP_TICKS.medium);
   assert.equal(blue.knockbackVelocityX, DASH_KNOCKBACK_VELOCITY_X);
-  assert.equal(scene.hitPauseTicksRemaining, DASH_HIT_PAUSE_TICKS);
 
   for (let tick = 0; tick < 15; tick++) {
     scene.update({ red: noInput(), blue: noInput() });
@@ -375,6 +373,7 @@ test('a dash into an opponent already overlapping them still lands the dash hit'
   scene.update({ red: { left: false, right: false, jump: false, action: true }, blue: noInput() });
 
   assert.equal(dashHitEvents.length, 1, 'the dash lands a hit immediately');
+  advance(scene, HITSTOP_TICKS.medium);
   assert.equal(blue.knockbackVelocityX, DASH_KNOCKBACK_VELOCITY_X);
 });
 
@@ -399,7 +398,8 @@ test('a shove knocks the player in front away and pops them upward', () => {
   scene.update({ red: noInput(), blue: noInput() }); // release the jump/action keys held from spawn
   scene.update({ red: { left: false, right: false, jump: false, action: true }, blue: noInput() });
 
-  assert.deepEqual(shoveEvents, [{ shoverId: 'red', targetId: 'blue' }]);
+  assert.deepEqual(shoveEvents, [{ shoverId: 'red', targetId: 'blue', strength: 'light' }]);
+  advance(scene, HITSTOP_TICKS.light);
   assert.ok(blue.knockbackVelocityX > 0, 'the shove knocks blue away from red');
   assert.ok(blue.velocityY < 0, 'the shove pops blue upward');
 
@@ -520,11 +520,12 @@ test('a rocket blast pushes a player away from the blast center and emits rocket
   const explosionEvents = [];
   scene.events.on('rocket-exploded', (event) => explosionEvents.push(event));
 
-  scene.update(neutralInputs());
+  advance(scene, 1 + HITSTOP_TICKS.heavy);
 
   assert.ok(red.knockbackVelocityX < 0, 'the player left of the blast is pushed further left');
   assert.ok(blue.knockbackVelocityX > 0, 'the player right of the blast is pushed further right');
   assert.equal(explosionEvents.length, 1);
+  assert.equal(explosionEvents[0].strength, 'heavy');
   assert.equal(explosionEvents[0].x, rocket.x + rocket.width / 2);
   assert.equal(explosionEvents[0].y, rocket.y + rocket.height / 2);
   assert.equal(scene.entityGroups.get('rockets').length, 0, 'the exploded rocket is removed');
@@ -666,6 +667,7 @@ function walkIntoTrap(startX, direction) {
   standOnMiddlePlatform(red, startX);
   const walking = { red: { ...noInput(), left: direction < 0, right: direction > 0 }, blue: noInput() };
   for (let tick = 0; tick < 60 && scene.entityGroups.get('bouncePads').length > 0; tick++) scene.update(walking);
+  advance(scene, HITSTOP_TICKS.light);
   return { scene, red };
 }
 
@@ -691,7 +693,7 @@ test('the opponent standing still on a bounce pad trap is thrown away from its c
     const { scene, red } = sceneWithTrapPad();
     standOnMiddlePlatform(red, standX);
 
-    scene.update(neutralInputs());
+    advance(scene, 1 + HITSTOP_TICKS.light);
 
     assert.equal(Math.sign(red.knockbackVelocityX), expectedSign);
   }
@@ -705,7 +707,7 @@ test('the opponent touching a bounce pad trap emits one trap-sprung with the own
 
   for (let tick = 0; tick < 10; tick++) scene.update(neutralInputs());
 
-  assert.deepEqual(trapEvents, [{ ownerId: 'blue', targetId: 'red' }]);
+  assert.deepEqual(trapEvents, [{ ownerId: 'blue', targetId: 'red', strength: 'light' }]);
 });
 
 test('landing on a neutral level bounce pad emits no trap-sprung', () => {
@@ -726,13 +728,13 @@ test('landing on a neutral level bounce pad emits no trap-sprung', () => {
   assert.deepEqual(trapEvents, []);
 });
 
-test('a bounce pad trap throw freezes the game like a shove hit', () => {
+test('a bounce pad trap throw freezes the opponent before the launch', () => {
   const { scene, red } = sceneWithTrapPad();
   standOnMiddlePlatform(red, TRAP_PAD_X - 4);
 
   scene.update(neutralInputs());
-
-  assert.equal(scene.hitPauseTicksRemaining, SHOVE_HIT_PAUSE_TICKS);
+  assert.equal(red.isFrozen, true);
+  assert.equal(red.knockbackVelocityX, 0);
 });
 
 test('a bounce pad trap throws the opponent about 120 px on flat ground', () => {
@@ -1184,48 +1186,6 @@ test('landing on a rooftops fixed bounce pad launches the player', () => {
   assert.equal(red.velocityY, -12.5, 'the pad launches the player upward at the neutral pad speed');
 });
 
-test('a dash hit freezes game logic for exactly the dash pause ticks', () => {
-  const scene = new VersusScene({ level: harborLevel });
-  advance(scene, READY_TICKS);
-  const red = findPlayer(scene, 'red');
-  const blue = findPlayer(scene, 'blue');
-  red.x = 264;
-  red.y = 116;
-  red.onGround = true;
-  red.facing = 1;
-  red.dashTicksRemaining = 10;
-  blue.x = 300;
-  blue.y = 116;
-  blue.onGround = true;
-
-  const dashHitEvents = [];
-  scene.events.on('dash-hit', (event) => dashHitEvents.push(event));
-  for (let tick = 0; tick < 20 && dashHitEvents.length === 0; tick++) scene.update(neutralInputs());
-  assert.equal(scene.hitPauseTicksRemaining, DASH_HIT_PAUSE_TICKS);
-  const frozenFightTicks = scene.fightTicks;
-  const frozenX = red.x;
-  const frozenTickCount = scene.tickCount;
-
-  advance(scene, DASH_HIT_PAUSE_TICKS);
-  assert.equal(red.x, frozenX, 'players do not move during the pause');
-  assert.equal(scene.fightTicks, frozenFightTicks, 'the round timer stands still');
-  assert.equal(scene.tickCount, frozenTickCount + DASH_HIT_PAUSE_TICKS, 'display timing keeps ticking');
-  assert.equal(scene.hitPauseTicksRemaining, 0);
-
-  scene.update(neutralInputs());
-  assert.notEqual(red.x, frozenX, 'players move again on the tick after');
-});
-
-test('overlapping hits take the longer pause instead of adding up', () => {
-  const scene = new VersusScene({ level: harborLevel });
-  advance(scene, READY_TICKS);
-  scene.requestHitPause(6);
-  scene.requestHitPause(3);
-  assert.equal(scene.hitPauseTicksRemaining, 6);
-  scene.requestHitPause(6);
-  assert.equal(scene.hitPauseTicksRemaining, 6);
-});
-
 test('a rocket blast shakes the picture by whole pixels, then the shake settles', () => {
   const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
@@ -1261,7 +1221,7 @@ test('a blast names the players it knocked back, and only them', () => {
   const explosionEvents = [];
   scene.events.on('rocket-exploded', (event) => explosionEvents.push(event));
 
-  scene.update(neutralInputs());
+  advance(scene, 1 + HITSTOP_TICKS.heavy);
 
   assert.deepEqual(explosionEvents[0].playerIds, ['red']);
 });

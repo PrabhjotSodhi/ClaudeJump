@@ -1,3 +1,4 @@
+import { HITSTOP_TICKS } from '../engine/config.js';
 import { PhysicsEntity } from '../engine/physics-entity.js';
 
 export const CRAB_WIDTH = 20;
@@ -28,9 +29,18 @@ export class Crab extends PhysicsEntity {
     this.minX = minX;
     this.maxX = maxX;
     this.velocityX = CRAB_SPEED * direction;
+    this.hitstopTicksRemaining = 0;
+  }
+
+  freeze(strength) {
+    this.hitstopTicksRemaining = Math.max(this.hitstopTicksRemaining, HITSTOP_TICKS[strength]);
   }
 
   update() {
+    if (this.hitstopTicksRemaining > 0) {
+      this.hitstopTicksRemaining--;
+      return;
+    }
     const nextX = this.x + this.velocityX;
     if (nextX < this.minX || nextX > this.maxX) {
       this.velocityX = -this.velocityX;

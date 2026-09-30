@@ -9,7 +9,6 @@ const VERSUS_FIELDS = [
   'waterLineY',
   'fightTicks',
   'suddenDeathPhase',
-  'hitPauseTicksRemaining',
   'ticksUntilCrateSpawn',
   'skipNextReadyPhase',
   'wins',
