@@ -22,6 +22,15 @@ const LIGHTHOUSE_BEAM_LENGTH = 360;
 const LIGHTHOUSE_BEAM_START = 6;
 const LIGHTHOUSE_BEAM_SPREAD = 0.1;
 const LIGHTHOUSE_FLARE_SINE = 0.9;
+const WELDING_SPOTS = [
+  { x: 134, y: 178, offsetTicks: 0 },
+  { x: 302, y: 148, offsetTicks: 50 },
+  { x: 446, y: 178, offsetTicks: 95 },
+  { x: 518, y: 148, offsetTicks: 30 },
+];
+const WELDING_CYCLE_TICKS = 140;
+const WELDING_SPARK_TICKS = 24;
+const WELDING_SPARKS_PER_SHOWER = 5;
 
 function fillRect(context, color, x, y, width, height) {
   context.fillStyle = color;
@@ -330,6 +339,54 @@ function drawLighthouseBeam(context, tick) {
   }
 }
 
+// A gantry crane: two legs, a beam across the top and a trolley with a hanging line.
+function drawGantryCrane(context, color, leftX, span, topY, density) {
+  const bottomY = 300;
+  fillDither(context, color, leftX, topY, 6, bottomY - topY, density);
+  fillDither(context, color, leftX + span - 6, topY, 6, bottomY - topY, density);
+  fillDither(context, color, leftX - 10, topY, span + 20, 8, density);
+  fillDither(context, color, leftX + Math.floor(span / 3), topY + 8, 10, 6, density);
+  fillRect(context, color, leftX + Math.floor(span / 3) + 4, topY + 14, 1, 40);
+}
+
+function drawShipyard(context, random) {
+  fillRect(context, '#5a6988', 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+  fillDither(context, '#8b9bb4', 0, 180, SCREEN_WIDTH, 120, 'quarter');
+  drawGantryCrane(context, '#8b9bb4', 40, 220, 50, 'quarter');
+  drawGantryCrane(context, '#8b9bb4', 400, 200, 70, 'quarter');
+  drawMistBand(context, 220, '#5a6988');
+  // A second hull on the next slipway, behind scaffold poles.
+  for (let x = 120; x < 520; x++) {
+    const offset = (x - 320) / 200;
+    const top = 200 + Math.round(16 * offset * offset);
+    fillDither(context, '#3a4466', x, top, 1, 300 - top);
+  }
+  for (let x = 110; x < 540; x += 24) fillRect(context, '#3a4466', x, 150, 2, 150);
+  for (const y of [150, 180]) fillRect(context, '#3a4466', 104, y, 442, 2);
+  drawGantryCrane(context, '#262b44', 250, 150, 110, 'half');
+  drawMistBand(context, 262, '#5a6988');
+  fillRect(context, '#181425', 0, 300, SCREEN_WIDTH, SCREEN_HEIGHT - 300);
+  for (let x = 12; x < SCREEN_WIDTH; x += 64 + Math.floor(random.next() * 20)) {
+    fillRect(context, '#181425', x, 284, 18, 16);
+    if (random.next() < 0.5) fillRect(context, '#feae34', x + 7, 289, 2, 2);
+  }
+}
+
+// Welding spots on the scaffolds behind the stage. Each throws a short shower of sparks, then rests.
+function drawWeldingSparks(context, tick) {
+  for (const { x, y, offsetTicks } of WELDING_SPOTS) {
+    const cycleTick = (tick + offsetTicks) % WELDING_CYCLE_TICKS;
+    if (cycleTick >= WELDING_SPARK_TICKS) continue;
+    fillRect(context, cycleTick % 4 < 2 ? '#ffffff' : '#fee761', x, y, 2, 2);
+    for (let spark = 0; spark < WELDING_SPARKS_PER_SHOWER; spark++) {
+      const speedX = (spark - (WELDING_SPARKS_PER_SHOWER - 1) / 2) * 0.6;
+      const sparkX = Math.round(x + speedX * cycleTick);
+      const sparkY = Math.round(y - 1.2 * cycleTick + 0.12 * cycleTick * cycleTick);
+      fillRect(context, spark % 2 === 0 ? '#fee761' : '#feae34', sparkX, sparkY, 1, 1);
+    }
+  }
+}
+
 const DRAW_BY_BACKGROUND_NAME = {
   harbor: drawHarbor,
   cave: drawCave,
@@ -339,11 +396,13 @@ const DRAW_BY_BACKGROUND_NAME = {
   'cooling-towers': drawCoolingTowers,
   quarry: drawQuarry,
   lighthouse: drawLighthouse,
+  shipyard: drawShipyard,
 };
 
 // Backgrounds that move are drawn again every frame over the still picture, from the tick count alone.
 const DRAW_MOTION_BY_BACKGROUND_NAME = {
   lighthouse: drawLighthouseBeam,
+  shipyard: drawWeldingSparks,
 };
 
 // Each arena draws the same picture every time, from its own fixed seed.
