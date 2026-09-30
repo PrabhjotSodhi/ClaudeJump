@@ -2,7 +2,7 @@ import { ONLINE_MESSAGE_TICKS, STALL_MESSAGE_TICKS, SCREEN_HEIGHT, SCREEN_WIDTH 
 import { mergeLocalInputs } from '../engine/input.js';
 import { stateHash } from '../engine/state-hash.js';
 import { PLAYERS } from '../levels/versus-arena.js';
-import { menuPanelSize, rowIndexAt, wrapMenuIndex } from '../ui/menu-kit.js';
+import { drawWithMenuMotion, MenuMotion, menuPanelSize, rowIndexAt, wrapMenuIndex } from '../ui/menu-kit.js';
 import { drawPanel } from '../ui/panel.js';
 import { drawResultsMenu, resultsLayout, resultsMenuRowRectangles } from '../ui/results-menu.js';
 import { drawText } from '../ui/text.js';
@@ -51,6 +51,7 @@ export class OnlineMatchScene {
     this.messageTicks = 0;
     this.hostLeft = false;
     this.resultsOpen = false;
+    this.resultsMotion = new MenuMotion();
     this.resultsSelectedIndex = 0;
     this.previousInput = null;
   }
@@ -89,6 +90,7 @@ export class OnlineMatchScene {
     this.matchScene.update({});
     if (!this.resultsOpen) {
       this.resultsOpen = true;
+      this.resultsMotion = new MenuMotion();
       this.previousInput = localInput;
       const transport = this.session.transport;
       transport.onMessage = (peerId, data) => this.handleRoomMessage(data);
@@ -100,6 +102,7 @@ export class OnlineMatchScene {
     this.previousInput = localInput;
 
     const optionCount = this.resultsOptions.length;
+    this.resultsMotion.update();
     if (isFresh('down')) this.resultsSelectedIndex = wrapMenuIndex(this.resultsSelectedIndex, 1, optionCount);
     if (isFresh('up')) this.resultsSelectedIndex = wrapMenuIndex(this.resultsSelectedIndex, -1, optionCount);
     if (isFresh('down') || isFresh('up')) this.events.emit('menu-moved', {});
@@ -107,6 +110,7 @@ export class OnlineMatchScene {
     if (tappedIndex >= 0) this.resultsSelectedIndex = tappedIndex;
     if (isFresh('confirm') || tappedIndex >= 0) {
       this.events.emit('menu-selected', {});
+      this.resultsMotion.press();
       this.chooseResultsOption(this.resultsOptions[this.resultsSelectedIndex].id, inputByPlayerId);
     }
   }
@@ -200,6 +204,7 @@ export class OnlineMatchScene {
       matchScene: this.matchScene,
       options: this.resultsOptions,
       selectedIndex: this.resultsSelectedIndex,
+      motion: this.resultsMotion,
     });
     if (this.isHost) return;
     const winnerIndex = this.matchScene.players.findIndex((player) => player.id === this.matchScene.winnerId);
@@ -208,11 +213,13 @@ export class OnlineMatchScene {
       playerCount: this.matchScene.players.length,
       menuHeight: menuPanelSize(this.resultsOptions.map((option) => option.label)).height,
     });
-    drawText(context, WAITING_CAPTION, SCREEN_WIDTH / 2, hintBottomY + WAITING_CAPTION_GAP, {
-      scale: 1,
-      align: 'center',
-      color: '#c0cbdc',
-      outlineColor: null,
-    });
+    drawWithMenuMotion(context, this.resultsMotion, () =>
+      drawText(context, WAITING_CAPTION, SCREEN_WIDTH / 2, hintBottomY + WAITING_CAPTION_GAP, {
+        scale: 1,
+        align: 'center',
+        color: '#c0cbdc',
+        outlineColor: null,
+      }),
+    );
   }
 }
