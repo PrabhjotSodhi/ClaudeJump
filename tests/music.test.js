@@ -131,21 +131,6 @@ test('the music choice is saved separately from the sound choice', () => {
   assert.equal(reloadedAgain.musicPlayer.musicEnabled, false);
 });
 
-test('the music row in the pause menu flips only the music setting', () => {
-  const { soundPlayer, musicPlayer } = setUp();
-  const sceneManager = new SceneManager({ soundPlayer, musicPlayer });
-  const matchScene = { events: new EventEmitter(), phase: 'fight', ticksRemaining: 100 };
-  const scene = new PausableMatchScene({ sceneManager, matchScene });
-  scene.paused = true;
-  scene.selectedIndex = scene.pauseMenuOptions.findIndex((option) => option.id === 'music');
-
-  scene.confirmSelection({});
-
-  assert.equal(musicPlayer.musicEnabled, false);
-  assert.equal(soundPlayer.soundEnabled, true);
-  assert.equal(scene.pauseMenuOptions.find((option) => option.id === 'music').label, 'Music: Off');
-});
-
 test('the music starts on the audio clock, slightly ahead of now', () => {
   const { audioContext, musicPlayer } = setUp();
   audioContext.currentTime = 10;

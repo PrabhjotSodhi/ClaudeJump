@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { KNOCKOUT_SLOWMO_TICKS } from '../src/engine/config.js';
-import { SoundPlayer } from '../src/engine/sound-player.js';
 import { PausableMatchScene, RESULTS_MENU_OPTIONS } from '../src/scenes/pausable-match-scene.js';
 import { PlayerSelectScene, START_COUNTDOWN_TICKS } from '../src/scenes/player-select-scene.js';
 import { TitleScene } from '../src/scenes/title-scene.js';
@@ -217,7 +216,7 @@ test('up moves the pause selection up with wrapping, and down moves it down', ()
   scene.update(inputsWith('red', { pause: true }));
 
   scene.update(inputsWith('red', { up: true }));
-  assert.equal(scene.selectedIndex, 4, 'up from the first option wraps to the last');
+  assert.equal(scene.selectedIndex, 2, 'up from the first option wraps to the last');
 
   scene.update(neutralInputs());
   scene.update(inputsWith('blue', { down: true }));
@@ -391,34 +390,15 @@ test('pause does not open while the results menu is showing', () => {
   assert.equal(scene.paused, false);
 });
 
-test('confirming the Sound row flips the sound setting and stays paused', () => {
-  const soundPlayer = new SoundPlayer({ soundDefinitions: {}, eventSounds: {} });
-  const { scene, sceneManager } = pausedScene();
-  sceneManager.soundPlayer = soundPlayer;
-  scene.update(inputsWith('red', { pause: true }));
-  scene.update(inputsWith('red', { up: true }));
-  scene.update(neutralInputs());
-  scene.update(inputsWith('red', { up: true }));
-  scene.update(neutralInputs());
-  scene.update(inputsWith('red', { up: true }));
-  scene.update(neutralInputs());
-
-  scene.update(inputsWith('red', { confirm: true }));
-
-  assert.equal(soundPlayer.soundEnabled, false);
-  assert.equal(scene.paused, true);
-  assert.equal(scene.pauseMenuOptions[2].label, 'Sound: Off');
-});
-
 test('the pause menu offers fullscreen only where the browser supports it', () => {
   const { scene, sceneManager } = pausedScene();
-  assert.equal(scene.pauseMenuOptions.length, 5);
+  assert.equal(scene.pauseMenuOptions.length, 3);
 
   sceneManager.fullscreen = { supported: false, active: false, toggle() {} };
-  assert.equal(scene.pauseMenuOptions.length, 5);
+  assert.equal(scene.pauseMenuOptions.length, 3);
 
   sceneManager.fullscreen = { supported: true, active: false, toggle() {} };
-  assert.equal(scene.pauseMenuOptions[5].label, 'Fullscreen: Off');
+  assert.equal(scene.pauseMenuOptions[3].label, 'Fullscreen: Off');
 });
 
 test('confirming the Fullscreen row toggles fullscreen and stays paused', () => {

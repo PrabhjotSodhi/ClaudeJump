@@ -9,13 +9,11 @@ import { LevelSelectScene } from './level-select-scene.js';
 import { PlayerSelectScene } from './player-select-scene.js';
 import { TitleScene } from './title-scene.js';
 
-// The sound and music rows show the current setting, so the list is built fresh each time it is used.
-function pauseMenuOptions(soundEnabled, musicEnabled, fullscreen) {
+// The fullscreen row shows the current setting, so the list is built fresh each time it is used.
+function pauseMenuOptions(fullscreen) {
   const options = [
     { id: 'resume', label: 'Resume' },
     { id: 'title', label: 'Return to title' },
-    { id: 'sound', label: soundEnabled ? 'Sound: On' : 'Sound: Off' },
-    { id: 'music', label: musicEnabled ? 'Music: On' : 'Music: Off' },
     { id: 'settings', label: 'Settings' },
   ];
   if (fullscreen?.supported)
@@ -57,11 +55,7 @@ export class PausableMatchScene {
   }
 
   get pauseMenuOptions() {
-    return pauseMenuOptions(
-      this.sceneManager.soundPlayer?.soundEnabled ?? true,
-      this.sceneManager.musicPlayer?.musicEnabled ?? true,
-      this.sceneManager.fullscreen,
-    );
+    return pauseMenuOptions(this.sceneManager.fullscreen);
   }
 
   get waterLineY() {
@@ -273,10 +267,6 @@ export class PausableMatchScene {
     const option = this.pauseMenuOptions[this.selectedIndex];
     if (option.id === 'resume') {
       this.resume(inputByPlayerId);
-    } else if (option.id === 'sound') {
-      this.sceneManager.soundPlayer?.toggleSound();
-    } else if (option.id === 'music') {
-      this.sceneManager.musicPlayer?.toggleMusic();
     } else if (option.id === 'settings') {
       this.settingsMenu = new SettingsMenu({
         settings,
