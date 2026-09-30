@@ -1,6 +1,6 @@
 // Googly eyes build their image on a canvas, so node tests give them a canvas that draws nothing.
 globalThis.document ??= {
-  createElement: () => ({ getContext: () => ({ fillStyle: '', fillRect() {} }) }),
+  createElement: () => ({ getContext: () => ({ fillStyle: '', fillRect() {}, drawImage() {} }) }),
 };
 
 export const BODY_SPRITE = { name: 'body sprite' };
