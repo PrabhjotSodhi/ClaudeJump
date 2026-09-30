@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { HITSTOP_TICKS, SCREEN_WIDTH, SHOVE_WINDUP_TICKS } from '../src/engine/config.js';
+import { HITSTOP_TICKS, KNOCKOUT_SLOWMO_TICKS, SCREEN_WIDTH, SHOVE_WINDUP_TICKS } from '../src/engine/config.js';
 import { Crate } from '../src/entities/crate.js';
 import { Platform } from '../src/entities/platform.js';
 import { Rocket } from '../src/entities/rocket.js';
@@ -38,6 +38,7 @@ test('falling in the sea scores the other player', () => {
 
   findPlayer(scene, 'red').y = 600;
   scene.update(neutralInputs());
+  advance(scene, KNOCKOUT_SLOWMO_TICKS);
 
   assert.deepEqual(waterEvents, [{ playerId: 'red' }]);
   assert.equal(scene.phase, 'point');
@@ -53,6 +54,7 @@ test('reaching 5 points ends the match', () => {
     advance(scene, READY_TICKS);
     findPlayer(scene, 'blue').y = 600;
     scene.update(neutralInputs());
+    advance(scene, KNOCKOUT_SLOWMO_TICKS);
 
     assert.equal(scene.wins.red, win);
     if (win < 5) {
@@ -71,6 +73,7 @@ test('both players falling on the same tick is a draw', () => {
   findPlayer(scene, 'red').y = 600;
   findPlayer(scene, 'blue').y = 600;
   scene.update(neutralInputs());
+  advance(scene, KNOCKOUT_SLOWMO_TICKS);
 
   assert.equal(scene.phase, 'point');
   assert.equal(scene.winnerId, null);
@@ -284,6 +287,8 @@ test('the sea rises only after the warning ends, and a player standing below it 
 
   scene.update(neutralInputs());
 
+  advance(scene, KNOCKOUT_SLOWMO_TICKS);
+
   assert.equal(blue.inWater, true, 'the risen sea reaches the side platform');
   assert.equal(red.inWater, false, 'the middle platform is still above the sea');
   assert.equal(scene.phase, 'point');
@@ -298,6 +303,7 @@ test('the timer and the sea reset for the next round', () => {
 
   findPlayer(scene, 'red').y = 600;
   scene.update(neutralInputs());
+  advance(scene, KNOCKOUT_SLOWMO_TICKS);
   assert.equal(scene.phase, 'point');
 
   advance(scene, 90); // point pause resolves back to a fresh 'ready' round
@@ -485,7 +491,7 @@ test('a card pressed on the tick a player falls in the sea emits card-played onc
 
   red.y = 600; // below the water line, falls in on this tick
   scene.update({ red: { left: false, right: false, jump: false, action: true }, blue: noInput() });
-  assert.equal(scene.phase, 'point');
+  assert.equal(scene.phase, 'knockout');
   assert.equal(red.inWater, true);
 
   advance(scene, 60); // keep sinking well past the point pause
@@ -499,9 +505,9 @@ test('startInFightPhase skips the Ready countdown for the first round only', () 
 
   findPlayer(scene, 'red').y = 600;
   scene.update(neutralInputs());
-  assert.equal(scene.phase, 'point');
+  assert.equal(scene.phase, 'knockout');
 
-  advance(scene, 90); // point pause resolves into the next round
+  advance(scene, KNOCKOUT_SLOWMO_TICKS + 90); // slow motion and point pause resolve into the next round
   assert.equal(scene.phase, 'ready');
 });
 
@@ -1002,7 +1008,7 @@ test('a fall landed after the round is already decided is not counted in match s
 
   red.y = 600; // red falls in during the fight, deciding the round
   scene.update(neutralInputs());
-  assert.equal(scene.phase, 'point');
+  assert.equal(scene.phase, 'knockout');
   assert.deepEqual(scene.matchStats.fallsIn, { red: 1, blue: 0 });
 
   // A late rocket (or leftover momentum) knocks the winner in after the round is already over.
@@ -1167,7 +1173,7 @@ test('rooftops keeps its two fixed bounce pads for the whole match, one set per 
 
   findPlayer(scene, 'red').y = 600;
   scene.update(neutralInputs());
-  advance(scene, 90); // point pause resolves back to a fresh 'ready' round
+  advance(scene, KNOCKOUT_SLOWMO_TICKS + 90); // slow motion and point pause resolve back to a fresh 'ready' round
 
   assert.equal(scene.phase, 'ready');
   assert.deepEqual(

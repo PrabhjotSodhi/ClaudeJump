@@ -18,6 +18,8 @@ export class Renderer {
     this.backgroundChanged = false;
     // Whole pixels the shader moves the background and game layers by. The UI layer never moves.
     this.shakeOffset = { x: 0, y: 0 };
+    // The world is drawn `factor` times larger, starting at this whole pixel of the 640x360 layers. The UI layer never zooms.
+    this.zoom = { factor: 1, originX: 0, originY: 0 };
     this.seaRippleBytes = null;
     // Set by main each frame: the on-screen touch controls are showing.
     this.touchActive = false;
