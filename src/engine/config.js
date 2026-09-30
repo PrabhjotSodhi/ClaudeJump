@@ -31,6 +31,15 @@ export const SHOVE_MAX_CHARGE_TICKS = 30;
 export const SHOVE_MAX_KNOCKBACK_MULTIPLIER = 1.6;
 export const SHOVE_CHARGE_WALK_MULTIPLIER = 0.4;
 
+// Two shoves that meet cancel out and bounce both players apart. A shove takes part in a clash while it is winding up
+// or in its first SHOVE_CLASH_WINDOW_TICKS ticks, so presses a couple of ticks apart still clash. If one shover's charge beats the other's by at
+// least SHOVE_CLASH_CHARGE_MARGIN (charge runs from 0 to 1), that shove still lands with its knockback scaled by
+// SHOVE_CLASH_WIN_KNOCKBACK_MULTIPLIER, and the other shove is cancelled.
+export const SHOVE_CLASH_WINDOW_TICKS = 3;
+export const SHOVE_CLASH_BOUNCE_VELOCITY_X = 3;
+export const SHOVE_CLASH_CHARGE_MARGIN = 0.2;
+export const SHOVE_CLASH_WIN_KNOCKBACK_MULTIPLIER = 0.5;
+
 // Online matches. A press is scheduled this many ticks ahead so it can cross the network before it is needed.
 export const INPUT_DELAY_TICKS = 4;
 export const HASH_INTERVAL_TICKS = 60;
