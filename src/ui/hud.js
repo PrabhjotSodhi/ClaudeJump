@@ -1,4 +1,4 @@
-import { SCREEN_HEIGHT, SCREEN_WIDTH, TICK_RATE } from '../engine/config.js';
+import { SCREEN_HEIGHT, SCREEN_WIDTH, TICK_RATE, TIMER_URGENT_SECONDS } from '../engine/config.js';
 import { ROCKET_HEIGHT } from '../entities/rocket.js';
 import { drawPanel } from './panel.js';
 import { drawPlayerPanel, PLAYER_PANEL_BOTTOM, playerPanelBoxes } from './player-panel.js';
@@ -10,18 +10,22 @@ const WARNING_MARKER_FLASH_TICKS = 20;
 const WARNING_MARKER_SIZE = 12;
 const WARNING_MARKER_GAP = 32;
 const WARNING_MARKER_COLOR = '#fee761';
-const TIMER_PANEL_WIDTH = 44;
-const TIMER_PANEL_HEIGHT = 16;
 const TIMER_PANEL_Y = 8;
-export const TIMER_PANEL = {
-  x: (SCREEN_WIDTH - TIMER_PANEL_WIDTH) / 2,
-  y: TIMER_PANEL_Y,
-  width: TIMER_PANEL_WIDTH,
-  height: TIMER_PANEL_HEIGHT,
-};
-const TIMER_TEXT_TOP = 5;
+const TIMER_PANEL_PADDING_X = 6;
+const TIMER_TEXT_WIDEST = '00:00';
 const TIMER_COLOR = '#ffffff';
-const TIMER_SUDDEN_DEATH_COLOR = '#e43b44';
+const TIMER_URGENT_COLOR = '#e43b44';
+const TIMER_CALM = { scale: 1, height: 16, textTop: 5 };
+const TIMER_URGENT = { scale: 2, height: 24, textTop: 6 };
+const SUDDEN_DEATH_BANNER_Y = 60;
+
+function timerPanelBox({ scale, height }) {
+  const width = Math.ceil((measureText(TIMER_TEXT_WIDEST) * scale + 2 * TIMER_PANEL_PADDING_X) / 2) * 2;
+  return { x: (SCREEN_WIDTH - width) / 2, y: TIMER_PANEL_Y, width, height };
+}
+
+export const TIMER_PANEL = timerPanelBox(TIMER_CALM);
+export const TIMER_PANEL_URGENT = timerPanelBox(TIMER_URGENT);
 const SCORE_PANEL_MARGIN = 8;
 const SCORE_PANEL_HEIGHT = 26;
 const SCORE_PANEL_MIN_WIDTH = 56;
@@ -104,20 +108,30 @@ export function drawPhaseMessage(context, scene) {
   if (subtitle) drawText(context, subtitle, SCREEN_WIDTH / 2, 96, { align: 'center' });
 }
 
+function isTimerUrgent(scene) {
+  return scene.suddenDeathPhase === 'none' && scene.suddenDeathCountdownTicks <= TIMER_URGENT_SECONDS * TICK_RATE;
+}
+
 function drawTimerPanel(context, scene) {
-  drawPanel(context, TIMER_PANEL.x, TIMER_PANEL_Y, TIMER_PANEL_WIDTH, TIMER_PANEL_HEIGHT);
-  drawText(
-    context,
-    formatCountdown(scene.suddenDeathCountdownTicks),
-    SCREEN_WIDTH / 2,
-    TIMER_PANEL_Y + TIMER_TEXT_TOP,
-    {
-      scale: 1,
-      align: 'center',
-      color: scene.suddenDeathPhase === 'none' ? TIMER_COLOR : TIMER_SUDDEN_DEATH_COLOR,
-      outlineColor: null,
-    },
-  );
+  const urgent = isTimerUrgent(scene);
+  const { scale, textTop } = urgent ? TIMER_URGENT : TIMER_CALM;
+  const box = urgent ? TIMER_PANEL_URGENT : TIMER_PANEL;
+  drawPanel(context, box.x, box.y, box.width, box.height);
+  drawText(context, formatCountdown(scene.suddenDeathCountdownTicks), SCREEN_WIDTH / 2, box.y + textTop, {
+    scale,
+    align: 'center',
+    color: urgent || scene.suddenDeathPhase !== 'none' ? TIMER_URGENT_COLOR : TIMER_COLOR,
+    outlineColor: null,
+  });
+}
+
+function drawSuddenDeathBanner(context, scene) {
+  if (scene.suddenDeathPhase !== 'warning') return;
+  drawText(context, 'Sudden death!', SCREEN_WIDTH / 2, SUDDEN_DEATH_BANNER_Y, {
+    scale: 3,
+    align: 'center',
+    color: TIMER_URGENT_COLOR,
+  });
 }
 
 export function drawHud(context, scene) {
@@ -127,6 +141,7 @@ export function drawHud(context, scene) {
   if (scene.phase === 'fight') drawTimerPanel(context, scene);
 
   drawPhaseMessage(context, scene);
+  drawSuddenDeathBanner(context, scene);
 
   drawSuddenDeathWarning(context, scene);
 }

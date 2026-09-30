@@ -9,7 +9,9 @@ import {
   SHOVE_CLASH_WIN_KNOCKBACK_MULTIPLIER,
   SHOVE_MAX_CHARGE_TICKS,
   SHOVE_WINDUP_TICKS,
+  TICK_RATE,
   TILE_SIZE,
+  TIMER_URGENT_SECONDS,
 } from '../engine/config.js';
 import { BLAST_STRENGTH, blastIsReady, knockBackPlayersInBlast } from '../engine/blast.js';
 import { EntityGroups } from '../engine/entity-groups.js';
@@ -96,12 +98,14 @@ export class VersusScene {
     players = DEFAULT_JOINED_PLAYERS,
     sprites = {},
     levels = [],
+    heat = false,
   } = {}) {
     // The joined players, each { id, character }, in seat order. Every level has a spawn for each id.
     this.joinedPlayers = players;
     this.characterByPlayerId = Object.fromEntries(players.map(({ id, character }) => [id, character]));
     this.sprites = sprites;
     this.levels = levels;
+    this.heatEnabled = heat;
     this.events = new EventEmitter();
     this.random = new SeededRandom(seed);
     this.entityGroups = new EntityGroups();
@@ -183,7 +187,10 @@ export class VersusScene {
     }
     for (const { id, character } of this.joinedPlayers) {
       const { x, y, facing } = this.level.spawns.find((spawn) => spawn.id === id);
-      this.entityGroups.add('players', new Player({ id, character, spawnX: x, spawnY: y, facing }));
+      this.entityGroups.add(
+        'players',
+        new Player({ id, character, spawnX: x, spawnY: y, facing, heatEnabled: this.heatEnabled }),
+      );
     }
     this.ticksUntilCrateSpawn = CRATE_SPAWN_DELAY_TICKS;
     if (this.skipNextReadyPhase) {
@@ -313,6 +320,10 @@ export class VersusScene {
   }
 
   updateSuddenDeath() {
+    const countdownTicks = this.suddenDeathCountdownTicks;
+    if (countdownTicks > 0 && countdownTicks <= TIMER_URGENT_SECONDS * TICK_RATE && countdownTicks % TICK_RATE === 0) {
+      this.events.emit('timer-ticked', { secondsRemaining: countdownTicks / TICK_RATE });
+    }
     if (this.suddenDeathPhase === 'none' && this.fightTicks >= SUDDEN_DEATH_ROUND_TICKS) {
       this.suddenDeathPhase = 'warning';
       this.events.emit('sudden-death-started', {});
