@@ -1,8 +1,7 @@
-import { TOUCH_BUTTONS } from '../engine/touch-input.js';
+import { PLAYERS } from '../levels/versus-arena.js';
 import { drawText } from './text.js';
 
 const OUTLINE_COLOR = '#c0cbdc';
-const FILL_COLOR = '#c0cbdc';
 const PRESSED_COLOR = '#feae34';
 const IDLE_FILL_ALPHA = 0.1;
 const PRESSED_FILL_ALPHA = 0.4;
@@ -28,10 +27,10 @@ function drawArrow(context, centerX, centerY, direction) {
   }
 }
 
-function drawGlyph(context, button) {
+function drawGlyph(context, button, color) {
   const centerX = button.x + button.width / 2;
   const centerY = button.y + button.height / 2;
-  context.fillStyle = OUTLINE_COLOR;
+  context.fillStyle = color;
   if (button.id === 'pause') {
     const barY = centerY - PAUSE_BAR_HEIGHT / 2;
     context.fillRect(centerX - PAUSE_BAR_GAP / 2 - PAUSE_BAR_WIDTH, barY, PAUSE_BAR_WIDTH, PAUSE_BAR_HEIGHT);
@@ -40,7 +39,7 @@ function drawGlyph(context, button) {
     drawText(context, 'Shove', centerX, centerY - Math.floor(TEXT_HEIGHT / 2), {
       scale: 1,
       align: 'center',
-      color: OUTLINE_COLOR,
+      color,
       outlineColor: null,
     });
   } else {
@@ -57,26 +56,32 @@ function overlaps(button, rectangle) {
   );
 }
 
-// playerRectangles are the players' bodies in screen pixels. showPause hides the pause button
-// in scenes that cannot pause.
-export function drawTouchControls(context, { pressedButtonIds, playerRectangles, showPause }) {
-  for (const button of TOUCH_BUTTONS) {
+// A player's buttons take that player's color.
+function buttonColor(button) {
+  return PLAYERS.find((player) => player.id === button.playerId)?.color ?? OUTLINE_COLOR;
+}
+
+// buttons is the layout in use and pressed the buttons under a finger. playerRectangles are the
+// players' bodies in screen pixels. showPause hides the pause button in scenes that cannot pause.
+export function drawTouchControls(context, { buttons, pressedButtons, playerRectangles, showPause }) {
+  for (const button of buttons) {
     if (button.id === 'pause' && !showPause) continue;
     const fade = playerRectangles.some((rectangle) => overlaps(button, rectangle)) ? OVERLAP_FADE : 1;
-    const isPressed = pressedButtonIds.includes(button.id);
+    const isPressed = pressedButtons.includes(button);
+    const color = buttonColor(button);
 
     context.globalAlpha = (isPressed ? PRESSED_FILL_ALPHA : IDLE_FILL_ALPHA) * fade;
-    context.fillStyle = isPressed ? PRESSED_COLOR : FILL_COLOR;
+    context.fillStyle = isPressed ? PRESSED_COLOR : color;
     context.fillRect(button.x, button.y, button.width, button.height);
 
     context.globalAlpha = OUTLINE_ALPHA * fade;
-    context.fillStyle = OUTLINE_COLOR;
+    context.fillStyle = color;
     context.fillRect(button.x, button.y, button.width, 1);
     context.fillRect(button.x, button.y + button.height - 1, button.width, 1);
     context.fillRect(button.x, button.y + 1, 1, button.height - 2);
     context.fillRect(button.x + button.width - 1, button.y + 1, 1, button.height - 2);
 
-    drawGlyph(context, button);
+    drawGlyph(context, button, color);
   }
   context.globalAlpha = 1;
 }
