@@ -13,6 +13,9 @@ const EVENTS_THAT_MAKE_SOUNDS = [
   'player-jumped',
   'player-landed',
   'player-shoved',
+  'shove-charging',
+  'shove-fully-charged',
+  'shove-clash',
   'dash-hit',
   'crab-stomped',
   'card-picked-up',
@@ -42,7 +45,14 @@ function fakeStorage() {
 
 // Counts the oscillators and noise sources started, and records each panner's pan.
 function fakeAudioContext() {
-  const context = { startedSources: 0, pans: [], currentTime: 0, sampleRate: 100, state: 'running' };
+  const context = {
+    startedSources: 0,
+    startFrequencies: [],
+    pans: [],
+    currentTime: 0,
+    sampleRate: 100,
+    state: 'running',
+  };
   const node = () => ({ connect() {}, gain: { setValueAtTime() {}, exponentialRampToValueAtTime() {} } });
   context.destination = node();
   context.createGain = node;
@@ -53,7 +63,12 @@ function fakeAudioContext() {
   };
   const source = () => ({
     connect() {},
-    frequency: { setValueAtTime() {}, exponentialRampToValueAtTime() {} },
+    frequency: {
+      setValueAtTime(frequency) {
+        context.startFrequencies.push(frequency);
+      },
+      exponentialRampToValueAtTime() {},
+    },
     start() {
       context.startedSources++;
     },
@@ -65,12 +80,13 @@ function fakeAudioContext() {
   return context;
 }
 
-function unlockedPlayer(audioContext = fakeAudioContext(), storage = fakeStorage()) {
+function unlockedPlayer(audioContext = fakeAudioContext(), storage = fakeStorage(), random = () => 0.5) {
   const soundPlayer = new SoundPlayer({
     soundDefinitions,
     eventSounds,
     storage,
     createAudioContext: () => audioContext,
+    random,
   });
   soundPlayer.unlock();
   return soundPlayer;
@@ -110,6 +126,68 @@ test('a fall into the sea plays the splash sound of its tier', () => {
   const largeSources = sourcesFor('large');
   assert.ok(smallSources > 0);
   assert.ok(largeSources > smallSources, 'the large splash is layered heavier');
+});
+
+// The frequency of the first voice, the low thump, for one emitted event.
+function thumpFrequencyFor(eventName, eventData) {
+  const audioContext = fakeAudioContext();
+  const events = new EventEmitter();
+  unlockedPlayer(audioContext).attach(events);
+  events.emit(eventName, eventData);
+  return audioContext.startFrequencies[0];
+}
+
+test('a hit plays a thump, a crunch and a whoosh together', () => {
+  const audioContext = fakeAudioContext();
+  const events = new EventEmitter();
+  unlockedPlayer(audioContext).attach(events);
+
+  events.emit('player-shoved', { shoverId: 'red', targetId: 'blue', strength: 'medium' });
+
+  assert.equal(audioContext.startFrequencies.length, 3, 'three tone layers');
+  assert.equal(audioContext.startedSources, 5, 'three tones and the noise of the crunch and the whoosh');
+});
+
+test('a heavier hit has a lower thump', () => {
+  const light = thumpFrequencyFor('player-shoved', { strength: 'light' });
+  const medium = thumpFrequencyFor('player-shoved', { strength: 'medium' });
+  const heavy = thumpFrequencyFor('dash-hit', { strength: 'heavy' });
+  assert.ok(light > medium && medium > heavy);
+});
+
+test('each play varies the pitch a little', () => {
+  const frequencyWith = (random) => {
+    const audioContext = fakeAudioContext();
+    const events = new EventEmitter();
+    unlockedPlayer(audioContext, fakeStorage(), random).attach(events);
+    events.emit('player-shoved', { strength: 'light' });
+    return audioContext.startFrequencies[0];
+  };
+  const lowest = frequencyWith(() => 0);
+  const middle = frequencyWith(() => 0.5);
+  const highest = frequencyWith(() => 1);
+  assert.ok(lowest < middle && middle < highest);
+  assert.ok(highest / lowest < 1.4, 'the change stays slight');
+});
+
+test('the charge sound rises while a shove charges', () => {
+  assert.ok(
+    thumpFrequencyFor('shove-charging', { playerId: 'red', charge: 1 }) >
+      thumpFrequencyFor('shove-charging', { playerId: 'red', charge: 0 }),
+  );
+});
+
+test('a full charge and a clash each start a sound', () => {
+  const audioContext = fakeAudioContext();
+  const events = new EventEmitter();
+  unlockedPlayer(audioContext).attach(events);
+
+  events.emit('shove-fully-charged', { playerId: 'red' });
+  const afterPing = audioContext.startedSources;
+  events.emit('shove-clash', { x: 320, y: 100, playerIds: ['red', 'blue'] });
+
+  assert.ok(afterPing > 0);
+  assert.ok(audioContext.startedSources > afterPing);
 });
 
 test('the mute choice survives a reload', () => {

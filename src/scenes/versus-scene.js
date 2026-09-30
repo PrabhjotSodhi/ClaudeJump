@@ -1,9 +1,12 @@
 import { CARD_NAMES } from '../cards/card-definitions.js';
 import {
   SCREEN_WIDTH,
+  SHOVE_CHARGE_REPORT_INTERVAL_TICKS,
   SHOVE_CLASH_BOUNCE_VELOCITY_X,
   SHOVE_CLASH_CHARGE_MARGIN,
   SHOVE_CLASH_WIN_KNOCKBACK_MULTIPLIER,
+  SHOVE_MAX_CHARGE_TICKS,
+  SHOVE_WINDUP_TICKS,
   TILE_SIZE,
 } from '../engine/config.js';
 import { BLAST_STRENGTH, blastIsReady, knockBackPlayersInBlast } from '../engine/blast.js';
@@ -325,6 +328,15 @@ export class VersusScene {
         if (player.playedCardName === 'banana') this.spawnBanana(player);
       }
       if (player.shoveJustFullyCharged) this.events.emit('shove-fully-charged', { playerId: player.id });
+      if (
+        player.shoveCharging &&
+        player.shoveChargeTicks > SHOVE_WINDUP_TICKS &&
+        player.shoveChargeTicks < SHOVE_MAX_CHARGE_TICKS &&
+        player.shoveChargeTicks % SHOVE_CHARGE_REPORT_INTERVAL_TICKS === 0
+      ) {
+        const charge = (player.shoveChargeTicks - SHOVE_WINDUP_TICKS) / (SHOVE_MAX_CHARGE_TICKS - SHOVE_WINDUP_TICKS);
+        this.events.emit('shove-charging', { playerId: player.id, charge });
+      }
       if (player.shoveJustStarted) {
         this.shoveHitIdsByShoverId.set(player.id, new Set());
         const hitZone = player.shoveHitZone;
