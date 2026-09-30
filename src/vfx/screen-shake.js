@@ -27,7 +27,7 @@ export class ScreenShake {
     events.on('player-shoved', startHit);
     events.on('trap-sprung', startHit);
     events.on('player-pinched', startHit);
-    events.on('dash-hit', ({ strength = 'medium' }) => startHit({ strength, directionX: 1 }));
+    events.on('dash-hit', startHit);
     events.on('player-fell-in-water', () => this.start(FALL_SHAKE_PIXELS, FALL_SHAKE_TICKS));
   }
 

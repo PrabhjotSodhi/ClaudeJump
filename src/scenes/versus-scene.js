@@ -553,7 +553,13 @@ export class VersusScene {
         this.dashHitPairIds.add(pairId);
         leftPlayer.freeze('medium', -DASH_KNOCKBACK_VELOCITY_X, 0);
         rightPlayer.freeze('medium', DASH_KNOCKBACK_VELOCITY_X, 0);
-        this.events.emit('dash-hit', { playerIds: [playerA.id, playerB.id], strength: 'medium' });
+        const dasher = playerA.dashTicksRemaining > 0 ? playerA : playerB;
+        this.events.emit('dash-hit', {
+          playerIds: [playerA.id, playerB.id],
+          directionX: dasher.facing,
+          directionY: 0,
+          strength: 'medium',
+        });
       }
     }
 

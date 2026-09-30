@@ -1228,6 +1228,12 @@ test('a hit kicks the picture in the direction it went, harder for stronger hits
   assert.ok(scene.screenShake.offset.x < lightKick.x);
 });
 
+test('a dash hit kicks the picture the way the dasher was heading', () => {
+  const scene = new VersusScene({ level: harborLevel });
+  scene.events.emit('dash-hit', { playerIds: ['red', 'blue'], directionX: -1, directionY: 0, strength: 'medium' });
+  assert.ok(scene.screenShake.offset.x < 0 && scene.screenShake.offset.y === 0);
+});
+
 test('a bounce pad kicks the picture upward', () => {
   const scene = new VersusScene({ level: harborLevel });
   scene.events.emit('trap-sprung', {
