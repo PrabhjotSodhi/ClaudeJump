@@ -1,6 +1,7 @@
 import { SCREEN_WIDTH } from '../engine/config.js';
 import { getInputDevice } from '../engine/input-device.js';
 import { EventEmitter } from '../engine/events.js';
+import { saveKeyBindings } from '../engine/key-bindings.js';
 import { saveSettings, settings } from '../engine/sound-settings.js';
 import { drawArenaBackground } from '../levels/arena-backgrounds.js';
 import { PLAYERS } from '../levels/versus-arena.js';
@@ -52,9 +53,15 @@ const KEY_HINT_ROWS = [
     device: 'keyboard',
     color: RED_COLOR,
     hints: [
-      { keys: ['A', 'D'], label: 'Move' },
-      { keys: ['W'], label: 'Jump' },
-      { keys: ['S'], label: 'Shove' },
+      {
+        keys: [
+          { player: 'red', control: 'left' },
+          { player: 'red', control: 'right' },
+        ],
+        label: 'Move',
+      },
+      { keys: [{ player: 'red', control: 'jump' }], label: 'Jump' },
+      { keys: [{ player: 'red', control: 'action' }], label: 'Shove' },
     ],
   },
   {
@@ -62,9 +69,15 @@ const KEY_HINT_ROWS = [
     device: 'keyboard',
     color: BLUE_COLOR,
     hints: [
-      { keys: ['Left', 'Right'], label: 'Move' },
-      { keys: ['Up'], label: 'Jump' },
-      { keys: ['Down'], label: 'Shove' },
+      {
+        keys: [
+          { player: 'blue', control: 'left' },
+          { player: 'blue', control: 'right' },
+        ],
+        label: 'Move',
+      },
+      { keys: [{ player: 'blue', control: 'jump' }], label: 'Jump' },
+      { keys: [{ player: 'blue', control: 'action' }], label: 'Shove' },
     ],
   },
   {
@@ -220,7 +233,9 @@ export class TitleScene {
 
   saveSettings() {
     const storage = this.sceneManager?.soundPlayer?.storage;
-    if (storage) saveSettings(storage, settings);
+    if (!storage) return;
+    saveSettings(storage, settings);
+    saveKeyBindings(storage);
   }
 
   render(renderer) {

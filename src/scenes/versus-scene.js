@@ -17,7 +17,13 @@ import {
   TILE_SIZE,
   TIMER_URGENT_SECONDS,
 } from '../engine/config.js';
-import { BLAST_STRENGTH, blastIsReady, crateSlideVelocity, knockBackPlayersInBlast } from '../engine/blast.js';
+import {
+  BLAST_STRENGTH,
+  blastIsReady,
+  blastReaches,
+  crateSlideVelocity,
+  knockBackPlayersInBlast,
+} from '../engine/blast.js';
 import { EntityGroups } from '../engine/entity-groups.js';
 import { EventEmitter } from '../engine/events.js';
 import { SeededRandom } from '../engine/seeded-random.js';
@@ -68,6 +74,15 @@ const DASH_KNOCKBACK_VELOCITY_X = 8;
 const BLOCK_BLAST_RADIUS = 24;
 // A dashing player stopped by a wall only touches it, so the body reaches this far sideways to break it.
 const DASH_BREAK_REACH = 1;
+
+function rectanglesOverlap(first, second) {
+  return (
+    first.x < second.x + second.width &&
+    first.x + first.width > second.x &&
+    first.y < second.y + second.height &&
+    first.y + first.height > second.y
+  );
+}
 
 function blockOverlaps(block, rectangle) {
   return (
@@ -423,6 +438,8 @@ export class VersusScene {
         shover,
         alreadyHitIds: this.shoveHitIdsByShoverId.get(shover.id),
       });
+      const hitZone = shover.shoveHitZone;
+      this.popCrateParachute((bounds) => rectanglesOverlap(bounds, hitZone), shover.facing, 'shove');
       const crate = this.entityGroups.get('crates')[0];
       if (crate) {
         resolveShoveHitOnCrate({
@@ -514,6 +531,9 @@ export class VersusScene {
     for (const rocket of this.entityGroups.get('rockets')) {
       rocket.update(this.players, platforms);
       wrapAroundScreen(rocket);
+      if (!rocket.exploded) {
+        this.popCrateParachute((bounds) => rectanglesOverlap(bounds, rocket), Math.sign(rocket.velocityX), 'rocket');
+      }
       if (rocket.exploded && blastIsReady(rocket, this.players, rocket.shooterId)) this.resolveRocketExplosion(rocket);
     }
   }
@@ -533,6 +553,13 @@ export class VersusScene {
     if (crateVelocityX !== 0) crate.slide(crateVelocityX);
     const knockedPlayerIds = knockBackPlayersInBlast(this.players, blastCenterX, blastCenterY);
     this.breakBlocksWhere((block) => blockIsInBlast(block, blastCenterX, blastCenterY));
+    if (crate) {
+      this.popCrateParachute(
+        (bounds) => blastReaches(bounds, blastCenterX, blastCenterY),
+        crate.x + crate.width / 2 - blastCenterX,
+        'blast',
+      );
+    }
     return knockedPlayerIds;
   }
 
@@ -547,6 +574,9 @@ export class VersusScene {
     for (const bomb of this.entityGroups.get('bombs')) {
       bomb.update(this.players, platforms, this.waterLineY);
       wrapAroundScreen(bomb);
+      if (!bomb.exploded) {
+        this.popCrateParachute((bounds) => rectanglesOverlap(bounds, bomb), Math.sign(bomb.velocityX), 'bomb');
+      }
       if (!bomb.exploded || !blastIsReady(bomb, this.players, bomb.throwerId)) continue;
 
       const blastCenterX = bomb.x + bomb.width / 2;
@@ -649,6 +679,19 @@ export class VersusScene {
       return;
     }
     if (crate.isFalling) this.checkCratePickup(crate);
+  }
+
+  // Pops the falling crate's parachute when `isHit` says the hit reaches it. The canopy flutters off toward `directionX`.
+  popCrateParachute(isHit, directionX, cause) {
+    const crate = this.entityGroups.get('crates')[0];
+    const bounds = crate?.parachuteBounds;
+    if (!bounds || !isHit(bounds)) return;
+    crate.popParachute(directionX, this.entityGroups.get('platforms'));
+    this.events.emit('crate-parachute-popped', {
+      x: bounds.x + bounds.width / 2,
+      y: bounds.y + bounds.height / 2,
+      cause,
+    });
   }
 
   // The landing spot and the card both come from the scene's seeded random, so the same seed

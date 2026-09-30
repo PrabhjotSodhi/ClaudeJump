@@ -9,3 +9,11 @@ export function swayOffset(fallenTicks, distanceToGround) {
   const amplitude = SWAY_MAX_PIXELS * Math.min(1, Math.max(0, distanceToGround) / SWAY_SETTLE_DISTANCE);
   return Math.round(Math.sin((fallenTicks * 2 * Math.PI) / SWAY_PERIOD_TICKS) * amplitude) + 0;
 }
+
+const FLUTTER_WOBBLE_PIXELS = 3;
+const FLUTTER_PERIOD_TICKS = 12;
+
+// Sideways wobble in pixels of a popped canopy `poppedTicks` ticks after the pop. Used only for drawing.
+export function flutterWobble(poppedTicks) {
+  return Math.round(Math.sin((poppedTicks * 2 * Math.PI) / FLUTTER_PERIOD_TICKS) * FLUTTER_WOBBLE_PIXELS);
+}

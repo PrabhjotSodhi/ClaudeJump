@@ -9,15 +9,20 @@ import { Renderer } from './engine/renderer.js';
 import { SceneManager } from './engine/scene-manager.js';
 import { MusicPlayer } from './engine/music-player.js';
 import { SoundPlayer } from './engine/sound-player.js';
+import { initKeyBindings, loadKeyBindings } from './engine/key-bindings.js';
 import { loadSettings, settings } from './engine/sound-settings.js';
 import { loadSpriteFile } from './engine/sprites.js';
-import { createTouchInput, TOUCH_BUTTONS, TWO_PLAYER_TOUCH_BUTTONS } from './engine/touch-input.js';
+import {
+  createTouchInput,
+  portraitTouchButtons,
+  TOUCH_BUTTONS,
+  TWO_PLAYER_TOUCH_BUTTONS,
+} from './engine/touch-input.js';
 import { HOVER_CHARACTER_BY_PLAYER_ID } from './entities/characters.js';
 import { loadLevel, stoneColorOverrides } from './levels/level-loader.js';
 import { createLevelThumbnail } from './levels/level-thumbnail.js';
 import { PLAYERS } from './levels/versus-arena.js';
-import { isPortraitOnTouchDevice, pickScale } from './engine/screen-fit.js';
-import { createWindow, readSafeAreaInsets } from './engine/window.js';
+import { createWindow } from './engine/window.js';
 import { LevelSelectScene } from './scenes/level-select-scene.js';
 import { OnlineLobbyScene } from './scenes/online-lobby-scene.js';
 import { OnlineMatchScene } from './scenes/online-match-scene.js';
@@ -28,7 +33,7 @@ import { FULLSCREEN_BUTTON, TitleScene } from './scenes/title-scene.js';
 import { SurvivalScene } from './scenes/survival-scene.js';
 import { VersusScene } from './scenes/versus-scene.js';
 import { drawTouchControls } from './ui/touch-controls.js';
-import { drawRotatePrompt, ROTATE_PROMPT_HEIGHT, ROTATE_PROMPT_WIDTH } from './ui/rotate-prompt.js';
+import { drawPortraitControls } from './ui/portrait-controls.js';
 
 // The order of the level select tiles.
 const LEVEL_FILE_NAMES = ['harbor', 'rooftops', 'cave', 'server-farm', 'cooling-towers', 'bridge', 'quarry'];
@@ -89,7 +94,6 @@ async function main() {
     deepseek,
     mistral,
     props,
-    rotateIcon,
     blocks,
     vertexShaderSource,
     fragmentShaderSource,
@@ -107,7 +111,6 @@ async function main() {
     loadSpriteFile('data/sprites/deepseek.json'),
     loadSpriteFile('data/sprites/mistral.json'),
     loadSpriteFile('data/sprites/props.json'),
-    loadSpriteFile('data/sprites/rotate-icon.json'),
     loadSpriteFile('data/sprites/blocks.json'),
     loadText('data/shaders/composite.vert'),
     loadText('data/shaders/composite.frag'),
@@ -117,22 +120,31 @@ async function main() {
   for (const level of levels) level.thumbnail = createLevelThumbnail(level);
 
   const canvas = document.getElementById('screen');
-  const gameWindow = createWindow(canvas, vertexShaderSource, fragmentShaderSource);
+  const controlsCanvas = document.getElementById('controls');
+  const controlsContext = controlsCanvas.getContext('2d');
+  const gameWindow = createWindow(canvas, vertexShaderSource, fragmentShaderSource, {
+    controlsCanvas,
+  });
   if (!gameWindow) {
     canvas.style.display = 'none';
     document.getElementById('webgl-message').style.display = 'block';
     return;
   }
   const renderer = new Renderer();
+  initKeyBindings(keyMappings);
   const keyboardInput = createKeyboardInput(keyMappings);
   // Gamepad slots follow seat order, so pads 3 and 4 drive green and yellow, which have no keyboard keys.
   const gamepadInput = createGamepadInput(PLAYERS.map((player) => player.id));
   const touchInput = createTouchInput(
     canvas,
     keyMappings.map((mapping) => mapping.id),
+    controlsCanvas,
   );
   const storage = readLocalStorage();
-  if (storage) Object.assign(settings, loadSettings(storage));
+  if (storage) {
+    Object.assign(settings, loadSettings(storage));
+    loadKeyBindings(storage);
+  }
   const soundPlayer = new SoundPlayer({ soundDefinitions, eventSounds, storage });
   const musicPlayer = new MusicPlayer({
     soundPlayer,
@@ -181,52 +193,29 @@ async function main() {
     sceneManager.setScene(new TitleScene({ sceneManager, levels, sprites, seed: Date.now() }));
   }
 
-  // Dev mode never shows the rotate prompt, so scripted checks work in any window shape.
-  const coarsePointerQuery = matchMedia('(pointer: coarse)');
-  function showingRotatePrompt() {
-    return (
-      !isDevMode &&
-      isPortraitOnTouchDevice({
-        width: innerWidth,
-        height: innerHeight,
-        hasCoarsePointer: coarsePointerQuery.matches,
-      })
-    );
-  }
-
-  const rotatePromptCanvas = document.getElementById('rotate-prompt');
-  const rotatePromptContext = rotatePromptCanvas.getContext('2d');
-
-  // The prompt replaces the game canvas with its own small canvas at the largest whole-number scale.
-  function renderRotatePrompt() {
-    const devicePixelRatio = window.devicePixelRatio || 1;
-    const scale = pickScale({
-      width: innerWidth,
-      height: innerHeight,
-      devicePixelRatio,
-      insets: readSafeAreaInsets(),
-      logicalWidth: ROTATE_PROMPT_WIDTH,
-      logicalHeight: ROTATE_PROMPT_HEIGHT,
-    });
-    rotatePromptCanvas.style.width = `${(ROTATE_PROMPT_WIDTH * scale) / devicePixelRatio}px`;
-    rotatePromptCanvas.style.height = `${(ROTATE_PROMPT_HEIGHT * scale) / devicePixelRatio}px`;
-    drawRotatePrompt(rotatePromptContext, rotateIcon.icon);
+  // The portrait panel is on screen from the start, so touch hints show before the first touch.
+  function touchControlsShown() {
+    return touchInput.visible || gameWindow.portraitLayout !== null;
   }
 
   function renderFrame(timestamp) {
-    const rotatePromptShown = showingRotatePrompt();
-    canvas.style.display = rotatePromptShown ? 'none' : 'block';
-    rotatePromptCanvas.style.display = rotatePromptShown ? 'block' : 'none';
-    if (rotatePromptShown) {
-      renderRotatePrompt();
-      return;
-    }
-    renderer.touchActive = touchInput.visible;
+    renderer.touchActive = touchControlsShown();
     renderer.shakeOffset = { x: 0, y: 0 };
     renderer.zoom = { factor: 1, originX: 0, originY: 0 };
     renderer.seaRippleBytes = null;
     sceneManager.render(renderer);
-    if (touchInput.visible) {
+    const portraitLayout = gameWindow.portraitLayout;
+    if (portraitLayout) {
+      const { logicalWidth, logicalHeight } = portraitLayout.controls;
+      const panelButtons = portraitTouchButtons(logicalHeight);
+      drawPortraitControls(controlsContext, {
+        width: logicalWidth,
+        height: logicalHeight,
+        buttons: panelButtons,
+        pressedButtons: touchInput.pressedButtons(panelButtons, 'controls'),
+        showPause: sceneManager.currentScene instanceof PausableMatchScene,
+      });
+    } else if (touchInput.visible) {
       const touchButtons = touchButtonsFor(sceneManager.currentScene);
       drawTouchControls(renderer.uiContext, {
         buttons: touchButtons,
@@ -251,21 +240,17 @@ async function main() {
   const gameLoop = createGameLoop({
     tickRate: TICK_RATE,
     update() {
-      if (showingRotatePrompt()) {
-        sceneManager.currentScene?.pauseForFocusLoss?.();
-        return;
-      }
       const keyboardInputs = keyboardInput.sample();
       const gamepadInputs = gamepadInput.sample();
       const keyboardHeld = isAnyControlHeld(keyboardInputs);
       const padHeld = isAnyControlHeld(gamepadInputs);
       if (keyboardHeld || padHeld) touchInput.hide();
-      setInputDevice(pickInputDevice(getInputDevice(), { keyboardHeld, padHeld, touchVisible: touchInput.visible }));
-      const inputByPlayerId = combineInputs(
-        keyboardInputs,
-        gamepadInputs,
-        touchInput.sample(touchButtonsFor(sceneManager.currentScene)),
-      );
+      setInputDevice(pickInputDevice(getInputDevice(), { keyboardHeld, padHeld, touchVisible: touchControlsShown() }));
+      const portraitLayout = gameWindow.portraitLayout;
+      const touchInputs = portraitLayout
+        ? touchInput.sample(portraitTouchButtons(portraitLayout.controls.logicalHeight), 'controls')
+        : touchInput.sample(touchButtonsFor(sceneManager.currentScene));
+      const inputByPlayerId = combineInputs(keyboardInputs, gamepadInputs, touchInputs);
       if (isAnyControlHeld(inputByPlayerId)) soundPlayer.unlock();
       sceneManager.update(inputByPlayerId);
     },
