@@ -18,6 +18,7 @@ for (const winnerIndex of [0, 1]) {
     const hintBox = { x: 0, y: layout.hintY, width: SCREEN_WIDTH, height: layout.hintBottomY - layout.hintY };
     const boxes = [
       layout.banner,
+      layout.stage,
       layout.winner,
       layout.pedestal,
       layout.loser,
@@ -30,8 +31,14 @@ for (const winnerIndex of [0, 1]) {
       for (const value of Object.values(box)) assert.ok(Number.isInteger(value));
       assert.ok(box.x >= 0 && box.y >= 0 && box.x + box.width <= SCREEN_WIDTH && box.y + box.height <= SCREEN_HEIGHT);
     }
-    // The winner stands on the pedestal and the loser stands beside it, so those touch by design.
-    const standingPairs = new Set(['1,2', '2,1', '2,3', '3,2']);
+    // The winner, pedestal and loser all sit inside the stage panel by design.
+    const stageIndex = 1;
+    const standingPairs = new Set(['1,2', '1,3', '1,4']);
+    for (const inside of [layout.winner, layout.pedestal, layout.loser]) {
+      assert.ok(inside.x >= layout.stage.x && inside.x + inside.width <= layout.stage.x + layout.stage.width);
+      assert.ok(inside.y >= layout.stage.y && inside.y + inside.height <= layout.stage.y + layout.stage.height);
+    }
+    assert.equal(boxes[stageIndex], layout.stage);
     boxes.forEach((first, firstIndex) =>
       boxes.forEach((second, secondIndex) => {
         if (secondIndex <= firstIndex || standingPairs.has(`${firstIndex},${secondIndex}`)) return;

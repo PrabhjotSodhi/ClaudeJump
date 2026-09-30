@@ -13,13 +13,17 @@ const BANNER_PADDING_Y = 7;
 const BANNER_TOP_Y = 16;
 const BANNER_STRIPE_HEIGHT = 2;
 
-const WINNER_SCALE = 2;
-const WINNER_SIZE = FRAME_SIZE * WINNER_SCALE;
 const PEDESTAL_BLOCK_SIZE = 32;
 const PEDESTAL_BLOCKS = 2;
 const PEDESTAL_WIDTH = PEDESTAL_BLOCK_SIZE * PEDESTAL_BLOCKS;
-const PEDESTAL_TOP_Y = 116;
-const LOSER_GAP = 8;
+const LOSER_GAP = 12;
+
+const STAGE_WIDTH = 192;
+const STAGE_TOP_Y = 48;
+const STAGE_HEIGHT = 92;
+const FLOOR_HEIGHT = 12;
+const FLOOR_COLOR = '#3a4466';
+const FLOOR_EDGE_COLOR = '#5a6988';
 
 const STATS_PANEL_WIDTH = 128;
 const STATS_PANEL_HEIGHT = 64;
@@ -38,11 +42,16 @@ const HINTS = [{ keys: ['Enter', 'A'], label: 'Select' }];
 // Every rectangle of the results screen, in whole pixels. The winner stands on the pedestal in the middle,
 // the loser stands beside it, and each player's stats panel sits at their own side of the screen.
 export function resultsLayout({ winnerIndex, menuHeight }) {
+  const stage = { x: (SCREEN_WIDTH - STAGE_WIDTH) / 2, y: STAGE_TOP_Y, width: STAGE_WIDTH, height: STAGE_HEIGHT };
+  const floorY = stage.y + stage.height - 2 - FLOOR_HEIGHT;
+  const pedestalTopY = floorY - PEDESTAL_BLOCK_SIZE;
   const pedestalX = (SCREEN_WIDTH - PEDESTAL_WIDTH) / 2;
   const loserX = winnerIndex === 0 ? pedestalX + PEDESTAL_WIDTH + LOSER_GAP : pedestalX - LOSER_GAP - FRAME_SIZE;
   const bannerWidth = measureText(BANNER_TEXT) * BANNER_TEXT_SCALE + 2 * BANNER_PADDING_X;
   const menuBottomY = MENU_TOP_Y + menuHeight;
   return {
+    stage,
+    floorY,
     banner: {
       x: Math.floor((SCREEN_WIDTH - bannerWidth) / 2),
       y: BANNER_TOP_Y,
@@ -50,13 +59,13 @@ export function resultsLayout({ winnerIndex, menuHeight }) {
       height: BANNER_TEXT_HEIGHT + 2 * BANNER_PADDING_Y,
     },
     winner: {
-      x: (SCREEN_WIDTH - WINNER_SIZE) / 2,
-      y: PEDESTAL_TOP_Y - WINNER_SIZE,
-      width: WINNER_SIZE,
-      height: WINNER_SIZE,
+      x: (SCREEN_WIDTH - FRAME_SIZE) / 2,
+      y: pedestalTopY - FRAME_SIZE,
+      width: FRAME_SIZE,
+      height: FRAME_SIZE,
     },
-    pedestal: { x: pedestalX, y: PEDESTAL_TOP_Y, width: PEDESTAL_WIDTH, height: PEDESTAL_BLOCK_SIZE },
-    loser: { x: loserX, y: PEDESTAL_TOP_Y + PEDESTAL_BLOCK_SIZE - FRAME_SIZE, width: FRAME_SIZE, height: FRAME_SIZE },
+    pedestal: { x: pedestalX, y: pedestalTopY, width: PEDESTAL_WIDTH, height: PEDESTAL_BLOCK_SIZE },
+    loser: { x: loserX, y: floorY - FRAME_SIZE, width: FRAME_SIZE, height: FRAME_SIZE },
     statsPanels: [STATS_PANEL_MARGIN_X, SCREEN_WIDTH - STATS_PANEL_MARGIN_X - STATS_PANEL_WIDTH].map((x) => ({
       x,
       y: STATS_PANEL_TOP_Y,
@@ -85,6 +94,14 @@ function drawBanner(context, banner, color) {
     color,
     outlineColor: null,
   });
+}
+
+function drawStage(context, { stage, floorY }) {
+  drawPanel(context, stage.x, stage.y, stage.width, stage.height);
+  context.fillStyle = FLOOR_COLOR;
+  context.fillRect(stage.x + 2, floorY, stage.width - 4, FLOOR_HEIGHT);
+  context.fillStyle = FLOOR_EDGE_COLOR;
+  context.fillRect(stage.x + 2, floorY, stage.width - 4, 1);
 }
 
 function drawPedestal(context, pedestal, blockSprites) {
@@ -130,6 +147,7 @@ export function drawResultsMenu(context, { matchScene, options, selectedIndex })
 
   drawMenuBackdrop(context);
   drawBanner(context, layout.banner, winner.color);
+  drawStage(context, layout);
   drawPedestal(context, layout.pedestal, matchScene.level.tileSprites);
   drawCharacter(context, { player: loser, box: layout.loser, matchScene });
   drawCharacter(context, { player: winner, box: layout.winner, matchScene });
