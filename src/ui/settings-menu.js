@@ -40,10 +40,11 @@ export function settingsMenuOptions(settings) {
   ];
 }
 
-// Moves one setting a step forward (1) or back (-1), wrapping at the ends.
+// Moves one setting a step forward (1) or back (-1). Volumes stop at 0 and VOLUME_STEPS, so a confirm or tap on a
+// full volume never mutes it. Other settings wrap at the ends.
 export function changeSetting(settings, settingId, step) {
   if (settingId === 'musicVolume' || settingId === 'effectsVolume') {
-    settings[settingId] = wrapMenuIndex(settings[settingId], step, VOLUME_STEPS + 1);
+    settings[settingId] = Math.max(0, Math.min(VOLUME_STEPS, settings[settingId] + step));
   } else if (settingId === 'screenShake') {
     const index = SCREEN_SHAKE_LEVELS.indexOf(settings.screenShake);
     settings.screenShake = SCREEN_SHAKE_LEVELS[wrapMenuIndex(index, step, SCREEN_SHAKE_LEVELS.length)];
