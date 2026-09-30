@@ -134,6 +134,19 @@ test('two players joining at the same moment get different slots', async () => {
   await assertRejects(service.join({ code }), 'room-full');
 });
 
+test('many signals at once all succeed', async () => {
+  const { service } = createFixture();
+  const { code, hostId } = await service.create();
+  const { playerId } = await service.join({ code });
+  await Promise.all(
+    Array.from({ length: 20 }, (_, n) =>
+      service.signal({ code, from: hostId, to: playerId, payload: { type: 'candidate', n } }),
+    ),
+  );
+  const { messages } = await service.poll({ code, playerId });
+  assert.equal(messages.length, 20);
+});
+
 test('two hosts can never take the same code', async () => {
   const store = createMemoryStore();
   const service = createRoomService({ store, now: () => 1_000_000, random: () => 0 });

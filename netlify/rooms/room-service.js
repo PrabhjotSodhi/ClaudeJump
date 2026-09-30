@@ -37,12 +37,21 @@ function randomText(alphabet, length, random) {
 // null, and write(key, value, version) stores only if the key still has that
 // version (null means the key must not exist yet) and returns whether it did.
 // `now` returns milliseconds. Everything for a room lives under the key prefix
-// `CODE/`. Throws RoomError with a code and an HTTP status.
+// `CODE/`. The room record only changes when someone joins; activity has its
+// own key so that many signals at once never compete for the room record. Throws RoomError with a code and an HTTP status.
 export function createRoomService({ store, now = Date.now, random = randomInteger }) {
   const roomKey = (code) => `${code}/room`;
   const pollKey = (code, playerId) => `${code}/poll/${playerId}`;
   const mailboxPrefix = (code, playerId) => `${code}/message/${playerId}/`;
-  const isExpired = (room) => now() - room.lastActivityAt >= ROOM_LIFETIME_MILLISECONDS;
+  const activityKey = (code) => `${code}/activity`;
+
+  async function isExpired(code, room) {
+    const activity = await store.get(activityKey(code));
+    const lastActivityAt = Math.max(room.createdAt, activity?.at ?? 0);
+    return now() - lastActivityAt >= ROOM_LIFETIME_MILLISECONDS;
+  }
+
+  const touch = (code) => store.set(activityKey(code), { at: now() });
 
   async function deleteRoom(code) {
     for (const key of await store.list(`${code}/`)) {
@@ -54,20 +63,19 @@ export function createRoomService({ store, now = Date.now, random = randomIntege
     const code = typeof codeInput === 'string' ? codeInput.toUpperCase() : '';
     const stored = code ? await store.read(roomKey(code)) : null;
     if (!stored) throw new RoomError('room-not-found', 404);
-    if (isExpired(stored.value)) {
+    if (await isExpired(code, stored.value)) {
       await deleteRoom(code);
       throw new RoomError('room-expired', 410);
     }
     return { code, room: stored.value, version: stored.version };
   }
 
-  // Runs `change(room)` on a fresh copy and saves it as new activity. Retries
+  // Runs `change(room)` on a fresh copy and saves it. Retries
   // when another request changed the room in between.
   async function updateRoom(codeInput, change) {
     for (let attempt = 0; attempt < ROOM_WRITE_ATTEMPTS; attempt++) {
       const { code, room, version } = await loadRoom(codeInput);
       const result = change(room);
-      room.lastActivityAt = now();
       if (await store.write(roomKey(code), room, version)) return { code, room, result };
     }
     throw new RoomError('room-busy', 503);
@@ -89,16 +97,18 @@ export function createRoomService({ store, now = Date.now, random = randomIntege
     for (let attempt = 0; attempt < CODE_ATTEMPTS; attempt++) {
       const code = randomText(CODE_ALPHABET, CODE_LENGTH, random);
       const existing = await store.read(roomKey(code));
-      if (existing && !isExpired(existing.value)) continue;
+      if (existing && !(await isExpired(code, existing.value))) continue;
       if (existing) await deleteRoom(code);
       const hostId = randomText(HEX_DIGITS, PLAYER_ID_LENGTH, random);
       const timestamp = now();
       const room = {
         createdAt: timestamp,
-        lastActivityAt: timestamp,
         players: [{ id: hostId, slot: 0 }],
       };
-      if (await store.write(roomKey(code), room, null)) return { code, hostId };
+      if (await store.write(roomKey(code), room, null)) {
+        await touch(code);
+        return { code, hostId };
+      }
     }
     throw new RoomError('no-free-code', 503);
   }
@@ -111,24 +121,25 @@ export function createRoomService({ store, now = Date.now, random = randomIntege
       room.players.push({ id: playerId, slot });
       return slot;
     });
+    await touch(code);
     const hostId = room.players[0].id;
     await addMessage(code, hostId, playerId, { type: 'joined', slot: result });
     return { playerId, hostId, slot: result };
   }
 
   async function signal({ code: codeInput, from, to, payload }) {
-    const { code } = await updateRoom(codeInput, (room) => {
-      const sender = findPlayer(room, from);
-      const recipient = findPlayer(room, to);
-      const betweenTwoJoiners = sender.slot !== 0 && recipient.slot !== 0;
-      if (sender === recipient || betweenTwoJoiners || payload === undefined) {
-        throw new RoomError('bad-request', 400);
-      }
-      if (new TextEncoder().encode(JSON.stringify(payload)).length > MAX_PAYLOAD_BYTES) {
-        throw new RoomError('payload-too-large', 413);
-      }
-    });
+    const { code, room } = await loadRoom(codeInput);
+    const sender = findPlayer(room, from);
+    const recipient = findPlayer(room, to);
+    const betweenTwoJoiners = sender.slot !== 0 && recipient.slot !== 0;
+    if (sender === recipient || betweenTwoJoiners || payload === undefined) {
+      throw new RoomError('bad-request', 400);
+    }
+    if (new TextEncoder().encode(JSON.stringify(payload)).length > MAX_PAYLOAD_BYTES) {
+      throw new RoomError('payload-too-large', 413);
+    }
     await addMessage(code, to, from, payload);
+    await touch(code);
     return {};
   }
 
