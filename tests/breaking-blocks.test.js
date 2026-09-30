@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { HITSTOP_TICKS, LEVEL_COLUMNS, LEVEL_ROWS, SHOVE_WINDUP_TICKS } from '../src/engine/config.js';
+import {
+  HITSTOP_TICKS,
+  KNOCKOUT_SLOWMO_TICKS,
+  LEVEL_COLUMNS,
+  LEVEL_ROWS,
+  SHOVE_WINDUP_TICKS,
+} from '../src/engine/config.js';
 import { Bomb } from '../src/entities/bomb.js';
 import { BouncePad } from '../src/entities/bounce-pad.js';
 import { buildLevel } from '../src/levels/level-loader.js';
@@ -134,7 +140,7 @@ test('the next round starts with every block back', () => {
 
   scene.players.find((player) => player.id === 'blue').y = 600;
   advance(scene, 1);
-  advance(scene, 90);
+  advance(scene, KNOCKOUT_SLOWMO_TICKS + 90);
 
   assert.equal(scene.phase, 'ready');
   assert.ok(isSolidAt(scene, 168, 152), 'the broken block is back');

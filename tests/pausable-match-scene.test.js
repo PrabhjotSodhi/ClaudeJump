@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { KNOCKOUT_SLOWMO_TICKS } from '../src/engine/config.js';
 import { SoundPlayer } from '../src/engine/sound-player.js';
 import { PausableMatchScene } from '../src/scenes/pausable-match-scene.js';
 import { PlayerSelectScene, START_COUNTDOWN_TICKS } from '../src/scenes/player-select-scene.js';
@@ -283,6 +284,7 @@ function sceneJustBeforeResults() {
     for (let tick = 0; tick < READY_TICKS; tick++) scene.update(neutralInputs());
     findPlayer(matchScene, 'blue').y = 600;
     scene.update(neutralInputs());
+    for (let tick = 0; tick < KNOCKOUT_SLOWMO_TICKS; tick++) scene.update(neutralInputs());
     if (win < 5) for (let tick = 0; tick < POINT_PAUSE_TICKS; tick++) scene.update(neutralInputs());
   }
   for (let tick = 0; tick < RESULTS_DELAY_TICKS - 1; tick++) scene.update(neutralInputs());

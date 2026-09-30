@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { SCREEN_WIDTH, SHOVE_WINDUP_TICKS } from '../src/engine/config.js';
+import { KNOCKOUT_SLOWMO_TICKS, SCREEN_WIDTH, SHOVE_WINDUP_TICKS } from '../src/engine/config.js';
 import { stateHash } from '../src/engine/state-hash.js';
 import { BOUNCE_PAD_WIDTH } from '../src/entities/bounce-pad.js';
 import { CHARACTERS } from '../src/entities/characters.js';
@@ -41,6 +41,10 @@ function dropIntoSea(scene, ...ids) {
   scene.update(idleInputs(scene));
 }
 
+function finishKnockout(scene) {
+  advance(scene, KNOCKOUT_SLOWMO_TICKS);
+}
+
 test('only the joined players spawn, in seat order', () => {
   assert.deepEqual(
     newScene(2).players.map((player) => player.id),
@@ -65,6 +69,7 @@ test('a 2 player match plays as it always did: only red and blue spawn and one f
     );
     advance(scene, READY_TICKS);
     dropIntoSea(scene, 'red');
+    finishKnockout(scene);
     assert.equal(scene.phase, 'point');
     assert.equal(scene.winnerId, 'blue');
     assert.deepEqual(scene.wins, { red: 0, blue: 1 });
@@ -81,6 +86,7 @@ test('a 4 player round ends when three players fall', () => {
   assert.equal(scene.phase, 'fight', 'two players are still standing');
 
   dropIntoSea(scene, 'green');
+  finishKnockout(scene);
   assert.equal(scene.phase, 'point');
   assert.equal(scene.winnerId, 'yellow');
   assert.deepEqual(scene.wins, { red: 0, blue: 0, green: 0, yellow: 1 });
@@ -91,6 +97,7 @@ test('a round where the last players fall together is a draw', () => {
   advance(scene, READY_TICKS);
 
   dropIntoSea(scene, 'red', 'blue', 'green');
+  finishKnockout(scene);
 
   assert.equal(scene.phase, 'point');
   assert.equal(scene.winnerId, null);
@@ -108,6 +115,7 @@ test('a 3 player match reaches 5 wins', () => {
     assert.equal(scene.wins.blue, win - 1);
 
     dropIntoSea(scene, 'green');
+    finishKnockout(scene);
     assert.equal(scene.phase, win < WINS_NEEDED ? 'point' : 'match', 'the round ends with one player standing');
     assert.equal(scene.winnerId, 'blue');
     assert.equal(scene.wins.blue, win);
