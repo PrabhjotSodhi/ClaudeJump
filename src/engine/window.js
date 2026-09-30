@@ -1,5 +1,6 @@
 import { SCREEN_HEIGHT, SCREEN_WIDTH, SEA_COLUMN_COUNT } from './config.js';
-import { fitScreen } from './screen-fit.js';
+import { fitPortraitLayout } from './portrait-layout.js';
+import { fitScreen, isPortraitOnTouchDevice } from './screen-fit.js';
 
 const TEXTURE_UNIT_BY_LAYER_NAME = { background: 0, game: 1, ui: 2 };
 const SEA_TEXTURE_UNIT = 3;
@@ -34,25 +35,55 @@ export function readSafeAreaInsets() {
   };
 }
 
-function resizeToFitWindow(canvas, webglContext) {
-  const fit = fitScreen({
-    width: innerWidth,
-    height: innerHeight,
-    devicePixelRatio: window.devicePixelRatio || 1,
-    insets: document.fullscreenElement ? undefined : readSafeAreaInsets(),
-  });
-  canvas.width = fit.deviceWidth;
-  canvas.height = fit.deviceHeight;
-  canvas.style.width = `${fit.cssWidth}px`;
-  canvas.style.height = `${fit.cssHeight}px`;
-  canvas.style.left = `${fit.cssLeft}px`;
-  canvas.style.top = `${fit.cssTop}px`;
-  // One game pixel in CSS pixels, for page decoration that has to line up with the game's pixels.
-  document.documentElement.style.setProperty('--game-pixel', `${fit.cssWidth / SCREEN_WIDTH}px`);
-  webglContext.viewport(0, 0, canvas.width, canvas.height);
+function placeCanvas(canvas, { deviceWidth, deviceHeight, cssWidth, cssHeight, cssLeft, cssTop }) {
+  canvas.width = deviceWidth;
+  canvas.height = deviceHeight;
+  canvas.style.width = `${cssWidth}px`;
+  canvas.style.height = `${cssHeight}px`;
+  canvas.style.left = `${cssLeft}px`;
+  canvas.style.top = `${cssTop}px`;
 }
 
-export function createWindow(canvas, vertexShaderSource, fragmentShaderSource) {
+// Returns the portrait layout while a touch device is held upright, otherwise null.
+function resizeToFitWindow(canvas, webglContext, { controlsCanvas, coarsePointerQuery }) {
+  const devicePixelRatio = window.devicePixelRatio || 1;
+  const insets = document.fullscreenElement ? undefined : readSafeAreaInsets();
+  const isPortrait = isPortraitOnTouchDevice({
+    width: innerWidth,
+    height: innerHeight,
+    hasCoarsePointer: coarsePointerQuery.matches,
+  });
+  document.documentElement.classList.toggle('portrait', isPortrait);
+
+  let portraitLayout = null;
+  let gameFit;
+  if (isPortrait) {
+    portraitLayout = fitPortraitLayout({
+      width: innerWidth,
+      height: innerHeight,
+      devicePixelRatio,
+      insets,
+    });
+    gameFit = portraitLayout.game;
+    const { controls } = portraitLayout;
+    controlsCanvas.width = controls.logicalWidth;
+    controlsCanvas.height = controls.logicalHeight;
+    controlsCanvas.style.width = `${controls.cssWidth}px`;
+    controlsCanvas.style.height = `${controls.cssHeight}px`;
+    controlsCanvas.style.left = `${controls.cssLeft}px`;
+    controlsCanvas.style.top = `${controls.cssTop}px`;
+  } else {
+    gameFit = fitScreen({ width: innerWidth, height: innerHeight, devicePixelRatio, insets });
+  }
+  placeCanvas(canvas, gameFit);
+  // One game pixel in CSS pixels, for page decoration that has to line up with the game's pixels.
+  document.documentElement.style.setProperty('--game-pixel', `${gameFit.cssWidth / SCREEN_WIDTH}px`);
+  webglContext.viewport(0, 0, canvas.width, canvas.height);
+  return portraitLayout;
+}
+
+// controlsCanvas is the portrait controls panel.
+export function createWindow(canvas, vertexShaderSource, fragmentShaderSource, { controlsCanvas }) {
   const webglContext = canvas.getContext('webgl', { antialias: false });
   if (!webglContext) return null;
   const program = createProgram(webglContext, vertexShaderSource, fragmentShaderSource);
@@ -91,10 +122,15 @@ export function createWindow(canvas, vertexShaderSource, fragmentShaderSource) {
   const zoomOriginUniformLocation = webglContext.getUniformLocation(program, 'u_zoomOrigin');
   const timeUniformLocation = webglContext.getUniformLocation(program, 'u_time');
 
-  addEventListener('resize', () => resizeToFitWindow(canvas, webglContext));
+  const coarsePointerQuery = matchMedia('(pointer: coarse)');
+  let portraitLayout = null;
+  function resize() {
+    portraitLayout = resizeToFitWindow(canvas, webglContext, { controlsCanvas, coarsePointerQuery });
+  }
+  addEventListener('resize', resize);
   // Entering or leaving fullscreen usually fires 'resize' too, but this covers browsers where it doesn't.
-  document.addEventListener('fullscreenchange', () => resizeToFitWindow(canvas, webglContext));
-  resizeToFitWindow(canvas, webglContext);
+  document.addEventListener('fullscreenchange', resize);
+  resize();
 
   function uploadLayer(layerName, layerCanvas) {
     webglContext.activeTexture(webglContext.TEXTURE0 + TEXTURE_UNIT_BY_LAYER_NAME[layerName]);
@@ -109,6 +145,10 @@ export function createWindow(canvas, vertexShaderSource, fragmentShaderSource) {
   }
 
   return {
+    // The portrait layout while a touch device is held upright, otherwise null.
+    get portraitLayout() {
+      return portraitLayout;
+    },
     render({ backgroundCanvas, gameCanvas, uiCanvas, shakeOffset, zoom, seaRippleBytes, waterLineY, timeSeconds }) {
       if (backgroundCanvas) uploadLayer('background', backgroundCanvas);
       uploadLayer('game', gameCanvas);
