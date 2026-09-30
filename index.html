@@ -36,6 +36,30 @@
       canvas {
         display: block;
       }
+      #screen {
+        position: fixed;
+        image-rendering: pixelated;
+      }
+
+      /* Page option "vignette": the game palette darkening toward the edges over a faint pixel checker. */
+      html[data-page='vignette'] body {
+        background:
+          radial-gradient(ellipse at center, rgba(38, 43, 68, 0.9) 0%, rgba(24, 20, 37, 0) 75%),
+          conic-gradient(#181425 25%, #1c1a2d 0 50%, #181425 0 75%, #1c1a2d 0) 0 0 / 8px 8px;
+        background-color: #181425;
+      }
+
+      /* Page option "frame": the game panel art (border, fill, top highlight) drawn around the screen,
+         one game pixel per step, so it lines up with the game's own pixels. */
+      html[data-page='frame'] body {
+        background: #181425;
+      }
+      html[data-page='frame'] #screen {
+        box-shadow:
+          0 calc(var(--game-pixel) * -1) 0 0 #3a4466,
+          0 0 0 calc(var(--game-pixel) * 3) #262b44,
+          0 0 0 calc(var(--game-pixel) * 5) #3e2731;
+      }
       #rotate-prompt {
         display: none;
         image-rendering: pixelated;
@@ -49,6 +73,10 @@
         text-align: center;
       }
     </style>
+    <script>
+      const pageOption = new URLSearchParams(location.search).get('page');
+      document.documentElement.dataset.page = pageOption === 'frame' ? 'frame' : 'vignette';
+    </script>
   </head>
   <body>
     <canvas id="screen"></canvas>

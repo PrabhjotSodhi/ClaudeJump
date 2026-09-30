@@ -6,13 +6,16 @@ import { PlayerSelectScene } from './player-select-scene.js';
 import { TitleScene } from './title-scene.js';
 
 // The sound and music rows show the current setting, so the list is built fresh each time it is used.
-function pauseMenuOptions(soundEnabled, musicEnabled) {
-  return [
+function pauseMenuOptions(soundEnabled, musicEnabled, fullscreen) {
+  const options = [
     { id: 'resume', label: 'Resume' },
     { id: 'title', label: 'Return to title' },
     { id: 'sound', label: soundEnabled ? 'Sound: On' : 'Sound: Off' },
     { id: 'music', label: musicEnabled ? 'Music: On' : 'Music: Off' },
   ];
+  if (fullscreen?.supported)
+    options.push({ id: 'fullscreen', label: fullscreen.active ? 'Fullscreen: On' : 'Fullscreen: Off' });
+  return options;
 }
 
 export const RESULTS_MENU_OPTIONS = [
@@ -48,6 +51,7 @@ export class PausableMatchScene {
     return pauseMenuOptions(
       this.sceneManager.soundPlayer?.soundEnabled ?? true,
       this.sceneManager.musicPlayer?.musicEnabled ?? true,
+      this.sceneManager.fullscreen,
     );
   }
 
@@ -237,6 +241,8 @@ export class PausableMatchScene {
       this.sceneManager.soundPlayer?.toggleSound();
     } else if (option.id === 'music') {
       this.sceneManager.musicPlayer?.toggleMusic();
+    } else if (option.id === 'fullscreen') {
+      this.sceneManager.fullscreen.toggle();
     } else if (option.id === 'title') {
       this.sceneManager.setScene(
         new TitleScene({
