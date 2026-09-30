@@ -1,3 +1,4 @@
+import { gameOptions } from '../engine/game-options.js';
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../engine/config.js';
 import { EventEmitter } from '../engine/events.js';
 import { SeededRandom } from '../engine/seeded-random.js';
@@ -176,6 +177,7 @@ export class LevelSelectScene {
           players: this.voters.map(({ id }) => ({ id, character: this.characterByPlayerId[id] })),
           sprites: this.sprites,
           levels: this.levels,
+          heat: gameOptions.heat,
         }),
       }),
     );

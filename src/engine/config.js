@@ -67,6 +67,13 @@ export const SHOVE_CLASH_BOUNCE_VELOCITY_X = 3;
 export const SHOVE_CLASH_CHARGE_MARGIN = 0.2;
 export const SHOVE_CLASH_WIN_KNOCKBACK_MULTIPLIER = 0.5;
 
+// The heat prototype, only on with `?heat` in the URL. Each hit a player takes adds one heat step for the rest of the
+// round. A hit's knockback is multiplied by 1 plus the heat built up before it times HEAT_KNOCKBACK_STEP, up to
+// HEAT_KNOCKBACK_MAX_MULTIPLIER. The player glows with the first color at one step, and the last color when capped.
+export const HEAT_KNOCKBACK_STEP = 0.25;
+export const HEAT_KNOCKBACK_MAX_MULTIPLIER = 2;
+export const HEAT_GLOW_COLORS = ['#feae34', '#f77622', '#e43b44'];
+
 // Online matches. A press is scheduled this many ticks ahead so it can cross the network before it is needed.
 export const INPUT_DELAY_TICKS = 4;
 export const HASH_INTERVAL_TICKS = 60;

@@ -42,7 +42,11 @@ export function knockBackPlayersInBlast(players, blastCenterX, blastCenterY) {
     const distanceY = player.y + player.height / 2 - blastCenterY;
     const distance = Math.sqrt(distanceX * distanceX + distanceY * distanceY);
     const knockbackDirectionX = distance === 0 ? 1 : distanceX / distance;
-    player.applyKnockback(knockbackDirectionX * BLAST_KNOCKBACK_VELOCITY_X, BLAST_KNOCKBACK_VELOCITY_Y);
+    const knockback = player.takeKnockbackHit(
+      knockbackDirectionX * BLAST_KNOCKBACK_VELOCITY_X,
+      BLAST_KNOCKBACK_VELOCITY_Y,
+    );
+    player.applyKnockback(knockback.x, knockback.y);
   }
   return knockedPlayers.map((player) => player.id);
 }
