@@ -11,14 +11,24 @@ const VOLUME_SMOOTHING_SECONDS = 0.05;
 const LOOK_AHEAD_SECONDS = 0.25;
 const PUMP_INTERVAL_MILLISECONDS = 50;
 const START_DELAY_SECONDS = 0.05;
+// While a win jingle plays, the looping track drops to this share of its volume.
+const JINGLE_DUCK_GAIN = 0.2;
+const JINGLE_DUCK_SECONDS = 0.1;
+// The jingle's last notes ring on for this long before the looping track comes back up.
+const JINGLE_TAIL_SECONDS = 0.6;
 
 // Plays looping tracks for whichever scene is showing and crossfades between them. It shares the
 // sound player's audio context, so it stays silent until the sound player is unlocked. It only
 // listens: it never changes game state, and its timing comes from the audio clock.
 export class MusicPlayer {
-  constructor({ soundPlayer, tracks }) {
+  // jingles holds one short win jingle per character name, in the same format as a track.
+  constructor({ soundPlayer, tracks, jingles = {} }) {
     this.soundPlayer = soundPlayer;
     this.tracks = tracks;
+    this.jingles = jingles;
+    this.wantedJingleName = null;
+    this.jingleSequencer = null;
+    this.jingleEndTime = 0;
     this.wantedTrackName = null;
     this.paused = false;
     this.suddenDeath = false;
@@ -34,6 +44,7 @@ export class MusicPlayer {
     if (!events) return;
     events.on('sudden-death-started', () => (this.suddenDeath = true));
     events.on('round-started', () => (this.suddenDeath = false));
+    events.on('match-won', ({ characterName }) => (this.wantedJingleName = characterName));
   }
 
   playTrack(trackName) {
@@ -58,6 +69,7 @@ export class MusicPlayer {
       if (this.wantedTrackName !== this.playingTrackName) this.crossfadeTo(this.wantedTrackName, audioContext, now);
       const tempoScale = this.suddenDeath ? SUDDEN_DEATH_TEMPO_SCALE : 1;
       this.playingSequencer?.scheduleUntil(now + LOOK_AHEAD_SECONDS, tempoScale);
+      this.updateJingle(audioContext, now);
       this.retiredSequencers = this.retiredSequencers.filter(({ sequencer, endTime }) => {
         if (endTime > now) return true;
         sequencer.stop();
@@ -66,6 +78,38 @@ export class MusicPlayer {
     } catch {
       // Audio must never break the game.
     }
+  }
+
+  // A jingle plays once over the ducked looping track, which comes back up once the jingle has rung out.
+  updateJingle(audioContext, now) {
+    if (this.wantedJingleName) {
+      const jingle = this.jingles[this.wantedJingleName];
+      this.wantedJingleName = null;
+      if (jingle) this.startJingle(jingle, audioContext, now);
+    }
+    if (!this.jingleSequencer) return;
+    this.jingleSequencer.scheduleUntil(now + LOOK_AHEAD_SECONDS);
+    if (!this.jingleSequencer.finished) return;
+    this.jingleEndTime ||= this.jingleSequencer.nextStepTime + JINGLE_TAIL_SECONDS;
+    if (now < this.jingleEndTime) return;
+    this.jingleSequencer.stop();
+    this.jingleSequencer = null;
+    this.jingleEndTime = 0;
+    this.playingSequencer?.fade(JINGLE_DUCK_GAIN, 1, now, JINGLE_DUCK_SECONDS);
+  }
+
+  startJingle(jingle, audioContext, now) {
+    this.jingleSequencer?.stop();
+    this.jingleSequencer = new MusicSequencer({
+      audioContext,
+      destination: this.musicGain,
+      noiseBuffer: this.soundPlayer.getNoiseBuffer(),
+      track: jingle,
+      startTime: now + START_DELAY_SECONDS,
+      loops: false,
+    });
+    this.jingleEndTime = 0;
+    this.playingSequencer?.fade(1, JINGLE_DUCK_GAIN, now, JINGLE_DUCK_SECONDS);
   }
 
   updateVolume(audioContext, now) {

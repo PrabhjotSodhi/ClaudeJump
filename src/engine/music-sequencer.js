@@ -63,9 +63,11 @@ export function parseChannel(channel) {
 }
 
 // Plays one track on the audio clock. scheduleUntil() is called often and queues every step that
-// starts before the given time, so timing never depends on game ticks or animation frames.
+// starts before the given time, so timing never depends on game ticks or animation frames. A track that does not
+// loop plays once and then stays silent.
 export class MusicSequencer {
-  constructor({ audioContext, destination, noiseBuffer, track, startTime }) {
+  constructor({ audioContext, destination, noiseBuffer, track, startTime, loops = true }) {
+    this.loops = loops;
     this.audioContext = audioContext;
     this.noiseBuffer = noiseBuffer;
     this.track = track;
@@ -84,7 +86,7 @@ export class MusicSequencer {
 
   scheduleUntil(time, tempoScale = 1) {
     const stepSeconds = 60 / (this.track.tempo * tempoScale * this.track.stepsPerBeat);
-    while (this.nextStepTime < time) {
+    while (this.nextStepTime < time && (this.loops || this.stepIndex < this.stepCount)) {
       this.scheduleStep(this.stepIndex % this.stepCount, this.nextStepTime, stepSeconds);
       this.stepIndex++;
       this.nextStepTime += stepSeconds;
@@ -151,6 +153,10 @@ export class MusicSequencer {
       noise.start(startTime);
       noise.stop(endTime);
     }
+  }
+
+  get finished() {
+    return !this.loops && this.stepIndex >= this.stepCount;
   }
 
   stop() {

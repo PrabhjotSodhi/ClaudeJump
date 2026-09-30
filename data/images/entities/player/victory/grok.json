@@ -1,0 +1,9 @@
+{
+  "ticksPerFrame": 8,
+  "frames": [
+    {},
+    { "x": 1, "height": -1 },
+    { "x": 2, "width": 1, "height": -2, "eyes": "closed" },
+    { "x": 1, "height": -1 }
+  ]
+}
