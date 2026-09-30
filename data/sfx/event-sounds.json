@@ -39,6 +39,13 @@
   "shove-fully-charged": "charge-ping",
   "shove-clash": "clash",
   "award-shown": "award",
+  "countdown-beat": {
+    "by": "count",
+    "3": "count-beat",
+    "2": "count-beat",
+    "1": "count-beat",
+    "0": "count-go"
+  },
   "character-cheered": {
     "by": "characterName",
     "claude": "cheer-claude",

@@ -1,7 +1,11 @@
 import { CARD_NAMES } from '../cards/card-definitions.js';
 import {
+  CALLOUT_CAUSE_TICKS,
   KNOCKOUT_SLOWMO_STEP_INTERVAL,
   KNOCKOUT_SLOWMO_TICKS,
+  ROUND_COUNTDOWN_BEAT_TICKS,
+  ROUND_COUNTDOWN_TICKS,
+  ROUND_GO_TICKS,
   SCREEN_WIDTH,
   SHOVE_CHARGE_REPORT_INTERVAL_TICKS,
   SHOVE_CLASH_BOUNCE_VELOCITY_X,
@@ -31,12 +35,15 @@ import {
 import { DEFAULT_JOINED_PLAYERS } from '../entities/characters.js';
 import { Crate, CRATE_WIDTH, CRATE_HEIGHT, CRATE_WARNING_TICKS } from '../entities/crate.js';
 import { Platform } from '../entities/platform.js';
-import { Player, SHOVE_KNOCKBACK_VELOCITY_X, SHOVE_KNOCKBACK_VELOCITY_Y } from '../entities/player.js';
+import { Player } from '../entities/player.js';
 import { Rocket, ROCKET_WIDTH, ROCKET_HEIGHT } from '../entities/rocket.js';
+import { knockBackShoveTarget, resolveShoveHit } from '../entities/shove.js';
 import { drawArenaBackground } from '../levels/arena-backgrounds.js';
 import { solidRuns } from '../levels/level-loader.js';
 import { drawHeldCardIcons } from '../ui/held-card-icons.js';
+import { Callouts } from '../ui/callouts.js';
 import { drawHud } from '../ui/hud.js';
+import { drawRoundIntro } from '../ui/round-intro.js';
 import { MatchStats } from '../ui/match-stats.js';
 import { drawPlayerTags } from '../ui/player-tags.js';
 import { WinPips } from '../ui/win-pips.js';
@@ -50,8 +57,6 @@ import { ScreenShake } from '../vfx/screen-shake.js';
 import { drawWrapPuffs, WrapPuffTracker } from '../vfx/wrap-puff.js';
 
 const WINS_NEEDED = 5;
-const READY_TICKS = 60;
-const GO_TICKS = 30;
 const POINT_PAUSE_TICKS = 90;
 const RESTART_DELAY_TICKS = 60;
 // How far one player's feet may sit above the other's head and still count as jumping over, not landing on them.
@@ -118,6 +123,8 @@ export class VersusScene {
     this.wins = {};
     for (const { id } of players) this.wins[id] = 0;
     this.skipNextReadyPhase = startInFightPhase;
+    // The last rocket or banana to hit each player, { cause, tick }, so a fall can be named for what caused it.
+    this.recentCauseByPlayerId = new Map();
     this.dashHitPairIds = new Set();
     // Which opponents each shover has already hit this shove, so one shove lands at most one hit
     // per opponent even while its hit zone stays active for several ticks.
@@ -142,6 +149,11 @@ export class VersusScene {
     // Display data for the results screen, counted only from events. Created here (rather than
     // lazily on first render) so it never misses an event: dev mode can run a whole match through
     // step() with no render call in between. Game logic never reads it, only the HUD does.
+    this.callouts = new Callouts();
+    this.callouts.attach(this.events, {
+      getPlayers: () => this.players,
+      getTickCount: () => this.tickCount,
+    });
     this.matchStats = new MatchStats(Object.keys(this.wins));
     this.matchStats.attach(this.events, () => this.phase === 'fight');
     this.winPips = new WinPips();
@@ -195,12 +207,13 @@ export class VersusScene {
     this.ticksUntilCrateSpawn = CRATE_SPAWN_DELAY_TICKS;
     if (this.skipNextReadyPhase) {
       this.phase = 'fight';
-      this.ticksRemaining = GO_TICKS;
+      this.ticksRemaining = ROUND_GO_TICKS;
       this.skipNextReadyPhase = false;
     } else {
       this.phase = 'ready';
-      this.ticksRemaining = READY_TICKS;
+      this.ticksRemaining = ROUND_COUNTDOWN_TICKS;
     }
+    this.recentCauseByPlayerId.clear();
     this.winnerId = null;
     this.knockoutTicks = 0;
     this.knockoutFocusPlayerId = null;
@@ -211,6 +224,8 @@ export class VersusScene {
     this.fightTicks = 0;
     this.suddenDeathPhase = 'none';
     this.events.emit('round-started', {});
+    if (this.phase === 'ready')
+      this.events.emit('countdown-beat', { count: ROUND_COUNTDOWN_TICKS / ROUND_COUNTDOWN_BEAT_TICKS });
   }
 
   // Blocks broken in a round are gone until the next one. The level itself is never changed, so the next round
@@ -283,7 +298,10 @@ export class VersusScene {
       case 'ready':
         if (this.ticksRemaining <= 0) {
           this.phase = 'fight';
-          this.ticksRemaining = GO_TICKS;
+          this.ticksRemaining = ROUND_GO_TICKS;
+          this.events.emit('countdown-beat', { count: 0 });
+        } else if (this.ticksRemaining % ROUND_COUNTDOWN_BEAT_TICKS === 0) {
+          this.events.emit('countdown-beat', { count: this.ticksRemaining / ROUND_COUNTDOWN_BEAT_TICKS });
         }
         break;
       case 'fight':
@@ -387,14 +405,34 @@ export class VersusScene {
           playerId: player.id,
           fallSpeed,
           splashTier: splashTierFor(fallSpeed, lastKnockout),
+          cause: this.recentCauseOf(player.id),
+          secondsRemaining: this.suddenDeathPhase === 'none' ? this.suddenDeathCountdownTicks / TICK_RATE : null,
         });
       }
       this.wrapPlayerAroundScreen(player);
     }
     // Hits resolve once everyone has moved, so a freeze lasts the same number of ticks for every player.
     this.resolveShoveClashes();
-    for (const player of this.players) if (player.isShoveActive) this.resolveShoveHit(player);
+    for (const shover of this.players) {
+      if (!shover.isShoveActive) continue;
+      resolveShoveHit({
+        events: this.events,
+        players: this.players,
+        shover,
+        alreadyHitIds: this.shoveHitIdsByShoverId.get(shover.id),
+      });
+    }
     this.resolvePlayerCollisions();
+  }
+
+  recordCause(playerId, cause) {
+    this.recentCauseByPlayerId.set(playerId, { cause, tick: this.tickCount });
+  }
+
+  // 'rocket' or 'banana' when one of them hit the player in the last CALLOUT_CAUSE_TICKS ticks, otherwise null.
+  recentCauseOf(playerId) {
+    const recent = this.recentCauseByPlayerId.get(playerId);
+    return recent && this.tickCount - recent.tick <= CALLOUT_CAUSE_TICKS ? recent.cause : null;
   }
 
   // Resolves every pair in a fixed order, once per pair of shoves.
@@ -439,7 +477,12 @@ export class VersusScene {
     const chargeLead = playerA.shoveClashCharge - playerB.shoveClashCharge;
     if (Math.abs(chargeLead) >= SHOVE_CLASH_CHARGE_MARGIN) {
       const winner = chargeLead > 0 ? playerA : playerB;
-      this.knockBackShoveTarget(winner, winner === playerA ? playerB : playerA, SHOVE_CLASH_WIN_KNOCKBACK_MULTIPLIER);
+      knockBackShoveTarget({
+        events: this.events,
+        shover: winner,
+        opponent: winner === playerA ? playerB : playerA,
+        knockbackScale: SHOVE_CLASH_WIN_KNOCKBACK_MULTIPLIER,
+      });
     } else {
       leftPlayer.freeze('light', -SHOVE_CLASH_BOUNCE_VELOCITY_X, 0);
       rightPlayer.freeze('light', SHOVE_CLASH_BOUNCE_VELOCITY_X, 0);
@@ -447,39 +490,6 @@ export class VersusScene {
     const centerX = (leftPlayer.x + leftPlayer.width / 2 + rightPlayer.x + rightPlayer.width / 2) / 2;
     const centerY = (leftPlayer.y + leftPlayer.height / 2 + rightPlayer.y + rightPlayer.height / 2) / 2;
     this.events.emit('shove-clash', { x: centerX, y: centerY, playerIds: [playerA.id, playerB.id] });
-  }
-
-  // Every other player touching the shover's hit zone gets knocked away, once per shove. The pop
-  // upward lets air knockback decay carry the hit, so a shove near the edge can end a round.
-  resolveShoveHit(shover) {
-    const hitZone = shover.shoveHitZone;
-    const alreadyHitIds = this.shoveHitIdsByShoverId.get(shover.id);
-    for (const opponent of this.players) {
-      if (opponent.id === shover.id || opponent.inWater || alreadyHitIds.has(opponent.id)) continue;
-      if (!opponent.overlaps(hitZone)) continue;
-
-      alreadyHitIds.add(opponent.id);
-      this.knockBackShoveTarget(shover, opponent, 1);
-    }
-  }
-
-  knockBackShoveTarget(shover, opponent, knockbackScale) {
-    const strength = shover.shoveCharge >= 1 ? 'medium' : 'light';
-    const multiplier = shover.shoveKnockbackMultiplier * knockbackScale;
-    opponent.freeze(
-      strength,
-      SHOVE_KNOCKBACK_VELOCITY_X * multiplier * shover.facing,
-      SHOVE_KNOCKBACK_VELOCITY_Y * multiplier,
-    );
-    shover.freeze(strength);
-    this.events.emit('player-shoved', {
-      shoverId: shover.id,
-      targetId: opponent.id,
-      directionX: shover.facing,
-      directionY: 0,
-      strength,
-      charge: shover.shoveCharge,
-    });
   }
 
   spawnRocket(player) {
@@ -501,6 +511,7 @@ export class VersusScene {
     const blastCenterX = rocket.x + rocket.width / 2;
     const blastCenterY = rocket.y + rocket.height / 2;
     const playerIds = this.resolveBlast(blastCenterX, blastCenterY);
+    for (const playerId of playerIds) if (playerId !== rocket.shooterId) this.recordCause(playerId, 'rocket');
     this.events.emit('rocket-exploded', { x: blastCenterX, y: blastCenterY, playerIds, strength: BLAST_STRENGTH });
     this.entityGroups.remove('rockets', rocket);
   }
@@ -551,6 +562,7 @@ export class VersusScene {
       if (!slippingPlayer) continue;
 
       slippingPlayer.makeSlip(BANANA_SLIP_TICKS);
+      this.recordCause(slippingPlayer.id, 'banana');
       this.events.emit('player-slipped', { playerId: slippingPlayer.id });
       this.entityGroups.remove('bananas', banana);
     }
@@ -765,5 +777,7 @@ export class VersusScene {
 
     renderer.clearUiLayer();
     drawHud(renderer.uiContext, this);
+    drawRoundIntro(renderer.uiContext, this);
+    this.callouts.draw(renderer.uiContext, this.tickCount, renderer.zoom, this.waterLineY);
   }
 }

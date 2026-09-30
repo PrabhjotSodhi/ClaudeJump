@@ -11,8 +11,7 @@ import { stateHash } from '../src/engine/state-hash.js';
 import { VersusScene } from '../src/scenes/versus-scene.js';
 import { knockoutZoom } from '../src/vfx/knockout-zoom.js';
 import { harborLevel } from './fixtures/harbor-level.mjs';
-
-const READY_TICKS = 60;
+import { ROUND_COUNTDOWN_TICKS as READY_TICKS } from '../src/engine/config.js';
 
 function idle() {
   return { red: { left: false, right: false, jump: false }, blue: { left: false, right: false, jump: false } };

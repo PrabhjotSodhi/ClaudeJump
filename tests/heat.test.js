@@ -1,12 +1,16 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { knockBackPlayersInBlast } from '../src/engine/blast.js';
-import { HEAT_KNOCKBACK_MAX_MULTIPLIER, HEAT_KNOCKBACK_STEP, SHOVE_WINDUP_TICKS } from '../src/engine/config.js';
+import {
+  HEAT_KNOCKBACK_MAX_MULTIPLIER,
+  HEAT_KNOCKBACK_STEP,
+  ROUND_COUNTDOWN_TICKS as READY_TICKS,
+  SHOVE_WINDUP_TICKS,
+} from '../src/engine/config.js';
 import { stateHash } from '../src/engine/state-hash.js';
 import { VersusScene } from '../src/scenes/versus-scene.js';
 import { harborLevel } from './fixtures/harbor-level.mjs';
 
-const READY_TICKS = 60;
 const SHOVE_COOLDOWN_AND_FREEZE_TICKS = 40;
 const FLIGHT_TICKS = 12;
 

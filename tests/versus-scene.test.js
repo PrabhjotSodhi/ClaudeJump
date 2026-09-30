@@ -8,6 +8,7 @@ import { BouncePad } from '../src/entities/bounce-pad.js';
 import { VersusScene } from '../src/scenes/versus-scene.js';
 import { arenaLevels } from './fixtures/arena-levels.mjs';
 import { harborLevel } from './fixtures/harbor-level.mjs';
+import { ROUND_COUNTDOWN_TICKS as READY_TICKS } from '../src/engine/config.js';
 
 function noInput() {
   return { left: false, right: false, jump: false };
@@ -25,7 +26,6 @@ function findPlayer(scene, id) {
   return scene.players.find((player) => player.id === id);
 }
 
-const READY_TICKS = 60;
 const DASH_KNOCKBACK_VELOCITY_X = 8;
 
 test('falling in the sea scores the other player', () => {

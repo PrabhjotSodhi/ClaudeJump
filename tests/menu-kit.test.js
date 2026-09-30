@@ -82,6 +82,14 @@ test('closing slides the menu back out over the same time and then reports close
   assert.equal(motion.isClosed, true);
 });
 
+test('a menu made closed starts hidden', () => {
+  const motion = new MenuMotion({ closed: true });
+  motion.update();
+
+  assert.equal(motion.isClosed, true);
+  assert.equal(motion.offsetY, MENU_SLIDE_DISTANCE);
+});
+
 test('a menu that is still open is not closed', () => {
   const motion = new MenuMotion();
   for (let tick = 0; tick < 100; tick++) motion.update();
