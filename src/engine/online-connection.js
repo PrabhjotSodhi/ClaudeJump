@@ -217,14 +217,26 @@ export async function hostRoom({ endpoint = ROOMS_ENDPOINT } = {}) {
   return connection;
 }
 
-// Joins a room by code. Resolves once the data channel to the host is open.
+// Joins a room by code. Resolves once the data channel to the host is open, or rejects with
+// connection-failed if that takes longer than the connect timeout.
 export async function joinRoom(code, { endpoint = ROOMS_ENDPOINT } = {}) {
   requireWebRtc();
   const { playerId } = await requestRooms(endpoint, 'join', { body: { code } });
   const connection = new OnlineConnection({ endpoint, code: code.toUpperCase(), playerId, isHost: false });
   return new Promise((resolve, reject) => {
-    connection.onPeerOpen = () => resolve(connection);
-    connection.onError = reject;
+    // A room whose host is gone never answers, so give up instead of waiting for it.
+    const timeoutTimer = setTimeout(
+      () => connection.fail(new OnlineError('connection-failed')),
+      CONNECT_TIMEOUT_MILLISECONDS,
+    );
+    connection.onPeerOpen = () => {
+      clearTimeout(timeoutTimer);
+      resolve(connection);
+    };
+    connection.onError = (error) => {
+      clearTimeout(timeoutTimer);
+      reject(error);
+    };
     connection.startPolling();
   });
 }

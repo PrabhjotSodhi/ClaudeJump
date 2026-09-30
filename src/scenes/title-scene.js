@@ -9,6 +9,7 @@ import { drawPanel } from '../ui/panel.js';
 import { drawText } from '../ui/text.js';
 import { drawCharacterBody, FRAME_SIZE } from '../vfx/character-body.js';
 import { EYE_STIFFNESSES, GooglyEye } from '../vfx/googly-eyes.js';
+import { openOnlineMenu } from './online-flow.js';
 import { PlayerSelectScene } from './player-select-scene.js';
 import { SurvivalScene } from './survival-scene.js';
 
@@ -100,6 +101,7 @@ export const FULLSCREEN_BUTTON = {
 export const MENU_OPTIONS = [
   { id: 'versus', label: 'Versus' },
   { id: 'survival', label: 'Survival' },
+  { id: 'online', label: 'Online' },
 ];
 
 export class TitleScene {
@@ -161,6 +163,24 @@ export class TitleScene {
     const option = this.options[this.selectedIndex];
     if (option.id === 'survival')
       this.sceneManager.setScene(new SurvivalScene({ sprites: this.sprites, seed: this.seed }));
+    if (option.id === 'online') {
+      openOnlineMenu({
+        sceneManager: this.sceneManager,
+        levels: this.levels,
+        sprites: this.sprites,
+        seed: this.seed,
+        returnToTitle: (initialInput) =>
+          this.sceneManager.setScene(
+            new TitleScene({
+              sceneManager: this.sceneManager,
+              levels: this.levels,
+              sprites: this.sprites,
+              seed: this.seed,
+              initialInput,
+            }),
+          ),
+      });
+    }
     if (option.id === 'versus')
       this.sceneManager.setScene(
         new PlayerSelectScene({

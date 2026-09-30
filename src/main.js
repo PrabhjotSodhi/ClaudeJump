@@ -15,6 +15,8 @@ import { PLAYERS } from './levels/versus-arena.js';
 import { isPortraitOnTouchDevice, pickScale } from './engine/screen-fit.js';
 import { createWindow, readSafeAreaInsets } from './engine/window.js';
 import { LevelSelectScene } from './scenes/level-select-scene.js';
+import { OnlineLobbyScene } from './scenes/online-lobby-scene.js';
+import { OnlineMatchScene } from './scenes/online-match-scene.js';
 import { PausableMatchScene } from './scenes/pausable-match-scene.js';
 import { PlayerSelectScene } from './scenes/player-select-scene.js';
 import { StyleTestScene } from './scenes/style-test-scene.js';
@@ -45,7 +47,9 @@ function isAnyControlHeld(inputByPlayerId) {
 }
 
 // Versus, from player select to the results, gives each player their own cluster. The title and Survival have one player.
+// Online scenes are played by one person on this device, so they use the one player layout.
 function touchButtonsFor(scene) {
+  if (scene instanceof OnlineLobbyScene || scene instanceof OnlineMatchScene) return TOUCH_BUTTONS;
   const isVersus =
     scene instanceof PlayerSelectScene || scene instanceof LevelSelectScene || scene.matchScene instanceof VersusScene;
   return isVersus ? TWO_PLAYER_TOUCH_BUTTONS : TOUCH_BUTTONS;
