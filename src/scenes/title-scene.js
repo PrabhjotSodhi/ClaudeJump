@@ -1,6 +1,8 @@
 import { SCREEN_WIDTH } from '../engine/config.js';
 import { getInputDevice } from '../engine/input-device.js';
 import { EventEmitter } from '../engine/events.js';
+import { saveKeyBindings } from '../engine/key-bindings.js';
+import { saveSettings, settings } from '../engine/sound-settings.js';
 import { drawArenaBackground } from '../levels/arena-backgrounds.js';
 import { PLAYERS } from '../levels/versus-arena.js';
 import {
@@ -14,6 +16,7 @@ import {
   rowIndexAt,
   tapPoint,
 } from '../ui/menu-kit.js';
+import { SettingsMenu } from '../ui/settings-menu.js';
 import { NO_WATER_LINE_Y } from '../ui/menu-screen.js';
 import { drawPanel } from '../ui/panel.js';
 import { drawText } from '../ui/text.js';
@@ -32,10 +35,10 @@ const LOGO_BOB_PERIOD_SECONDS = 3;
 
 const BACKGROUND_NAME = 'harbor';
 
-const MENU_TOP_Y = 176;
+const MENU_TOP_Y = 168;
 
 const TOUCH_HINT_TEXT = 'Tap a mode to play';
-const TOUCH_HINT_Y = 240;
+const TOUCH_HINT_Y = 246;
 
 const HINTS_PANEL_WIDTH = 300;
 const HINTS_PANEL_TOP_Y = 250;
@@ -50,9 +53,15 @@ const KEY_HINT_ROWS = [
     device: 'keyboard',
     color: RED_COLOR,
     hints: [
-      { keys: ['A', 'D'], label: 'Move' },
-      { keys: ['W'], label: 'Jump' },
-      { keys: ['S'], label: 'Shove' },
+      {
+        keys: [
+          { player: 'red', control: 'left' },
+          { player: 'red', control: 'right' },
+        ],
+        label: 'Move',
+      },
+      { keys: [{ player: 'red', control: 'jump' }], label: 'Jump' },
+      { keys: [{ player: 'red', control: 'action' }], label: 'Shove' },
     ],
   },
   {
@@ -60,9 +69,15 @@ const KEY_HINT_ROWS = [
     device: 'keyboard',
     color: BLUE_COLOR,
     hints: [
-      { keys: ['Left', 'Right'], label: 'Move' },
-      { keys: ['Up'], label: 'Jump' },
-      { keys: ['Down'], label: 'Shove' },
+      {
+        keys: [
+          { player: 'blue', control: 'left' },
+          { player: 'blue', control: 'right' },
+        ],
+        label: 'Move',
+      },
+      { keys: [{ player: 'blue', control: 'jump' }], label: 'Jump' },
+      { keys: [{ player: 'blue', control: 'action' }], label: 'Shove' },
     ],
   },
   {
@@ -101,6 +116,7 @@ export const MENU_OPTIONS = [
   { id: 'versus', label: 'Versus' },
   { id: 'survival', label: 'Survival' },
   { id: 'online', label: 'Online' },
+  { id: 'settings', label: 'Settings' },
 ];
 
 export class TitleScene {
@@ -117,6 +133,7 @@ export class TitleScene {
     this.options = options;
     this.selectedIndex = 0;
     this.menuMotion = new MenuMotion();
+    this.settingsMenu = null;
     this.waterLineY = levels?.find((level) => level.background === BACKGROUND_NAME)?.waterLineY ?? NO_WATER_LINE_Y;
     this.brawl = new TitleBrawl({ seed });
     this.backgroundDrawn = false;
@@ -129,6 +146,14 @@ export class TitleScene {
   update(inputByPlayerId) {
     this.menuMotion.update();
     this.brawl.update();
+
+    if (this.settingsMenu) {
+      if (this.settingsMenu.update(inputByPlayerId)) {
+        this.settingsMenu = null;
+        this.holdCurrentInput(inputByPlayerId);
+      }
+      return;
+    }
 
     const pressed = { up: false, down: false, confirm: false };
     for (const playerId in inputByPlayerId) {
@@ -154,12 +179,27 @@ export class TitleScene {
     if (pressed.confirm || tappedIndex >= 0) {
       this.events.emit('menu-selected', {});
       this.menuMotion.press();
-      this.confirmSelection();
+      this.confirmSelection(inputByPlayerId);
     }
   }
 
-  confirmSelection() {
+  // Whatever is held now, such as the confirm that closed the Settings screen, must be released before it counts again.
+  holdCurrentInput(inputByPlayerId) {
+    for (const playerId in inputByPlayerId) {
+      for (const control in this.previous) this.previous[control][playerId] = !!inputByPlayerId[playerId][control];
+    }
+  }
+
+  confirmSelection(inputByPlayerId) {
     const option = this.options[this.selectedIndex];
+    if (option.id === 'settings') {
+      this.settingsMenu = new SettingsMenu({
+        settings,
+        events: this.events,
+        onChange: () => this.saveSettings(),
+        initialInput: inputByPlayerId,
+      });
+    }
     if (option.id === 'survival')
       this.sceneManager.setScene(new SurvivalScene({ sprites: this.sprites, seed: this.seed }));
     if (option.id === 'online') {
@@ -191,6 +231,13 @@ export class TitleScene {
       );
   }
 
+  saveSettings() {
+    const storage = this.sceneManager?.soundPlayer?.storage;
+    if (!storage) return;
+    saveSettings(storage, settings);
+    saveKeyBindings(storage);
+  }
+
   render(renderer) {
     if (!this.backgroundDrawn) {
       renderer.updateBackground((context) => drawArenaBackground(context, BACKGROUND_NAME));
@@ -201,6 +248,7 @@ export class TitleScene {
     renderer.clearUiLayer();
     this.brawl.render(renderer.gameContext, this.sprites);
     drawTitleUi(renderer.uiContext, this, renderer.touchActive);
+    this.settingsMenu?.render(renderer.uiContext);
   }
 }
 
@@ -261,6 +309,7 @@ function drawTouchHint(context) {
 function drawTitleUi(context, scene, touchActive) {
   drawLogo(context);
   if (scene.sceneManager?.fullscreen?.supported) drawFullscreenButton(context);
+  if (scene.settingsMenu) return;
   drawWithMenuMotion(context, scene.menuMotion, () => {
     drawMenuList(context, {
       options: scene.options,

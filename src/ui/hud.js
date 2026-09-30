@@ -207,7 +207,11 @@ function drawRunOver(context, scene) {
       outlineColor: null,
     });
   });
-  drawKeyHints(context, [{ keys: ['W'], pad: ['south'], label: 'Retry' }], OVER_PANEL_Y + height + OVER_HINT_GAP);
+  drawKeyHints(
+    context,
+    [{ keys: [{ player: 'red', control: 'jump' }], pad: ['south'], label: 'Retry' }],
+    OVER_PANEL_Y + height + OVER_HINT_GAP,
+  );
 }
 
 export function drawSurvivalHud(context, scene) {

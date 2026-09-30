@@ -1,13 +1,25 @@
 import { Entity } from '../engine/entity.js';
+import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../engine/config.js';
 import { swayOffset } from '../vfx/parachute-sway.js';
+import { findLandingPlatform, predictCrateLanding } from './crate-landing.js';
 
 export const CRATE_WIDTH = 16;
 export const CRATE_HEIGHT = 16;
 // How long the marker shows at the landing spot before the crate lands there, warning included.
 export const CRATE_WARNING_TICKS = 60;
 
-const MARKER_FLASH_TICKS = 10;
-const MARKER_COLOR = '#fee761';
+const MARKER_PULSE_TICKS = 8;
+const MARKER_COLORS = ['#fee761', '#feae34'];
+const MARKER_OUTLINE_COLOR = '#181425';
+const MARKER_BRACKET_WIDTH = 3;
+const MARKER_BRACKET_HEIGHT = 6;
+const MARKER_ARROW_GAP = 3;
+const MARKER_ARROW_WIDTH = 8;
+const MARKER_ARROW_ROW_HEIGHT = 2;
+const MARKER_ARROW_BOB_PIXELS = 4;
+const SHADOW_HEIGHT = 2;
+const GROUND_SHADOW_COLOR = '#3e2731';
+const GROUND_SHADOW_MIN_WIDTH = 4;
 const CRATE_SHADOW_COLOR = '#5c3c1e';
 const CRATE_FILL_COLOR = '#a0703c';
 // How many pixels the crate falls each tick. The sway is a render offset only, so it never
@@ -25,9 +37,10 @@ const FOLD_TICKS = 12;
 // Comfortably above the top of the screen so the crate is never visible before it starts falling.
 const FALL_START_Y = -CRATE_HEIGHT;
 
-// A crate holding one card. Its marker flashes at the spot it is aimed at, then it drops in from
+// A crate holding one card. Its marker flashes on the surface it will land on, then it drops in from
 // above the screen and stops on whichever platform it reaches first, or falls into the sea if
-// none is below it. It can be taken by any player without a held card, in the air or landed.
+// none is below it. `landing` holds the predicted spot, refreshed every tick because blocks can
+// break under it, and a shadow on that spot grows as the crate comes down. It can be taken by any player without a held card, in the air or landed.
 // It hangs under a parachute that sways
 // while it falls and folds away on landing. Placeholder shapes for the crate itself.
 export class Crate extends Entity {
@@ -41,6 +54,20 @@ export class Crate extends Entity {
     this.fallTicks = Math.min(CRATE_WARNING_TICKS, Math.ceil((this.markerY - FALL_START_Y) / FALL_SPEED));
     this.landed = false;
     this.landedTicks = 0;
+    this.landing = null;
+  }
+
+  // Refreshes `landing`: the spot { x, y, ticks } where this crate will rest, or null over the sea.
+  predictLanding(platforms) {
+    this.landing = predictCrateLanding({
+      x: this.x,
+      y: this.y,
+      width: this.width,
+      height: this.height,
+      fallSpeed: FALL_SPEED,
+      platforms,
+      fallLimitY: SCREEN_HEIGHT,
+    });
   }
 
   // False while the crate is still just a marker, waiting above the screen out of anyone's reach.
@@ -53,25 +80,20 @@ export class Crate extends Entity {
       this.landedTicks++;
       return;
     }
+    this.predictLanding(platforms);
     this.ticksUntilLanded--;
     if (this.ticksUntilLanded >= this.fallTicks) return; // still just a marker, hasn't appeared yet
 
     this.y += FALL_SPEED;
-    for (const platform of platforms) {
-      if (this.x + this.width <= platform.x || this.x >= platform.x + platform.width) continue;
-      if (this.y + this.height < platform.y) continue;
-      this.y = platform.y - this.height;
-      this.landed = true;
-      break;
-    }
+    const platform = findLandingPlatform({ x: this.x, width: this.width, bottom: this.y + this.height, platforms });
+    if (!platform) return;
+    this.y = platform.y - this.height;
+    this.landed = true;
   }
 
   render(context) {
     const drawX = Math.round(this.x);
-    if (!this.landed && Math.floor(this.ticksUntilLanded / MARKER_FLASH_TICKS) % 2 === 0) {
-      context.fillStyle = MARKER_COLOR;
-      context.fillRect(drawX, Math.round(this.markerY), this.width, this.height);
-    }
+    this.renderLandingSpot(context);
     if (!this.landed && this.ticksUntilLanded >= this.fallTicks) return; // hasn't started falling yet
 
     const fallenTicks = this.fallTicks - this.ticksUntilLanded;
@@ -82,6 +104,67 @@ export class Crate extends Entity {
     context.fillRect(drawX + sway, drawY, this.width, this.height);
     context.fillStyle = CRATE_FILL_COLOR;
     context.fillRect(drawX + sway + 2, drawY + 2, this.width - 4, this.height - 4);
+  }
+
+  // The marker and the growing shadow sit on the surface the crate will land on, drawn again on the
+  // far side when the crate straddles a screen edge.
+  renderLandingSpot(context) {
+    if (this.landed || !this.landing) return;
+    const spotX = Math.round(this.landing.x);
+    const surfaceY = Math.round(this.landing.y) + this.height;
+    const fallProgress = this.isFalling
+      ? Math.min(1, Math.max(0, (this.y - FALL_START_Y) / (this.landing.y - FALL_START_Y)))
+      : 0;
+    const shadowWidth = GROUND_SHADOW_MIN_WIDTH + Math.round((this.width - GROUND_SHADOW_MIN_WIDTH) * fallProgress);
+    const pulse = Math.floor(this.ticksUntilLanded / MARKER_PULSE_TICKS);
+    const markerColor = MARKER_COLORS[pulse % MARKER_COLORS.length];
+    const arrowBob = pulse % 2 === 0 ? 0 : MARKER_ARROW_BOB_PIXELS;
+    const drawAt = (x) => {
+      if (this.isFalling) {
+        context.fillStyle = GROUND_SHADOW_COLOR;
+        context.fillRect(
+          x + Math.floor((this.width - shadowWidth) / 2),
+          surfaceY - SHADOW_HEIGHT,
+          shadowWidth,
+          SHADOW_HEIGHT,
+        );
+      }
+      const leftX = x - MARKER_BRACKET_WIDTH;
+      const rightX = x + this.width;
+      const bracketY = surfaceY - MARKER_BRACKET_HEIGHT;
+      context.fillStyle = MARKER_OUTLINE_COLOR;
+      for (const bracketX of [leftX, rightX]) {
+        context.fillRect(bracketX - 1, bracketY - 1, MARKER_BRACKET_WIDTH + 2, MARKER_BRACKET_HEIGHT + 2);
+      }
+      context.fillStyle = markerColor;
+      for (const bracketX of [leftX, rightX]) {
+        context.fillRect(bracketX, bracketY, MARKER_BRACKET_WIDTH, MARKER_BRACKET_HEIGHT);
+      }
+      // A down arrow above the surface that narrows by one pixel each side per row.
+      const arrowRows = MARKER_ARROW_WIDTH / 2;
+      const arrowHeight = arrowRows * MARKER_ARROW_ROW_HEIGHT;
+      const arrowCenterX = x + Math.floor(this.width / 2);
+      const arrowTopY = bracketY - MARKER_ARROW_GAP - arrowHeight - arrowBob;
+      const drawArrowRows = (color, outlineWidth) => {
+        context.fillStyle = color;
+        for (let row = 0; row < arrowRows; row++) {
+          const halfWidth = arrowRows - row + outlineWidth;
+          context.fillRect(
+            arrowCenterX - halfWidth,
+            arrowTopY + row * MARKER_ARROW_ROW_HEIGHT,
+            halfWidth * 2,
+            MARKER_ARROW_ROW_HEIGHT,
+          );
+        }
+      };
+      drawArrowRows(MARKER_OUTLINE_COLOR, 1);
+      context.fillRect(arrowCenterX - arrowRows - 1, arrowTopY - 1, arrowRows * 2 + 2, 1);
+      context.fillRect(arrowCenterX - 1, arrowTopY + arrowHeight, 2, 1);
+      drawArrowRows(markerColor, 0);
+    };
+    drawAt(spotX);
+    if (spotX < 0) drawAt(spotX + SCREEN_WIDTH);
+    else if (spotX + this.width > SCREEN_WIDTH) drawAt(spotX - SCREEN_WIDTH);
   }
 
   // Open canopy with two strings while falling; on landing the canopy shrinks flat and vanishes.

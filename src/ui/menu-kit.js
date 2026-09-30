@@ -1,5 +1,6 @@
 import { SCREEN_WIDTH } from '../engine/config.js';
 import { getInputDevice } from '../engine/input-device.js';
+import { boundCode, keyName } from '../engine/key-bindings.js';
 import { drawGlyph, GLYPH_SIZE } from './hint-glyphs.js';
 import { drawPanel } from './panel.js';
 import { drawText, measureText } from './text.js';
@@ -214,11 +215,14 @@ function drawKeycap(context, keyName, x, y) {
 }
 
 // What one hint shows for a device: keyboard key names as text, pad and touch as glyph names.
+// A key is a name to show as it is, or { player, control } to show the key that player has bound.
 // A hint without `pad` shows its keys on a pad. Touch shows one tap icon unless the hint has `touch`.
 export function hintItems(hint, device) {
   if (device === 'touch') return (hint.touch ?? ['tap']).map((glyph) => ({ glyph }));
   if (device === 'pad' && hint.pad) return hint.pad.map((glyph) => ({ glyph }));
-  return hint.keys.map((text) => ({ text }));
+  return hint.keys.map((key) => ({
+    text: typeof key === 'string' ? key : keyName(boundCode(key.player, key.control)),
+  }));
 }
 
 // The hint rows for a device. A row with a `device` shows only for that device, other rows always show.
