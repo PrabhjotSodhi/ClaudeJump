@@ -30,6 +30,8 @@ export const SHOVE_WINDUP_TICKS = 2;
 export const SHOVE_MAX_CHARGE_TICKS = 30;
 export const SHOVE_MAX_KNOCKBACK_MULTIPLIER = 1.6;
 export const SHOVE_CHARGE_WALK_MULTIPLIER = 0.4;
+// While a shove charges, the scene reports its progress this often, so the charge sound can rise with it.
+export const SHOVE_CHARGE_REPORT_INTERVAL_TICKS = 4;
 
 // Two shoves that meet cancel out and bounce both players apart. A shove takes part in a clash while it is winding up
 // or in its first SHOVE_CLASH_WINDOW_TICKS ticks, so presses a couple of ticks apart still clash. If one shover's charge beats the other's by at

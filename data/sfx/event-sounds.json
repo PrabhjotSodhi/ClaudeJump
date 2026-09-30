@@ -1,8 +1,18 @@
 {
   "player-jumped": "jump",
   "player-landed": "land",
-  "player-shoved": "shove",
-  "dash-hit": "dash-hit",
+  "player-shoved": {
+    "by": "strength",
+    "light": "hit-light",
+    "medium": "hit-medium",
+    "heavy": "hit-heavy"
+  },
+  "dash-hit": {
+    "by": "strength",
+    "light": "hit-light",
+    "medium": "hit-medium",
+    "heavy": "hit-heavy"
+  },
   "crab-stomped": "stomp",
   "card-picked-up": "pickup",
   "card-played": "card-played",
@@ -18,5 +28,8 @@
   "sudden-death-started": "sudden-death",
   "new-best": "new-best",
   "menu-moved": "menu-move",
-  "menu-selected": "menu-select"
+  "menu-selected": "menu-select",
+  "shove-charging": "shove-charge",
+  "shove-fully-charged": "charge-ping",
+  "shove-clash": "clash"
 }
