@@ -1,4 +1,5 @@
 import { SCREEN_HEIGHT, SCREEN_WIDTH, SEA_COLUMN_COUNT } from './config.js';
+import { pickScale } from './screen-fit.js';
 
 const TEXTURE_UNIT_BY_LAYER_NAME = { background: 0, game: 1, ui: 2 };
 const SEA_TEXTURE_UNIT = 3;
@@ -22,15 +23,25 @@ function createProgram(webglContext, vertexShaderSource, fragmentShaderSource) {
   return program;
 }
 
-// Largest whole-number scale that fits the window, in device pixels, so every art pixel stays the same size.
+// The page pads the body by the safe-area insets, so the padding is what the canvas must stay out of.
+export function readSafeAreaInsets() {
+  const style = getComputedStyle(document.body);
+  return {
+    left: parseFloat(style.paddingLeft),
+    right: parseFloat(style.paddingRight),
+    top: parseFloat(style.paddingTop),
+    bottom: parseFloat(style.paddingBottom),
+  };
+}
+
 function resizeToFitWindow(canvas, webglContext) {
   const devicePixelRatio = window.devicePixelRatio || 1;
-  const scale = Math.max(
-    1,
-    Math.floor(
-      Math.min((innerWidth * devicePixelRatio) / SCREEN_WIDTH, (innerHeight * devicePixelRatio) / SCREEN_HEIGHT),
-    ),
-  );
+  const scale = pickScale({
+    width: innerWidth,
+    height: innerHeight,
+    devicePixelRatio,
+    insets: document.fullscreenElement ? undefined : readSafeAreaInsets(),
+  });
   canvas.width = SCREEN_WIDTH * scale;
   canvas.height = SCREEN_HEIGHT * scale;
   canvas.style.width = `${canvas.width / devicePixelRatio}px`;
