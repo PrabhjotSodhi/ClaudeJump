@@ -354,3 +354,24 @@ test('the four cards sit side by side inside the screen without overlapping', ()
     if (index > 0) assert.ok(box.x >= boxes[index - 1].x + boxes[index - 1].width);
   });
 });
+
+test('a tap on the first card joins, a tap on its arrows changes character and a tap in the middle locks in', () => {
+  const { scene } = sceneWithBaseline();
+  const box = playerCardBox(0);
+  const tapAt = (x) => ({ ...neutralInputs(), red: { ...noInput(), tap: { x, y: box.y + box.height / 2 } } });
+  const middleX = box.x + box.width / 2;
+  const startIndex = scene.characterIndexByPlayerId.red;
+
+  scene.update(tapAt(middleX));
+  assert.equal(scene.stateByPlayerId.red, 'picking');
+
+  scene.update(tapAt(box.x + box.width - 2));
+  assert.equal(scene.characterIndexByPlayerId.red, (startIndex + 1) % CHARACTERS.length);
+  scene.update(tapAt(box.x + 2));
+  scene.update(tapAt(box.x + 2));
+  assert.equal(scene.characterIndexByPlayerId.red, (startIndex - 1 + CHARACTERS.length) % CHARACTERS.length);
+  assert.equal(scene.stateByPlayerId.red, 'picking');
+
+  scene.update(tapAt(middleX));
+  assert.equal(scene.stateByPlayerId.red, 'ready');
+});

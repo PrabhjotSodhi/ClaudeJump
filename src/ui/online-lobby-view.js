@@ -2,12 +2,11 @@ import { SCREEN_WIDTH } from '../engine/config.js';
 import { CHARACTERS, findCharacter } from '../entities/characters.js';
 import { PLAYERS } from '../levels/versus-arena.js';
 import { THUMBNAIL_HEIGHT, THUMBNAIL_WIDTH } from '../levels/level-thumbnail.js';
-import { drawCharacterBody, FRAME_SIZE } from '../vfx/character-body.js';
-import { EYE_STIFFNESSES, GooglyEye } from '../vfx/googly-eyes.js';
 import { RANDOM_LEVEL } from '../scenes/online-lobby-state.js';
 import { drawKeyHints, drawMenuList, menuRowRectangles } from './menu-kit.js';
 import { drawPanel } from './panel.js';
-import { drawText, measureText } from './text.js';
+import { drawEmptySelectCard, drawSelectCard, selectCardBox } from './select-card.js';
+import { drawText } from './text.js';
 
 const SELECTED_COLOR = '#feae34';
 const LABEL_COLOR = '#c0cbdc';
@@ -21,24 +20,13 @@ const CODE_LABEL_Y = CODE_PANEL_TOP_Y + 8;
 const CODE_SCALE = 5;
 const CODE_Y = CODE_PANEL_TOP_Y + 21;
 
-const CARD_TOP_Y = 80;
-const CARD_WIDTH = 148;
-const CARD_HEIGHT = 96;
-const CARD_GAP = 8;
-const CARD_FRAME_INSET = 3;
-const CARD_LABEL_Y = CARD_TOP_Y + 8;
-const CARD_BADGE_INSET = 8;
-const CHARACTER_BOTTOM_Y = CARD_TOP_Y + 62;
-const LEDGE_WIDTH = 56;
-const LEDGE_HEIGHT = 8;
-const NAME_Y = CARD_TOP_Y + 72;
-const STATUS_Y = CARD_TOP_Y + 84;
+const CARD_TOP_Y = 76;
 const ARROW_DEPTH = 3;
 const ARROW_GAP = 6;
 const ROW_ARROW_INSET = 5;
 
-const MENU_TOP_Y = 190;
-const HINTS_Y = 292;
+const MENU_TOP_Y = 206;
+const HINTS_Y = 300;
 const SIDE_PANEL_WIDTH = 148;
 const SIDE_PANEL_MARGIN_X = 12;
 const LEVEL_BORDER = 2;
@@ -56,16 +44,8 @@ const TOUCH_HINT = 'Tap a row. Tap its sides to change';
 // Rows the menu can hold. A row named here that the local player cannot use is left out by the scene.
 export const CHANGEABLE_ROWS = ['character', 'level'];
 
-const PORTRAIT_EYES = EYE_STIFFNESSES.map((stiffness) => new GooglyEye(stiffness));
-
 export function cardBox(seatIndex) {
-  const totalWidth = PLAYERS.length * CARD_WIDTH + (PLAYERS.length - 1) * CARD_GAP;
-  return {
-    x: (SCREEN_WIDTH - totalWidth) / 2 + seatIndex * (CARD_WIDTH + CARD_GAP),
-    y: CARD_TOP_Y,
-    width: CARD_WIDTH,
-    height: CARD_HEIGHT,
-  };
+  return selectCardBox(seatIndex, CARD_TOP_Y);
 }
 
 export function lobbyRowLabels({ rows, lobby, localSeat }) {
@@ -84,14 +64,6 @@ export function lobbyRowLabels({ rows, lobby, localSeat }) {
 
 export function lobbyRowRectangles(labels) {
   return menuRowRectangles(labels, MENU_TOP_Y);
-}
-
-function drawFrame(context, x, y, width, height, color) {
-  context.fillStyle = color;
-  context.fillRect(x, y, width, 1);
-  context.fillRect(x, y + height - 1, width, 1);
-  context.fillRect(x, y + 1, 1, height - 2);
-  context.fillRect(x + width - 1, y + 1, 1, height - 2);
 }
 
 function drawArrows(context, centerX, labelWidth, topY, color) {
@@ -117,102 +89,27 @@ function drawCode(context, code) {
   drawText(context, code, SCREEN_WIDTH / 2, CODE_Y, { scale: CODE_SCALE, align: 'center', color: SELECTED_COLOR });
 }
 
-function drawEmptyCard(context, card) {
-  drawPanel(context, card.x, card.y, card.width, card.height);
-  drawFrame(
-    context,
-    card.x + CARD_FRAME_INSET,
-    card.y + CARD_FRAME_INSET,
-    card.width - 2 * CARD_FRAME_INSET,
-    card.height - 2 * CARD_FRAME_INSET,
-    '#3a4466',
-  );
-  const centerX = card.x + card.width / 2;
-  for (const [text, y] of [
-    ['Open seat', card.y + 38],
-    ['Waiting for a player', card.y + 50],
-  ]) {
-    drawText(context, text, centerX, y, { scale: 1, align: 'center', color: EMPTY_COLOR, outlineColor: null });
-  }
-}
-
 function drawPlayerCard(context, view, seatIndex) {
-  const card = cardBox(seatIndex);
+  const box = cardBox(seatIndex);
   const seat = view.lobby.seats[seatIndex];
+  const spawn = PLAYERS[seatIndex];
   if (!seat) {
-    drawEmptyCard(context, card);
+    drawEmptySelectCard(context, box, spawn, ['Open seat', 'Waiting for a player']);
     return;
   }
-  context.save();
-  context.translate(view.cardMotion.slideOffsetX(seatIndex, card), 0);
-  const spawn = PLAYERS[seatIndex];
-  const character = findCharacter(seat.characterName) ?? CHARACTERS[0];
-  const centerX = card.x + card.width / 2;
   const isLocal = seatIndex === view.localSeat;
-
-  drawPanel(context, card.x, card.y, card.width, card.height);
-  drawFrame(
-    context,
-    card.x + CARD_FRAME_INSET,
-    card.y + CARD_FRAME_INSET,
-    card.width - 2 * CARD_FRAME_INSET,
-    card.height - 2 * CARD_FRAME_INSET,
-    spawn.color,
-  );
-  drawText(context, `${spawn.id[0].toUpperCase()}${spawn.id.slice(1)}`, centerX, CARD_LABEL_Y, {
-    scale: 1,
-    align: 'center',
-    color: spawn.color,
-    outlineColor: null,
-  });
-  if (seatIndex === 0) {
-    drawText(context, 'Host', card.x + CARD_BADGE_INSET, CARD_LABEL_Y, {
-      scale: 1,
-      color: DIM_COLOR,
-      outlineColor: null,
-    });
-  }
-  if (isLocal) {
-    drawText(context, 'You', card.x + card.width - CARD_BADGE_INSET, CARD_LABEL_Y, {
-      scale: 1,
-      align: 'right',
-      color: '#ffffff',
-      outlineColor: null,
-    });
-  }
-
-  const ledgeX = centerX - LEDGE_WIDTH / 2;
-  const ledgeY = CHARACTER_BOTTOM_Y - 1;
-  context.fillStyle = '#3e2731';
-  context.fillRect(ledgeX, ledgeY, LEDGE_WIDTH, LEDGE_HEIGHT);
-  context.fillStyle = '#585050';
-  context.fillRect(ledgeX + 1, ledgeY + 1, LEDGE_WIDTH - 2, LEDGE_HEIGHT - 2);
-  context.fillStyle = '#a09088';
-  context.fillRect(ledgeX + 1, ledgeY + 1, LEDGE_WIDTH - 2, 1);
-  const pose = view.cardMotion.pose(seatIndex);
-  drawCharacterBody(context, {
-    sprite: view.sprites[character.spriteName].body,
-    eyeFramePositions: character.eyeFramePositions,
-    eyes: PORTRAIT_EYES,
-    centerX,
-    bottomY: CHARACTER_BOTTOM_Y - pose.offsetY,
-    width: pose.width,
-    height: pose.height,
-  });
-
-  drawText(context, character.displayName, centerX, NAME_Y, {
-    scale: 1,
-    align: 'center',
-    color: character.tagColor,
-    outlineColor: null,
-  });
-  if (isLocal && !seat.ready)
-    drawArrows(context, centerX, measureText(character.displayName), NAME_Y, character.tagColor);
-  drawText(context, seat.ready ? 'READY!' : 'Not ready', centerX, STATUS_Y, {
-    scale: 1,
-    align: 'center',
-    color: seat.ready ? SELECTED_COLOR : DIM_COLOR,
-    outlineColor: null,
+  context.save();
+  context.translate(view.cardMotion.slideOffsetX(seatIndex, box), 0);
+  drawSelectCard(context, {
+    box,
+    spawn,
+    character: findCharacter(seat.characterName) ?? CHARACTERS[0],
+    sprites: view.sprites,
+    pose: view.cardMotion.pose(seatIndex),
+    canPick: isLocal && !seat.ready,
+    status: seat.ready ? { text: 'READY!', color: SELECTED_COLOR } : { text: 'Not ready', color: DIM_COLOR },
+    leftBadge: seatIndex === 0 ? { text: 'Host', color: DIM_COLOR } : null,
+    rightBadge: isLocal ? { text: 'You', color: '#ffffff' } : null,
   });
   context.restore();
 }
