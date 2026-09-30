@@ -6,7 +6,13 @@ const POP_SCALES = [5, 4, 3];
 const POP_TICKS_PER_SCALE = 3;
 const EDGE_MARGIN = 8;
 const OUTLINE_COLOR = '#181425';
-const COLOR_BY_TEXT = { 'Splash!': '#2ce8f5', 'Sniped!': '#f77622', 'Slipped!': '#fee761', 'Clutch!': '#e43b44' };
+const COLOR_BY_TEXT = {
+  'Splash!': '#2ce8f5',
+  'Sniped!': '#f77622',
+  'Slipped!': '#fee761',
+  'Clutch!': '#e43b44',
+  'Boom!': '#f77622',
+};
 
 // The word for a knockout. A clutch (little time left) beats the cause, and a knockout with no special cause is a splash.
 // secondsRemaining is null once sudden death has started.
@@ -33,6 +39,12 @@ export class Callouts {
         x: player.x + player.width / 2,
         startTick: getTickCount(),
       };
+    });
+    // Pass the bomb's fuse ran out: the holder is out in the blast, not the sea.
+    events.on('player-blown-up', ({ playerId }) => {
+      const player = getPlayers().find((candidate) => candidate.id === playerId);
+      if (!player) return;
+      this.current = { text: 'Boom!', x: player.x + player.width / 2, startTick: getTickCount() };
     });
     events.on('round-started', () => {
       this.current = null;
