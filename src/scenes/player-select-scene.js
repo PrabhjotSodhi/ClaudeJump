@@ -96,6 +96,7 @@ export class PlayerSelectScene {
   constructor({ sceneManager, levels, sprites = {}, seed = Date.now() } = {}) {
     this.sceneManager = sceneManager;
     this.events = new EventEmitter();
+    this.musicTrackName = 'menu';
     this.levels = levels;
     this.sprites = sprites;
     this.seed = seed;

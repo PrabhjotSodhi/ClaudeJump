@@ -16,3 +16,21 @@ export function saveSoundEnabled(storage, soundEnabled) {
     // The choice just is not remembered.
   }
 }
+
+const MUSIC_STORAGE_KEY = 'claudejump-music-enabled';
+
+export function loadMusicEnabled(storage) {
+  try {
+    return storage.getItem(MUSIC_STORAGE_KEY) !== 'false';
+  } catch {
+    return true;
+  }
+}
+
+export function saveMusicEnabled(storage, musicEnabled) {
+  try {
+    storage.setItem(MUSIC_STORAGE_KEY, String(musicEnabled));
+  } catch {
+    // The choice just is not remembered.
+  }
+}

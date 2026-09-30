@@ -182,6 +182,7 @@ export class VersusScene {
     this.waterLineY = this.level.waterLineY;
     this.fightTicks = 0;
     this.suddenDeathPhase = 'none';
+    this.events.emit('round-started', {});
     this.hitPauseTicksRemaining = 0;
   }
 

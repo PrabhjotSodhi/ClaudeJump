@@ -4,6 +4,7 @@ import { createGamepadInput } from './engine/gamepad-input.js';
 import { combineInputs, createKeyboardInput } from './engine/input.js';
 import { Renderer } from './engine/renderer.js';
 import { SceneManager } from './engine/scene-manager.js';
+import { MusicPlayer } from './engine/music-player.js';
 import { SoundPlayer } from './engine/sound-player.js';
 import { loadSpriteFile } from './engine/sprites.js';
 import { loadLevel, stoneColorOverrides } from './levels/level-loader.js';
@@ -45,6 +46,8 @@ async function main() {
     keyMappings,
     soundDefinitions,
     eventSounds,
+    menuTrack,
+    matchTrack,
     claude,
     muse,
     chatgpt,
@@ -61,6 +64,8 @@ async function main() {
     fetch('data/config/key-mappings.json').then((response) => response.json()),
     fetch('data/sfx/sounds.json').then((response) => response.json()),
     fetch('data/sfx/event-sounds.json').then((response) => response.json()),
+    fetch('data/music/menu.json').then((response) => response.json()),
+    fetch('data/music/match.json').then((response) => response.json()),
     loadSpriteFile('data/sprites/claude.json'),
     loadSpriteFile('data/sprites/muse.json'),
     loadSpriteFile('data/sprites/chatgpt.json'),
@@ -89,7 +94,13 @@ async function main() {
   const keyboardInput = createKeyboardInput(keyMappings);
   const gamepadInput = createGamepadInput(keyMappings.map((mapping) => mapping.id));
   const soundPlayer = new SoundPlayer({ soundDefinitions, eventSounds, storage: readLocalStorage() });
-  const sceneManager = new SceneManager({ soundPlayer });
+  const musicPlayer = new MusicPlayer({
+    soundPlayer,
+    tracks: { menu: menuTrack, match: matchTrack },
+    storage: readLocalStorage(),
+  });
+  musicPlayer.start();
+  const sceneManager = new SceneManager({ soundPlayer, musicPlayer });
   const sprites = { claude, muse, chatgpt, gemini, grok, deepseek, mistral, props, blocks };
   // Survival builds its platforms from the Harbor stone, the first level file.
   sprites.stoneBlocks = levels[0].tileSprites;
@@ -243,7 +254,7 @@ async function main() {
   });
 
   // Exposed for devtools and automated checks.
-  window.claudeJump = { sceneManager, soundPlayer };
+  window.claudeJump = { sceneManager, soundPlayer, musicPlayer };
 
   if (isDevMode) {
     // Lets a tester or script drive ticks directly, which keeps working while the tab is hidden.
