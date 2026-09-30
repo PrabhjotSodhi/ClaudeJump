@@ -240,3 +240,51 @@ test('the HTTP adapter routes requests and turns errors into statuses', async ()
   );
   assert.equal(badJson.status, 400);
 });
+
+test('a joiner who leaves frees the seat for a new player', async () => {
+  const { service } = createFixture();
+  const { code } = await service.create();
+  const first = await service.join({ code });
+  await service.join({ code });
+  await service.join({ code });
+  await service.leave({ code, playerId: first.playerId });
+  const replacement = await service.join({ code });
+  assert.equal(replacement.slot, first.slot);
+  await assertRejects(service.join({ code }), 'room-full');
+});
+
+test('the host can remove a joiner whose connection closed', async () => {
+  const { service } = createFixture();
+  const { code, hostId } = await service.create();
+  const joiner = await service.join({ code });
+  await service.leave({ code, playerId: hostId, leaverId: joiner.playerId });
+  await assertRejects(service.poll({ code, playerId: joiner.playerId }), 'unknown-player');
+  assert.equal((await service.join({ code })).slot, 1);
+});
+
+test('a full room still refuses a fifth player after seats were reused', async () => {
+  const { service } = createFixture();
+  const { code } = await service.create();
+  const joiners = [];
+  for (let index = 0; index < 3; index++) joiners.push(await service.join({ code }));
+  await service.leave({ code, playerId: joiners[1].playerId });
+  await service.join({ code });
+  await assertRejects(service.join({ code }), 'room-full');
+});
+
+test('a leave from an unknown player is rejected', async () => {
+  const { service } = createFixture();
+  const { code } = await service.create();
+  const joiner = await service.join({ code });
+  await assertRejects(service.leave({ code, playerId: 'nobody' }), 'unknown-player');
+  await assertRejects(service.leave({ code, playerId: joiner.playerId, leaverId: 'nobody' }), 'unknown-player');
+});
+
+test('the host cannot leave and joiners cannot remove each other', async () => {
+  const { service } = createFixture();
+  const { code, hostId } = await service.create();
+  const first = await service.join({ code });
+  const second = await service.join({ code });
+  await assertRejects(service.leave({ code, playerId: hostId }), 'bad-request');
+  await assertRejects(service.leave({ code, playerId: first.playerId, leaverId: second.playerId }), 'bad-request');
+});
