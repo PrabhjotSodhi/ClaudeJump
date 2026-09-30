@@ -2,8 +2,8 @@
   "name": "Quarry",
   "background": "quarry",
   "stone": {
-    "light": "#e8b796",
-    "mid": "#b86f50",
+    "light": "#c8c0b8",
+    "mid": "#a09088",
     "dark": "#733e39"
   },
   "grid": [
