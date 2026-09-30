@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../src/engine/config.js';
+import { AWARD_FIRST_DELAY_TICKS, AWARD_INTERVAL_TICKS, SCREEN_HEIGHT, SCREEN_WIDTH } from '../src/engine/config.js';
+import { EventEmitter } from '../src/engine/events.js';
+import { AwardReveal } from '../src/ui/award-reveal.js';
 import { menuPanelSize } from '../src/ui/menu-kit.js';
 import { resultsLayout } from '../src/ui/results-menu.js';
 
@@ -64,4 +66,32 @@ test('with two players the stats panels keep the two sides of the screen', () =>
       [464, 64],
     ],
   );
+});
+
+test('awards pop in one at a time after the winner shows, each with an event for its sound', () => {
+  const events = new EventEmitter();
+  const shown = [];
+  events.on('award-shown', ({ awardId }) => shown.push(awardId));
+  const reveal = new AwardReveal(
+    [
+      { playerId: 'red', awardId: 'shoves', label: 'Most shoves' },
+      { playerId: 'blue', awardId: 'cards', label: 'Card shark' },
+    ],
+    events,
+  );
+
+  for (let tick = 0; tick < AWARD_FIRST_DELAY_TICKS - 1; tick++) reveal.update();
+  assert.deepEqual(shown, []);
+  assert.equal(reveal.ticksSinceShown('red'), -1);
+
+  reveal.update();
+  assert.deepEqual(shown, ['shoves']);
+  assert.equal(reveal.ticksSinceShown('red'), 0);
+  assert.equal(reveal.ticksSinceShown('blue'), -1);
+
+  for (let tick = 0; tick < AWARD_INTERVAL_TICKS; tick++) reveal.update();
+  assert.deepEqual(shown, ['shoves', 'cards']);
+
+  for (let tick = 0; tick < 500; tick++) reveal.update();
+  assert.deepEqual(shown, ['shoves', 'cards']);
 });
