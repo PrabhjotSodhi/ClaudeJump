@@ -7,12 +7,14 @@ import { SceneManager } from './engine/scene-manager.js';
 import { MusicPlayer } from './engine/music-player.js';
 import { SoundPlayer } from './engine/sound-player.js';
 import { loadSpriteFile } from './engine/sprites.js';
-import { createTouchInput } from './engine/touch-input.js';
+import { createTouchInput, TOUCH_BUTTONS, TWO_PLAYER_TOUCH_BUTTONS } from './engine/touch-input.js';
 import { loadLevel, stoneColorOverrides } from './levels/level-loader.js';
 import { createLevelThumbnail } from './levels/level-thumbnail.js';
 import { isPortraitOnTouchDevice, pickScale } from './engine/screen-fit.js';
 import { createWindow, readSafeAreaInsets } from './engine/window.js';
+import { LevelSelectScene } from './scenes/level-select-scene.js';
 import { PausableMatchScene } from './scenes/pausable-match-scene.js';
+import { PlayerSelectScene } from './scenes/player-select-scene.js';
 import { StyleTestScene } from './scenes/style-test-scene.js';
 import { FULLSCREEN_BUTTON, TitleScene } from './scenes/title-scene.js';
 import { SurvivalScene } from './scenes/survival-scene.js';
@@ -38,6 +40,13 @@ function readLocalStorage() {
 
 function isAnyControlHeld(inputByPlayerId) {
   return Object.values(inputByPlayerId).some((input) => Object.values(input).some(Boolean));
+}
+
+// Versus, from player select to the results, gives each player their own cluster. The title and Survival have one player.
+function touchButtonsFor(scene) {
+  const isVersus =
+    scene instanceof PlayerSelectScene || scene instanceof LevelSelectScene || scene.matchScene instanceof VersusScene;
+  return isVersus ? TWO_PLAYER_TOUCH_BUTTONS : TOUCH_BUTTONS;
 }
 
 // Survival scrolls, so a player's screen position is their world position minus the camera.
@@ -199,8 +208,10 @@ async function main() {
     renderer.seaRippleBytes = null;
     sceneManager.render(renderer);
     if (touchInput.visible) {
+      const touchButtons = touchButtonsFor(sceneManager.currentScene);
       drawTouchControls(renderer.uiContext, {
-        pressedButtonIds: touchInput.pressedButtonIds,
+        buttons: touchButtons,
+        pressedButtons: touchInput.pressedButtons(touchButtons),
         playerRectangles: playerScreenRectangles(sceneManager.currentScene),
         showPause: sceneManager.currentScene instanceof PausableMatchScene,
       });
@@ -227,7 +238,11 @@ async function main() {
       const keyboardInputs = keyboardInput.sample();
       const gamepadInputs = gamepadInput.sample();
       if (isAnyControlHeld(keyboardInputs) || isAnyControlHeld(gamepadInputs)) touchInput.hide();
-      const inputByPlayerId = combineInputs(keyboardInputs, gamepadInputs, touchInput.sample());
+      const inputByPlayerId = combineInputs(
+        keyboardInputs,
+        gamepadInputs,
+        touchInput.sample(touchButtonsFor(sceneManager.currentScene)),
+      );
       if (isAnyControlHeld(inputByPlayerId)) soundPlayer.unlock();
       sceneManager.update(inputByPlayerId);
     },
