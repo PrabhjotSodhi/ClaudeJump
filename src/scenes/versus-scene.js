@@ -3,9 +3,12 @@ import {
   CALLOUT_CAUSE_TICKS,
   KNOCKOUT_SLOWMO_STEP_INTERVAL,
   KNOCKOUT_SLOWMO_TICKS,
+  MODIFIER_EVERY_N_ROUNDS,
+  MODIFIER_PICK_TICKS,
   ROUND_COUNTDOWN_BEAT_TICKS,
   ROUND_COUNTDOWN_TICKS,
   ROUND_GO_TICKS,
+  ROUND_MODIFIERS,
   SCREEN_WIDTH,
   SHOVE_CHARGE_REPORT_INTERVAL_TICKS,
   SHOVE_CLASH_BOUNCE_VELOCITY_X,
@@ -29,6 +32,7 @@ import { EventEmitter } from '../engine/events.js';
 import { SeededRandom } from '../engine/seeded-random.js';
 import { wrapAroundScreen } from '../engine/wrap-around-screen.js';
 import { Banana, BANANA_WIDTH, BANANA_HEIGHT, BANANA_SLIP_TICKS } from '../entities/banana.js';
+import { BananaDrop } from '../entities/banana-drop.js';
 import { Bomb, BOMB_WIDTH, BOMB_HEIGHT } from '../entities/bomb.js';
 import {
   BouncePad,
@@ -49,6 +53,7 @@ import { solidRuns } from '../levels/level-loader.js';
 import { drawHeldCardIcons } from '../ui/held-card-icons.js';
 import { Callouts } from '../ui/callouts.js';
 import { drawHud } from '../ui/hud.js';
+import { drawModifierPick } from '../ui/modifier-pick.js';
 import { drawRoundIntro } from '../ui/round-intro.js';
 import { MatchStats } from '../ui/match-stats.js';
 import { drawPlayerTags } from '../ui/player-tags.js';
@@ -145,6 +150,14 @@ export class VersusScene {
     // per opponent even while its hit zone stays active for several ticks.
     this.shoveHitIdsByShoverId = new Map();
     this.shoveClashPairIds = new Set();
+    this.roundNumber = 0;
+    this.activeModifierId = null;
+    this.pendingModifierId = null;
+    this.modifierPickerId = null;
+    this.modifierOptionIds = [];
+    this.modifierHighlight = 0;
+    this.modifierJumpHeld = false;
+    this.ticksUntilBananaDrop = 0;
     // Elapsed scene ticks, kept across rounds. Display-only effects (like the held card flash)
     // time themselves off it instead of off rendered frames.
     this.tickCount = 0;
@@ -201,11 +214,20 @@ export class VersusScene {
     return Math.max(0, SUDDEN_DEATH_ROUND_TICKS - this.fightTicks);
   }
 
+  get activeModifier() {
+    return ROUND_MODIFIERS[this.activeModifierId] ?? {};
+  }
+
   startRound() {
+    this.roundNumber++;
+    this.activeModifierId = this.pendingModifierId;
+    this.pendingModifierId = null;
+    this.ticksUntilBananaDrop = this.activeModifier.bananaRainIntervalTicks ?? 0;
     // Crates and bounce pads must be cleared (and so, on the first round, first inserted into
     // the entity groups) before players, so they render underneath the players standing on them.
     this.entityGroups.clear('crates');
     this.entityGroups.clear('bouncePads');
+    this.entityGroups.clear('bananaDrops');
     this.entityGroups.clear('bananas');
     this.entityGroups.clear('players');
     this.entityGroups.clear('rockets');
@@ -218,10 +240,19 @@ export class VersusScene {
       const { x, y, facing } = this.level.spawns.find((spawn) => spawn.id === id);
       this.entityGroups.add(
         'players',
-        new Player({ id, character, spawnX: x, spawnY: y, facing, heatEnabled: this.heatEnabled }),
+        new Player({
+          id,
+          character,
+          spawnX: x,
+          spawnY: y,
+          facing,
+          heatEnabled: this.heatEnabled,
+          gravityMultiplier: this.activeModifier.gravityMultiplier,
+          groundAccelerationMultiplier: this.activeModifier.groundAccelerationMultiplier,
+        }),
       );
     }
-    this.ticksUntilCrateSpawn = CRATE_SPAWN_DELAY_TICKS;
+    this.ticksUntilCrateSpawn = this.crateSpawnDelayTicks();
     if (this.skipNextReadyPhase) {
       this.phase = 'fight';
       this.ticksRemaining = ROUND_GO_TICKS;
@@ -243,6 +274,69 @@ export class VersusScene {
     this.events.emit('round-started', {});
     if (this.phase === 'ready')
       this.events.emit('countdown-beat', { count: ROUND_COUNTDOWN_TICKS / ROUND_COUNTDOWN_BEAT_TICKS });
+  }
+
+  startNextRound() {
+    if ((this.roundNumber + 1) % MODIFIER_EVERY_N_ROUNDS === 0) this.beginModifierPick();
+    else this.startRound();
+  }
+
+  beginModifierPick() {
+    const modifierIds = Object.keys(ROUND_MODIFIERS);
+    const [firstOptionId] = modifierIds.splice(Math.floor(this.random.next() * modifierIds.length), 1);
+    const secondOptionId = modifierIds[Math.floor(this.random.next() * modifierIds.length)];
+    this.modifierOptionIds = [firstOptionId, secondOptionId];
+    this.modifierPickerId = this.joinedPlayers.reduce((trailing, candidate) =>
+      this.wins[candidate.id] < this.wins[trailing.id] ? candidate : trailing,
+    ).id;
+    this.modifierHighlight = 0;
+    // Starts true so a jump key still held from the last round does not confirm a pick.
+    this.modifierJumpHeld = true;
+    this.phase = 'modifier';
+    this.ticksRemaining = MODIFIER_PICK_TICKS;
+    this.events.emit('modifier-pick-started', { playerId: this.modifierPickerId, optionIds: this.modifierOptionIds });
+  }
+
+  // Only the picking player's input counts.
+  updateModifierPick(inputByPlayerId) {
+    const input = inputByPlayerId?.[this.modifierPickerId];
+    if (input?.left && !input.right) this.modifierHighlight = 0;
+    if (input?.right && !input.left) this.modifierHighlight = 1;
+    const jumpPressed = Boolean(input?.jump);
+    const confirmed = jumpPressed && !this.modifierJumpHeld;
+    this.modifierJumpHeld = jumpPressed;
+    if (!confirmed && this.ticksRemaining > 0) return;
+
+    this.pendingModifierId = this.modifierOptionIds[this.modifierHighlight];
+    this.events.emit('modifier-picked', { playerId: this.modifierPickerId, modifierId: this.pendingModifierId });
+    this.startRound();
+  }
+
+  crateSpawnDelayTicks() {
+    return Math.round(CRATE_SPAWN_DELAY_TICKS * (this.activeModifier.crateDelayMultiplier ?? 1));
+  }
+
+  // A banana falls from above the screen onto a random open platform, but only after its marker has flashed there.
+  updateBananaRain() {
+    for (const drop of this.entityGroups.get('bananaDrops')) {
+      drop.update();
+      if (drop.ticksRemaining > 0) continue;
+
+      this.entityGroups.add('bananas', new Banana({ x: drop.x, y: -BANANA_HEIGHT, dropperId: null }));
+      this.entityGroups.remove('bananaDrops', drop);
+    }
+    if (!this.activeModifier.bananaRainIntervalTicks) return;
+
+    this.ticksUntilBananaDrop--;
+    if (this.ticksUntilBananaDrop > 0) return;
+
+    const openTops = this.openTops.filter((openTop) => openTop.y < this.waterLineY);
+    if (openTops.length === 0) return;
+
+    const openTop = openTops[Math.floor(this.random.next() * openTops.length)];
+    const x = openTop.x + this.random.next() * (openTop.width - BANANA_WIDTH);
+    this.entityGroups.add('bananaDrops', new BananaDrop({ x, landingY: openTop.y }));
+    this.ticksUntilBananaDrop = this.activeModifier.bananaRainIntervalTicks;
   }
 
   // Blocks broken in a round are gone until the next one. The level itself is never changed, so the next round
@@ -328,6 +422,7 @@ export class VersusScene {
         this.updateRockets();
         this.updateBombs();
         this.updateBouncePads();
+        this.updateBananaRain();
         this.updateBananas();
         this.updateCrates();
         this.checkRoundEnd();
@@ -344,7 +439,10 @@ export class VersusScene {
         this.updatePlayers(null);
         this.updateRockets();
         this.updateBombs();
-        if (this.ticksRemaining <= 0) this.startRound();
+        if (this.ticksRemaining <= 0) this.startNextRound();
+        break;
+      case 'modifier':
+        this.updateModifierPick(inputByPlayerId);
         break;
       case 'match':
         this.updatePlayers(null);
@@ -710,7 +808,7 @@ export class VersusScene {
   }
 
   scheduleNextCrate() {
-    this.ticksUntilCrateSpawn = CRATE_SPAWN_DELAY_TICKS;
+    this.ticksUntilCrateSpawn = this.crateSpawnDelayTicks();
   }
 
   checkCratePickup(crate) {
@@ -810,6 +908,8 @@ export class VersusScene {
   startNewMatch() {
     for (const id in this.wins) this.wins[id] = 0;
     this.matchStats.reset();
+    this.roundNumber = 0;
+    this.pendingModifierId = null;
     this.events.emit('match-started', {});
     this.startRound();
   }
@@ -839,6 +939,7 @@ export class VersusScene {
     renderer.clearUiLayer();
     drawHud(renderer.uiContext, this);
     drawRoundIntro(renderer.uiContext, this);
+    drawModifierPick(renderer.uiContext, this);
     this.callouts.draw(renderer.uiContext, this.tickCount, renderer.zoom, this.waterLineY);
   }
 }

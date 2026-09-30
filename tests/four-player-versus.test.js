@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { KNOCKOUT_SLOWMO_TICKS, SCREEN_WIDTH, SHOVE_WINDUP_TICKS } from '../src/engine/config.js';
+import { KNOCKOUT_SLOWMO_TICKS, MODIFIER_PICK_TICKS, SCREEN_WIDTH, SHOVE_WINDUP_TICKS } from '../src/engine/config.js';
 import { stateHash } from '../src/engine/state-hash.js';
 import { BOUNCE_PAD_WIDTH } from '../src/entities/bounce-pad.js';
 import { CHARACTERS } from '../src/entities/characters.js';
@@ -122,6 +122,7 @@ test('a 3 player match reaches 5 wins', () => {
     if (win < WINS_NEEDED) {
       assert.equal(scene.phase, 'point');
       advance(scene, POINT_PAUSE_TICKS);
+      if (scene.phase === 'modifier') advance(scene, MODIFIER_PICK_TICKS);
     }
   }
 

@@ -15,6 +15,14 @@ const VERSUS_FIELDS = [
   'brokenTiles',
   'dashHitPairIds',
   'shoveHitIdsByShoverId',
+  'roundNumber',
+  'activeModifierId',
+  'pendingModifierId',
+  'modifierPickerId',
+  'modifierOptionIds',
+  'modifierHighlight',
+  'modifierJumpHeld',
+  'ticksUntilBananaDrop',
 ];
 
 const SURVIVAL_FIELDS = [
