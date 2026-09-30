@@ -2,7 +2,9 @@ import { SCREEN_HEIGHT, SCREEN_WIDTH, TICK_RATE } from '../engine/config.js';
 import { ROCKET_HEIGHT } from '../entities/rocket.js';
 import { drawPanel } from './panel.js';
 import { drawPlayerPanel, PLAYER_PANEL_BOTTOM } from './player-panel.js';
-import { drawText } from './text.js';
+import { drawKeyHints, drawMenuTitle, menuPanelSize } from './menu-kit.js';
+import { drawMenuBackdrop } from './menu-options.js';
+import { drawText, measureText } from './text.js';
 
 const WARNING_MARKER_FLASH_TICKS = 20;
 const WARNING_MARKER_SIZE = 12;
@@ -14,6 +16,32 @@ const TIMER_PANEL_Y = 8;
 const TIMER_TEXT_TOP = 5;
 const TIMER_COLOR = '#ffffff';
 const TIMER_SUDDEN_DEATH_COLOR = '#e43b44';
+const SCORE_PANEL_MARGIN = 8;
+const SCORE_PANEL_HEIGHT = 26;
+const SCORE_PANEL_MIN_WIDTH = 56;
+const SCORE_PANEL_PADDING_X = 6;
+const SCORE_LABEL_TOP = 4;
+const SCORE_NUMBER_TOP = 11;
+const SCORE_LABEL_COLOR = '#8b9bb4';
+const SCORE_NUMBER_COLOR = '#ffffff';
+const NEW_BEST_COLOR = '#feae34';
+const NEW_BEST_FLASH_TICKS = 120;
+const NEW_BEST_BLINK_TICKS = 10;
+const METER_PANEL_WIDTH = 56;
+const METER_PANEL_HEIGHT = 12;
+const METER_PANEL_Y = SCORE_PANEL_MARGIN + SCORE_PANEL_HEIGHT + 4;
+const METER_PADDING_X = 5;
+const METER_BAR_HEIGHT = 4;
+const METER_TICK_WIDTH = 2;
+const METER_TICK_HEIGHT = 8;
+const METER_TRACK_COLOR = '#3a4466';
+const METER_MARKER_COLOR = '#feae34';
+const OVER_TITLE_Y = 96;
+const OVER_PANEL_Y = 120;
+const OVER_FIRST_ROW_OFFSET_Y = 12;
+const OVER_ROW_HEIGHT = 14;
+const OVER_ROW_COLOR = '#c0cbdc';
+const OVER_HINT_GAP = 12;
 
 function displayName(scene, playerId) {
   return scene.players.find((player) => player.id === playerId).character.displayName;
@@ -92,10 +120,6 @@ export function drawHud(context, scene) {
   drawSuddenDeathWarning(context, scene);
 }
 
-export function formatScore(label, score) {
-  return `${label}: ${String(score).padStart(10, '0')}`;
-}
-
 // Flashes at the edge and height a rocket is about to enter from. The height is a world y, so it follows the camera.
 function drawRocketWarnings(context, scene) {
   context.fillStyle = WARNING_MARKER_COLOR;
@@ -107,14 +131,85 @@ function drawRocketWarnings(context, scene) {
   }
 }
 
+// How full the meter is, and where the best marker sits, both as 0 to 1 of the meter's height. The meter always
+// tops out at whichever is higher, so passing the best pushes the marker down.
+export function heightMeterFractions(score, best) {
+  const top = Math.max(score, best);
+  if (top === 0) return { fill: 0, marker: null };
+  return { fill: score / top, marker: best > 0 ? best / top : null };
+}
+
+export function isNewBestFlashing(scene) {
+  return scene.newBestTick !== null && scene.runTicks - scene.newBestTick < NEW_BEST_FLASH_TICKS;
+}
+
+function drawScorePanel(context, { label, value, side, labelColor }) {
+  const numberText = String(value);
+  const numberWidth = measureText(numberText) * 2;
+  const width = Math.max(SCORE_PANEL_MIN_WIDTH, Math.ceil((numberWidth + 2 * SCORE_PANEL_PADDING_X) / 2) * 2);
+  const panelX = side === 'left' ? SCORE_PANEL_MARGIN : SCREEN_WIDTH - SCORE_PANEL_MARGIN - width;
+  drawPanel(context, panelX, SCORE_PANEL_MARGIN, width, SCORE_PANEL_HEIGHT);
+  const textX = panelX + SCORE_PANEL_PADDING_X;
+  drawText(context, label, textX, SCORE_PANEL_MARGIN + SCORE_LABEL_TOP, {
+    scale: 1,
+    color: labelColor,
+    outlineColor: null,
+  });
+  drawText(context, numberText, textX, SCORE_PANEL_MARGIN + SCORE_NUMBER_TOP, {
+    scale: 2,
+    color: SCORE_NUMBER_COLOR,
+    outlineColor: null,
+  });
+}
+
+function drawHeightMeter(context, scene) {
+  const panelX = SCREEN_WIDTH - SCORE_PANEL_MARGIN - METER_PANEL_WIDTH;
+  drawPanel(context, panelX, METER_PANEL_Y, METER_PANEL_WIDTH, METER_PANEL_HEIGHT);
+  const barX = panelX + METER_PADDING_X;
+  const barY = METER_PANEL_Y + Math.floor((METER_PANEL_HEIGHT - METER_BAR_HEIGHT) / 2);
+  const barWidth = METER_PANEL_WIDTH - 2 * METER_PADDING_X;
+  context.fillStyle = METER_TRACK_COLOR;
+  context.fillRect(barX, barY, barWidth, METER_BAR_HEIGHT);
+
+  const { fill, marker } = heightMeterFractions(scene.score, scene.bestScore);
+  context.fillStyle = scene.players[0].color;
+  context.fillRect(barX, barY, Math.round(fill * barWidth), METER_BAR_HEIGHT);
+  if (marker === null) return;
+  const tickX = barX + Math.min(barWidth - METER_TICK_WIDTH, Math.round(marker * barWidth));
+  const tickY = barY - Math.floor((METER_TICK_HEIGHT - METER_BAR_HEIGHT) / 2);
+  context.fillStyle = METER_MARKER_COLOR;
+  context.fillRect(tickX, tickY, METER_TICK_WIDTH, METER_TICK_HEIGHT);
+}
+
+function drawRunOver(context, scene) {
+  drawMenuTitle(context, 'Splash!', OVER_TITLE_Y);
+  const rows = [`Score ${scene.score}`, `Best ${scene.bestScore}`];
+  if (scene.newBestTick !== null) rows.push('New best!');
+  const { width, height } = menuPanelSize(rows);
+  drawPanel(context, (SCREEN_WIDTH - width) / 2, OVER_PANEL_Y, width, height);
+  rows.forEach((row, index) => {
+    drawText(context, row, SCREEN_WIDTH / 2, OVER_PANEL_Y + OVER_FIRST_ROW_OFFSET_Y + index * OVER_ROW_HEIGHT, {
+      scale: 1,
+      align: 'center',
+      color: index === 2 ? NEW_BEST_COLOR : OVER_ROW_COLOR,
+      outlineColor: null,
+    });
+  });
+  drawKeyHints(context, [{ keys: ['W', 'Pad A'], label: 'Retry' }], OVER_PANEL_Y + height + OVER_HINT_GAP);
+}
+
 export function drawSurvivalHud(context, scene) {
   drawRocketWarnings(context, scene);
-  drawText(context, formatScore('Score', scene.score), 8, 8);
-  drawText(context, formatScore('Best', Math.max(scene.bestScore, scene.score)), SCREEN_WIDTH - 8, 8, {
-    align: 'right',
+  if (scene.phase === 'over') drawMenuBackdrop(context);
+  const flashing = isNewBestFlashing(scene);
+  const blinkOn = flashing && Math.floor(scene.runTicks / NEW_BEST_BLINK_TICKS) % 2 === 0;
+  drawScorePanel(context, { label: 'Score', value: scene.score, side: 'left', labelColor: SCORE_LABEL_COLOR });
+  drawScorePanel(context, {
+    label: flashing ? 'New best!' : 'Best',
+    value: Math.max(scene.bestScore, scene.score),
+    side: 'right',
+    labelColor: blinkOn ? NEW_BEST_COLOR : SCORE_LABEL_COLOR,
   });
-  if (scene.phase === 'over') {
-    drawText(context, 'Splash!', SCREEN_WIDTH / 2, 60, { scale: 4, align: 'center' });
-    drawText(context, 'Jump to try again', SCREEN_WIDTH / 2, 96, { align: 'center' });
-  }
+  drawHeightMeter(context, scene);
+  if (scene.phase === 'over') drawRunOver(context, scene);
 }

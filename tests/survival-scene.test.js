@@ -10,6 +10,7 @@ import {
   SEA_RISE_PER_TICK,
   SurvivalScene,
 } from '../src/scenes/survival-scene.js';
+import { heightMeterFractions, isNewBestFlashing } from '../src/ui/hud.js';
 
 const idle = { red: { left: false, right: false, jump: false } };
 
@@ -371,4 +372,29 @@ test('every row keeps a run within reach that is not fire', () => {
       assert.ok(isRowReachable({ runs: safeRuns }, scene.rows[index - 1]), `seed ${seed} row ${index}`);
     }
   }
+});
+
+test('the meter fills against the best and puts the marker at the best', () => {
+  assert.deepEqual(heightMeterFractions(50, 200), { fill: 0.25, marker: 1 });
+  assert.deepEqual(heightMeterFractions(300, 200), { fill: 1, marker: 2 / 3 });
+  assert.deepEqual(heightMeterFractions(0, 0), { fill: 0, marker: null });
+  assert.deepEqual(heightMeterFractions(40, 0), { fill: 1, marker: null });
+});
+
+test('beating the best emits new-best once, and never on a first run', () => {
+  const beaten = new SurvivalScene({ seed: 1 });
+  beaten.bestScore = 20;
+  const scores = [];
+  beaten.events.on('new-best', ({ score }) => scores.push(score));
+  const climb = makeClimber(beaten);
+  for (let tick = 0; tick < 400 && beaten.phase === 'playing'; tick++) beaten.update(climb(tick));
+  assert.equal(scores.length, 1);
+  assert.ok(scores[0] > 20);
+  assert.ok(isNewBestFlashing(beaten) || beaten.runTicks - beaten.newBestTick >= 120);
+
+  const firstRun = new SurvivalScene({ seed: 1 });
+  firstRun.bestScore = 0;
+  firstRun.events.on('new-best', () => assert.fail('a first run has no best to beat'));
+  const firstClimb = makeClimber(firstRun);
+  for (let tick = 0; tick < 200 && firstRun.phase === 'playing'; tick++) firstRun.update(firstClimb(tick));
 });

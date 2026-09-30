@@ -145,6 +145,7 @@ export class SurvivalScene {
     this.entityGroups.clear('crabs');
     this.phase = 'playing';
     this.runTicks = 0;
+    this.newBestTick = null;
     this.seaY = START_FLOOR_Y + SEA_START_BELOW;
     this.entityGroups.clear('platforms');
     this.entityGroups.clear('bouncePads');
@@ -407,6 +408,10 @@ export class SurvivalScene {
     this.dropRowsBelowCamera();
 
     this.lowestPlayerY = Math.min(this.lowestPlayerY, Math.round(player.y));
+    if (this.newBestTick === null && this.bestScore > 0 && this.score > this.bestScore) {
+      this.newBestTick = this.runTicks;
+      this.events.emit('new-best', { score: this.score });
+    }
     this.runTicks++;
     if (this.runTicks > SEA_GRACE_TICKS) this.seaY -= SEA_RISE_PER_TICK;
     this.seaY = Math.min(this.seaY, this.cameraTopY + SCREEN_HEIGHT + SEA_MAX_TRAIL_Y);
