@@ -22,12 +22,9 @@ const MARKER_PULSE_TICKS = 8;
 const MARKER_COLORS = ['#fee761', '#e43b44'];
 const MARKER_SIZE = 4;
 const SHAKE_PIXELS = 2;
-const OUTLINE_COLOR = '#181425';
-const STEEL_COLOR = '#3a4466';
-const HOOK_COLOR = '#feae34';
-const HOOK_SHADE_COLOR = '#be4a2f';
+const CABLE_COLOR = '#262b44';
+const CABLE_LIGHT_COLOR = '#5a6988';
 const TROLLEY_X = SCREEN_WIDTH / 2;
-const CABLE_STEP = 4;
 
 // The center of the hook part of the way through a swing. `progress` runs from 0 to 1, and `direction` is 1 for a swing from
 // the start of the path to its end and -1 for the way back. Only arithmetic, so every browser computes the same spot.
@@ -105,28 +102,29 @@ export class CraneHook extends Entity {
     this.moveTo(cranePathPoint(this.progress, this.direction));
   }
 
-  render(context) {
+  // appearance is { sprites }: the hook is the crane-hook frame of the props sprite file, a hazard striped block over a
+  // hook that fills the hitbox.
+  render(context, { sprites } = {}) {
     const shake = this.phase === 'warning' && this.ticks % 2 === 0 ? SHAKE_PIXELS : 0;
     const centerX = Math.round(this.x + this.width / 2) + shake;
     const topY = Math.round(this.y);
     if (this.phase === 'warning') this.renderPath(context);
     this.renderCable(context, centerX, topY);
-    context.fillStyle = OUTLINE_COLOR;
-    context.fillRect(centerX - this.width / 2 - 1, topY - 1, this.width + 2, this.height + 2);
-    context.fillStyle = HOOK_COLOR;
-    context.fillRect(centerX - this.width / 2, topY, this.width, this.height);
-    context.fillStyle = HOOK_SHADE_COLOR;
-    context.fillRect(centerX - this.width / 2, topY + this.height - 6, this.width, 6);
-    context.fillStyle = OUTLINE_COLOR;
-    context.fillRect(centerX - 2, topY + 4, 4, 4);
+    const sprite = sprites?.props?.['crane-hook'];
+    if (sprite) context.drawImage(sprite, centerX - this.width / 2, topY);
   }
 
+  // A solid steel line from the trolley at the top of the screen to the hook's block, lit along one side.
   renderCable(context, hookX, hookY) {
-    context.fillStyle = STEEL_COLOR;
     const cableLength = Math.max(Math.abs(hookX - TROLLEY_X), hookY);
-    for (let step = 0; step <= cableLength; step += CABLE_STEP) {
+    for (let step = 0; step <= cableLength; step++) {
       const fraction = step / cableLength;
-      context.fillRect(Math.round(TROLLEY_X + (hookX - TROLLEY_X) * fraction), Math.round(hookY * fraction), 2, 2);
+      const x = Math.round(TROLLEY_X + (hookX - TROLLEY_X) * fraction);
+      const y = Math.round(hookY * fraction);
+      context.fillStyle = CABLE_COLOR;
+      context.fillRect(x - 1, y, 1, 1);
+      context.fillStyle = CABLE_LIGHT_COLOR;
+      context.fillRect(x, y, 1, 1);
     }
   }
 

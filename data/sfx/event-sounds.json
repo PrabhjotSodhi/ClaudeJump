@@ -55,5 +55,6 @@
     "grok": "cheer-grok",
     "deepseek": "cheer-deepseek",
     "mistral": "cheer-mistral"
-  }
+  },
+  "steam-vent-hissed": "steam-hiss"
 }

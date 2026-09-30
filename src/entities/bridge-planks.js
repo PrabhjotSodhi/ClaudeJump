@@ -10,14 +10,30 @@ import { Entity } from '../engine/entity.js';
 
 const SHAKE_PIXELS = 1;
 const CRACK_COLOR = '#181425';
-const CRACK_SEGMENTS = [
-  [7, 0, 2, 3],
-  [5, 3, 3, 2],
-  [8, 5, 3, 2],
-  [6, 7, 3, 2],
-  [9, 9, 2, 3],
-  [7, 12, 2, 4],
+const CRACK_EDGE_COLOR = '#c0cbdc';
+// The crack runs down the 14 pixel tall plank one pixel at a time, top to bottom, with a lit edge on its right.
+const CRACK_PATH = [
+  [8, 0],
+  [8, 1],
+  [7, 2],
+  [7, 3],
+  [6, 4],
+  [7, 5],
+  [8, 6],
+  [9, 7],
+  [9, 8],
+  [8, 9],
+  [7, 10],
+  [7, 11],
+  [8, 12],
+  [8, 13],
 ];
+// A cracking plank sheds a chip from its underside this often, which falls away as it goes.
+const CHIP_INTERVAL_TICKS = 12;
+const CHIP_FALL_PIXELS_PER_TICK = 1;
+const CHIP_COLOR = '#5a6988';
+// A falling plank breaks at its crack, and the halves drift apart one pixel every this many ticks.
+const HALF_DRIFT_TICKS = 5;
 const TILE_NAME_PREFIX = 'girder';
 
 // The planks of a bridge deck: the girder tiles of one row of the level. After BRIDGE_PLANK_FIRST_CRACK_TICKS of the
@@ -91,14 +107,33 @@ export class BridgePlanks extends Entity {
       if (plank.state === 'cracking') {
         const shake = Math.floor(plank.ticks / 2) % 2 === 0 ? SHAKE_PIXELS : -SHAKE_PIXELS;
         context.drawImage(sprite, x + shake, y);
-        const visibleSegments = Math.ceil((plank.ticks / BRIDGE_PLANK_CRACK_TICKS) * CRACK_SEGMENTS.length);
-        context.fillStyle = CRACK_COLOR;
-        for (const [offsetX, offsetY, width, height] of CRACK_SEGMENTS.slice(0, visibleSegments)) {
-          context.fillRect(x + shake + offsetX, y + offsetY, width, height);
+        const visiblePixels = Math.ceil((plank.ticks / BRIDGE_PLANK_CRACK_TICKS) * CRACK_PATH.length);
+        for (const [offsetX, offsetY] of CRACK_PATH.slice(0, visiblePixels)) {
+          context.fillStyle = CRACK_COLOR;
+          context.fillRect(x + shake + offsetX, y + offsetY, 1, 1);
+          context.fillStyle = CRACK_EDGE_COLOR;
+          context.fillRect(x + shake + offsetX + 1, y + offsetY, 1, 1);
         }
+        const chipAge = plank.ticks % CHIP_INTERVAL_TICKS;
+        const chipX = x + 3 + ((Math.floor(plank.ticks / CHIP_INTERVAL_TICKS) * 5) % (TILE_SIZE - 6));
+        context.fillStyle = CHIP_COLOR;
+        context.fillRect(chipX, y + sprite.height + chipAge * CHIP_FALL_PIXELS_PER_TICK, 1, 1);
       } else {
         const fallen = Math.round(0.5 * BRIDGE_PLANK_FALL_GRAVITY * plank.ticks * plank.ticks);
-        context.drawImage(sprite, x, y + fallen);
+        const drift = Math.floor(plank.ticks / HALF_DRIFT_TICKS);
+        const half = TILE_SIZE / 2;
+        context.drawImage(sprite, 0, 0, half, sprite.height, x - drift, y + fallen, half, sprite.height);
+        context.drawImage(
+          sprite,
+          half,
+          0,
+          half,
+          sprite.height,
+          x + half + drift,
+          y + fallen + drift,
+          half,
+          sprite.height,
+        );
       }
     }
   }

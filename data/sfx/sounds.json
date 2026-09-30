@@ -651,5 +651,25 @@
       "volume": 0.18,
       "delay": 0.34
     }
+  ],
+  "steam-hiss": [
+    {
+      "waveform": "sine",
+      "startFrequency": 2600,
+      "endFrequency": 2300,
+      "duration": 0.9,
+      "volume": 0.01,
+      "noiseVolume": 0.12,
+      "attack": 0.25
+    },
+    {
+      "waveform": "triangle",
+      "startFrequency": 90,
+      "endFrequency": 70,
+      "duration": 0.6,
+      "volume": 0.08,
+      "attack": 0.2,
+      "delay": 0.2
+    }
   ]
 }

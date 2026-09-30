@@ -19,7 +19,10 @@
     "m": "#b86f50",
     "h": "#e4a672",
     "e": "#be4a2f",
-    "d": "#d77643"
+    "d": "#d77643",
+    "z": "#262b44",
+    "q": "#3a4466",
+    "n": "#5a6988"
   },
   "frames": {
     "rocket-0": [
@@ -115,6 +118,26 @@
       "oyaaaaaaaaaaaado",
       "oadddddddddddddo",
       "oooooooooooooooo"
+    ],
+    "crane-hook": [
+      "..oooooooooo..",
+      ".oLLLLLLLLLLo.",
+      ".oyyzzyyzzyyo.",
+      ".oyzzyyzzyyzo.",
+      ".ozzyyzzyyzzo.",
+      ".ozyyzzyyzzyo.",
+      ".oqqqqqqqqqqo.",
+      "..oooooooooo..",
+      ".....onno.....",
+      ".....onqo.....",
+      ".....oyao.....",
+      ".oo..oyao.....",
+      "oyao.oyao.....",
+      "oyaooyaao.....",
+      "oyaaaaafo.....",
+      ".oaaaaffo.....",
+      "..offffo......",
+      "...oooo......."
     ]
   }
 }
