@@ -15,7 +15,7 @@ import { SurvivalScene } from './scenes/survival-scene.js';
 import { VersusScene } from './scenes/versus-scene.js';
 
 // The order of the level select tiles.
-const LEVEL_FILE_NAMES = ['harbor', 'rooftops', 'cave', 'server-farm', 'cooling-towers'];
+const LEVEL_FILE_NAMES = ['harbor', 'rooftops', 'cave', 'server-farm', 'cooling-towers', 'bridge'];
 
 async function loadText(path) {
   const response = await fetch(path);
