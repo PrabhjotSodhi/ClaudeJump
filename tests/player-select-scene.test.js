@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { CHARACTERS } from '../src/entities/characters.js';
-import { PlayerSelectScene } from '../src/scenes/player-select-scene.js';
+import { hopOffsetY, PlayerSelectScene } from '../src/scenes/player-select-scene.js';
 import { harborLevel } from './fixtures/harbor-level.mjs';
 
 function noInput() {
@@ -171,4 +171,22 @@ test('level select gets the character each player locked in', () => {
 
   const { characterByPlayerId } = scenes[0];
   assert.deepEqual([characterByPlayerId.red.name, characterByPlayerId.blue.name], ['muse', 'chatgpt']);
+});
+
+test('a hop leaves the pedestal, peaks in the middle and lands after its duration', () => {
+  assert.equal(hopOffsetY(-1), 0);
+  assert.equal(hopOffsetY(0), 0);
+  assert.ok(hopOffsetY(4) > 0);
+  assert.ok(hopOffsetY(12) > hopOffsetY(4));
+  assert.equal(hopOffsetY(24), 0);
+});
+
+test('changing character starts a hop, joining does not', () => {
+  const { scene } = sceneWithBaseline();
+
+  scene.update(inputsWithJump('red'));
+  assert.equal(scene.hopStartTickByPlayerId.red, undefined);
+
+  scene.update({ ...neutralInputs(), red: { ...noInput(), right: true } });
+  assert.equal(scene.hopStartTickByPlayerId.red, scene.tickCount);
 });
