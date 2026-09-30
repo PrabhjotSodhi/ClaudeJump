@@ -1,7 +1,7 @@
 import { SCREEN_HEIGHT, SCREEN_WIDTH, TICK_RATE } from '../engine/config.js';
 import { ROCKET_HEIGHT } from '../entities/rocket.js';
 import { drawPanel } from './panel.js';
-import { drawPlayerPanel } from './player-panel.js';
+import { drawPlayerPanel, PLAYER_PANEL_BOTTOM } from './player-panel.js';
 import { drawText } from './text.js';
 
 const WARNING_MARKER_FLASH_TICKS = 20;
@@ -50,6 +50,7 @@ function drawSuddenDeathWarning(context, scene) {
 
   context.fillStyle = WARNING_MARKER_COLOR;
   for (let y = 0; y < SCREEN_HEIGHT; y += WARNING_MARKER_GAP) {
+    if (y < PLAYER_PANEL_BOTTOM) continue;
     context.fillRect(0, y, WARNING_MARKER_SIZE, WARNING_MARKER_SIZE);
     context.fillRect(SCREEN_WIDTH - WARNING_MARKER_SIZE, y, WARNING_MARKER_SIZE, WARNING_MARKER_SIZE);
   }

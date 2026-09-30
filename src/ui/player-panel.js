@@ -19,8 +19,10 @@ const NAME_TOP = 6;
 const PIP_TOP = 18;
 const PIP_GAP = 3;
 const PIP_OUTLINE_COLOR = '#3e2731';
-const EMPTY_PIP_COLOR = '#181425';
+const EMPTY_PIP_OUTLINE_COLOR = '#5a6988';
+const EMPTY_PIP_FILL_COLOR = '#262b44';
 
+export const PLAYER_PANEL_BOTTOM = PANEL_MARGIN + PANEL_HEIGHT;
 const PORTRAIT_OUTER_SIZE = PORTRAIT_SIZE + 2;
 const CONTENT_WIDTH = PANEL_WIDTH - 2 * PANEL_PADDING - PORTRAIT_OUTER_SIZE - NAME_GAP;
 
@@ -58,12 +60,12 @@ function drawPortrait(context, character, sprite, x, y) {
   context.restore();
 }
 
-function drawPip(context, centerX, centerY, size, color) {
+function drawPip(context, centerX, centerY, size, outlineColor, fillColor) {
   const left = centerX - size / 2;
   const top = centerY - size / 2;
-  context.fillStyle = PIP_OUTLINE_COLOR;
+  context.fillStyle = outlineColor;
   context.fillRect(left, top, size, size);
-  context.fillStyle = color;
+  context.fillStyle = fillColor;
   context.fillRect(left + 1, top + 1, size - 2, size - 2);
 }
 
@@ -104,7 +106,8 @@ export function drawPlayerPanel(context, scene, player, side) {
       pipsX + index * (PIP_SIZE + PIP_GAP) + PIP_SIZE / 2,
       PANEL_MARGIN + PIP_TOP + PIP_SIZE / 2,
       scene.winPips.pipSizeFor(player.id, index, wins, scene.tickCount),
-      index < wins ? player.color : EMPTY_PIP_COLOR,
+      index < wins ? PIP_OUTLINE_COLOR : EMPTY_PIP_OUTLINE_COLOR,
+      index < wins ? player.color : EMPTY_PIP_FILL_COLOR,
     );
   }
 }
