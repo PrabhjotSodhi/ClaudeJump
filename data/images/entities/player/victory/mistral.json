@@ -1,0 +1,13 @@
+{
+  "ticksPerFrame": 4,
+  "frames": [
+    { "width": 3, "height": -3 },
+    { "y": -3, "height": 2 },
+    { "width": 3, "height": -3 },
+    { "y": -3, "height": 2 },
+    { "width": 4, "height": -4 },
+    { "y": -8, "width": -2, "height": 5, "eyes": "closed" },
+    { "y": -8, "width": -2, "height": 5, "eyes": "closed" },
+    { "y": -3 }
+  ]
+}

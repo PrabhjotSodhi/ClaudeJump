@@ -1,9 +1,11 @@
 import { SHOVE_MAX_CHARGE_TICKS, SHOVE_WINDUP_TICKS } from '../engine/config.js';
 import { SeededRandom } from '../engine/seeded-random.js';
+import { CHARACTERS } from '../entities/characters.js';
 
 // Every action has a folder of pose frames in data/images/entities/player/<action>/frames.json. A frame changes how
 // the one body sprite is drawn: width and height add to its size, x moves it forward in the facing direction, y moves
-// it down, eyes "closed" shuts the eyes and dust kicks up a puff at the feet as the frame starts.
+// it down, eyes "closed" shuts the eyes and dust kicks up a puff at the feet as the frame starts. The victory pose is
+// each character's own, in data/images/entities/player/victory/<character name>.json.
 export const CHARACTER_ACTIONS = ['idle', 'run', 'jump', 'fall', 'windup', 'charge', 'hurt', 'launched'];
 
 const RUN_SPEED_THRESHOLD = 0.5;
@@ -21,19 +23,31 @@ const DUST_PUFFS = [
 const DUST_COLORS = ['#c0cbdc', '#8b9bb4'];
 const NEUTRAL_FRAME = {};
 
-// Loads every action's frames file, for the render code to pass back in as poses.
-export async function loadCharacterPoses() {
+async function loadPoseEntries(names, pathFor) {
   const entries = await Promise.all(
-    CHARACTER_ACTIONS.map(async (action) => [
-      action,
-      await fetch(`data/images/entities/player/${action}/frames.json`).then((response) => response.json()),
-    ]),
+    names.map(async (name) => [name, await fetch(pathFor(name)).then((response) => response.json())]),
   );
   return Object.fromEntries(entries);
 }
 
-// The one action that best shows what the player is doing right now. Being hit wins, then a launch, then a shove.
-export function pickCharacterAction(player) {
+// Loads every action's frames file, for the render code to pass back in as poses. poses.victory holds one pose per
+// character name.
+export async function loadCharacterPoses() {
+  const poses = await loadPoseEntries(
+    CHARACTER_ACTIONS,
+    (action) => `data/images/entities/player/${action}/frames.json`,
+  );
+  poses.victory = await loadPoseEntries(
+    CHARACTERS.map((character) => character.name),
+    (name) => `data/images/entities/player/victory/${name}.json`,
+  );
+  return poses;
+}
+
+// The one action that best shows what the player is doing right now. A winner celebrates. Otherwise being hit wins,
+// then a launch, then a shove.
+export function pickCharacterAction(player, winnerId = null) {
+  if (player.id === winnerId && !player.inWater) return 'victory';
   const beingHit =
     player.isFrozen && (player.pendingKnockbackVelocityX !== 0 || player.pendingKnockbackVelocityY !== 0);
   if (beingHit) return 'hurt';
@@ -45,8 +59,7 @@ export function pickCharacterAction(player) {
 }
 
 // chargeProgress runs from 0 at the end of the wind-up to 1 at full charge, and picks the charge's shake stage.
-export function poseFrame(poses, action, ticksInAction, chargeProgress = 0) {
-  const pose = poses?.[action];
+export function poseFrame(pose, ticksInAction, chargeProgress = 0) {
   if (!pose) return NEUTRAL_FRAME;
   let frames = pose.frames;
   if (pose.stages) {
@@ -71,10 +84,18 @@ export class CharacterAnimations {
     this.stateByPlayerId = new Map();
     this.dustPuffs = [];
     this.getPlayers = () => [];
+    this.getWinnerId = () => null;
   }
 
-  attach(getPlayers) {
+  // getWinnerId returns the id of the player to show celebrating, or null.
+  attach(getPlayers, getWinnerId = () => null) {
     this.getPlayers = getPlayers;
+    this.getWinnerId = getWinnerId;
+  }
+
+  poseOf(player, action) {
+    if (action === 'victory') return this.poses?.victory?.[player.character.name];
+    return this.poses?.[action];
   }
 
   ticksUntilNextBlink() {
@@ -100,12 +121,12 @@ export class CharacterAnimations {
     this.dustPuffs = this.dustPuffs.filter((puff) => puff.age < DUST_LIFETIME_TICKS);
     for (const player of this.getPlayers()) {
       const state = this.stateFor(player.id);
-      const action = pickCharacterAction(player);
+      const action = pickCharacterAction(player, this.getWinnerId());
       state.ticksInAction = action === state.action ? state.ticksInAction + 1 : 0;
       state.action = action;
       this.updateBlink(state);
       const frame = this.frameFor(player);
-      const pose = this.poses?.[action];
+      const pose = this.poseOf(player, action);
       if (frame.dust && pose && state.ticksInAction % pose.ticksPerFrame === 0) this.addDustPuffs(player);
     }
   }
@@ -135,7 +156,7 @@ export class CharacterAnimations {
 
   frameFor(player) {
     const state = this.stateFor(player.id);
-    return poseFrame(this.poses, state.action, state.ticksInAction, chargeProgressOf(player));
+    return poseFrame(this.poseOf(player, state.action), state.ticksInAction, chargeProgressOf(player));
   }
 
   // The frame to draw the player with this tick, with eyes closed while blinking.

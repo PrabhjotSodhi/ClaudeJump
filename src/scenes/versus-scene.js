@@ -64,6 +64,7 @@ import { WinPips } from '../ui/win-pips.js';
 import { ClashSparks, drawClashSparks } from '../vfx/clash-sparks.js';
 import { knockoutZoom } from '../vfx/knockout-zoom.js';
 import { CharacterAnimations } from '../vfx/character-animations.js';
+import { Confetti } from '../vfx/confetti.js';
 import { PlayerEyes } from '../vfx/player-eyes.js';
 import { drawParticles, HARD_LANDING_SPEED, Particles } from '../vfx/particles.js';
 import { SeaRipple } from '../vfx/sea-ripple.js';
@@ -197,7 +198,12 @@ export class VersusScene {
     this.playerEyes = new PlayerEyes();
     this.playerEyes.attach(this.events, () => this.players);
     this.characterAnimations = new CharacterAnimations(sprites?.characterPoses);
-    this.characterAnimations.attach(() => this.players);
+    this.characterAnimations.attach(
+      () => this.players,
+      () => (this.phase === 'point' || this.phase === 'match' ? this.winnerId : null),
+    );
+    this.confetti = new Confetti();
+    this.confetti.attach(this.events, () => this.players);
     this.clashSparks = new ClashSparks();
     this.clashSparks.attach(
       this.events,
@@ -422,6 +428,7 @@ export class VersusScene {
       this.splashes.update();
       this.playerEyes.update();
       this.characterAnimations.update();
+      this.confetti.update();
     }
     switch (this.phase) {
       case 'ready':
@@ -925,6 +932,8 @@ export class VersusScene {
     this.wins[this.winnerId]++;
     this.events.emit('round-won', { playerId: this.winnerId, wins: this.wins[this.winnerId] });
     if (this.wins[this.winnerId] >= this.winsNeeded) {
+      const winner = this.players.find((player) => player.id === this.winnerId);
+      this.events.emit('match-won', { playerId: this.winnerId, characterName: winner.character.name });
       this.phase = 'match';
       this.ticksRemaining = RESTART_DELAY_TICKS;
     }
@@ -971,5 +980,6 @@ export class VersusScene {
     drawRoundIntro(renderer.uiContext, this);
     drawModifierPick(renderer.uiContext, this);
     this.callouts.draw(renderer.uiContext, this.tickCount, renderer.zoom, this.waterLineY);
+    this.confetti.render(renderer.uiContext);
   }
 }

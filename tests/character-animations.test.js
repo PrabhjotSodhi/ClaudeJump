@@ -63,7 +63,7 @@ test('the action follows what the player is doing', () => {
 
 test('a charge shakes harder the longer it is held', () => {
   const shakeAt = (chargeProgress) => {
-    const offsets = [0, 1, 2, 3].map((tick) => poseFrame(POSES, 'charge', tick * 2, chargeProgress).x);
+    const offsets = [0, 1, 2, 3].map((tick) => poseFrame(POSES.charge, tick * 2, chargeProgress).x);
     return Math.max(...offsets) - Math.min(...offsets);
   };
 
@@ -110,5 +110,5 @@ test('running kicks up dust at the feet and standing still does not', () => {
 
 test('a full charge lands in the last shake stage', () => {
   const lastStage = POSES.charge.stages.at(-1);
-  assert.ok(lastStage.includes(poseFrame(POSES, 'charge', 0, 1)));
+  assert.ok(lastStage.includes(poseFrame(POSES.charge, 0, 1)));
 });

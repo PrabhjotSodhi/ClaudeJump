@@ -87,6 +87,7 @@ async function main() {
     eventSounds,
     menuTrack,
     matchTrack,
+    winJingles,
     claude,
     muse,
     chatgpt,
@@ -105,6 +106,7 @@ async function main() {
     fetch('data/sfx/event-sounds.json').then((response) => response.json()),
     fetch('data/music/menu.json').then((response) => response.json()),
     fetch('data/music/match.json').then((response) => response.json()),
+    fetch('data/music/win-jingles.json').then((response) => response.json()),
     loadSpriteFile('data/sprites/claude.json'),
     loadSpriteFile('data/sprites/muse.json'),
     loadSpriteFile('data/sprites/chatgpt.json'),
@@ -152,6 +154,7 @@ async function main() {
   const musicPlayer = new MusicPlayer({
     soundPlayer,
     tracks: { menu: menuTrack, match: matchTrack },
+    jingles: winJingles,
   });
   musicPlayer.start();
   const fullscreen = createFullscreen();

@@ -146,15 +146,17 @@ function drawPedestal(context, pedestal, blockSprites) {
     context.drawImage(blockSprites[`block-big-${block % 2}`], pedestal.x + block * PEDESTAL_BLOCK_SIZE, pedestal.y);
 }
 
-function drawCharacter(context, { player, box, matchScene }) {
+// The winner keeps up their victory pose on the pedestal.
+function drawCharacter(context, { player, box, matchScene, pose = {} }) {
   drawCharacterBody(context, {
     sprite: matchScene.sprites[player.character.spriteName].body,
     eyeFramePositions: player.character.eyeFramePositions,
     eyes: matchScene.playerEyes.eyesFor(player.id),
-    centerX: box.x + box.width / 2,
-    bottomY: box.y + box.height,
-    width: box.width,
-    height: box.height,
+    eyesClosed: pose.eyes === 'closed',
+    centerX: box.x + box.width / 2 + (pose.x ?? 0),
+    bottomY: box.y + box.height + (pose.y ?? 0),
+    width: box.width + (pose.width ?? 0),
+    height: box.height + (pose.height ?? 0),
   });
 }
 
@@ -213,7 +215,8 @@ export function drawResultsMenu(context, { matchScene, options, selectedIndex, m
     drawStage(context, layout);
     drawPedestal(context, layout.pedestal, matchScene.level.tileSprites);
     losers.forEach(({ player }, index) => drawCharacter(context, { player, box: layout.losers[index], matchScene }));
-    drawCharacter(context, { player: winner, box: layout.winner, matchScene });
+    const winnerPose = matchScene.characterAnimations?.poseFor(winner);
+    drawCharacter(context, { player: winner, box: layout.winner, matchScene, pose: winnerPose });
     // Two players keep their own side. More are shown in rank order with their place named.
     if (playerCount === 2) {
       matchScene.players.forEach((player, index) =>
@@ -227,4 +230,5 @@ export function drawResultsMenu(context, { matchScene, options, selectedIndex, m
     drawMenuList(context, { options, selectedIndex, topY: layout.menuTopY, motion });
     drawKeyHints(context, HINTS, layout.hintY);
   });
+  matchScene.confetti?.render(context);
 }
