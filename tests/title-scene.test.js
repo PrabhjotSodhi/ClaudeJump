@@ -112,3 +112,9 @@ test('jump does not select', () => {
 
   assert.equal(scenes.length, 0);
 });
+
+test('the title shows the sea at the Harbor water line', () => {
+  const scene = new TitleScene({ levels: [harborLevel], seed: 0 });
+
+  assert.equal(scene.waterLineY, harborLevel.waterLineY);
+});
