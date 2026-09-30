@@ -105,8 +105,8 @@ test('harbor loads its spawns and sea line', () => {
   assert.deepEqual(harborLevel.spawns, [
     { id: 'red', x: 152, y: 224, facing: 1 },
     { id: 'blue', x: 488, y: 224, facing: -1 },
-    { id: 'green', x: 288, y: 144, facing: 1 },
-    { id: 'yellow', x: 352, y: 144, facing: -1 },
+    { id: 'green', x: 212, y: 224, facing: 1 },
+    { id: 'yellow', x: 428, y: 224, facing: -1 },
   ]);
 });
 
