@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
+import { readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { findCharacter } from '../src/entities/characters.js';
-import { LevelSelectScene } from '../src/scenes/level-select-scene.js';
+import { measureText } from '../src/ui/text.js';
+import { LevelSelectScene, levelSelectLayout } from '../src/scenes/level-select-scene.js';
 import { harborLevel } from './fixtures/harbor-level.mjs';
 
 const otherLevel = { ...harborLevel, name: 'Dock' };
@@ -137,4 +139,72 @@ test('Random can give any level', () => {
   for (let seed = 0; seed < 50; seed++) picked.add(pickedLevel({ seed }));
 
   assert.deepEqual([...picked].map((level) => level.name).sort(), ['Dock', 'Harbor']);
+});
+
+test('the grid fits the screen with no overlap for 4 to 8 cards, on whole pixels', () => {
+  for (let cardCount = 4; cardCount <= 8; cardCount++) {
+    const { bounds } = levelSelectLayout(cardCount);
+    assert.equal(bounds.length, cardCount);
+    bounds.forEach((box, index) => {
+      const label = `${cardCount} cards, card ${index}`;
+      for (const value of [box.x, box.y, box.width, box.height]) assert.ok(Number.isInteger(value), label);
+      assert.ok(box.x >= 0 && box.y >= 0, `${label} starts on screen`);
+      assert.ok(box.x + box.width <= 640 && box.y + box.height <= 360, `${label} ends on screen`);
+      for (const other of bounds.slice(index + 1)) {
+        const apart =
+          box.x + box.width <= other.x ||
+          other.x + other.width <= box.x ||
+          box.y + box.height <= other.y ||
+          other.y + other.height <= box.y;
+        assert.ok(apart, `${label} overlaps another card`);
+      }
+    });
+  }
+});
+
+test('every level name and the Random label fit under their tile', () => {
+  const levelsFolder = new URL('../data/levels/', import.meta.url);
+  const names = readdirSync(levelsFolder)
+    .filter((fileName) => fileName.endsWith('.json'))
+    .map((fileName) => JSON.parse(readFileSync(new URL(fileName, levelsFolder))).name);
+  const { bounds } = levelSelectLayout(names.length + 1);
+
+  for (const name of [...names, 'Random']) {
+    assert.ok(measureText(name) <= bounds[0].width, `${name} is wider than its tile`);
+  }
+});
+
+function sceneWithLevels(levelCount) {
+  const levels = Array.from({ length: levelCount }, (_, index) => ({ ...harborLevel, name: `Level ${index}` }));
+  return sceneWithBaseline({ levels }).scene;
+}
+
+test('down moves along the column and wraps to the top', () => {
+  const scene = sceneWithLevels(7);
+
+  press(scene, 'red', 'right');
+  press(scene, 'red', 'right');
+  assert.equal(scene.cursorByPlayerId.red, 5, 'right from Random wraps to the start of its row, then one on');
+  press(scene, 'red', 'down');
+  assert.equal(scene.cursorByPlayerId.red, 1, 'below the last row wraps to the first row');
+  press(scene, 'red', 'down');
+  assert.equal(scene.cursorByPlayerId.red, 5);
+
+  assert.equal(scene.cursorByPlayerId.blue, 7, 'the other cursor does not move');
+});
+
+test('left and right stay inside their row, including a shorter last row', () => {
+  const scene = sceneWithLevels(6);
+  const randomTile = 6;
+
+  press(scene, 'red', 'right');
+  assert.equal(scene.cursorByPlayerId.red, 4, 'right from the end of the last row wraps to its start');
+  press(scene, 'red', 'left');
+  assert.equal(scene.cursorByPlayerId.red, randomTile);
+
+  press(scene, 'blue', 'down');
+  assert.equal(scene.cursorByPlayerId.blue, 2, 'down from Random goes to the top of its column');
+  press(scene, 'blue', 'right');
+  press(scene, 'blue', 'down');
+  assert.equal(scene.cursorByPlayerId.blue, 3, 'a column with no card in the last row stays in the first row');
 });
