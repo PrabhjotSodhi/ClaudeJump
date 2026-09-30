@@ -14,6 +14,7 @@ import {
   TITLE_HEIGHT,
   wrapMenuIndex,
 } from './menu-kit.js';
+import { ControlsMenu } from './controls-menu.js';
 import { drawMenuBackdrop } from './menu-options.js';
 
 const TITLE_GAP = 14;
@@ -34,6 +35,7 @@ export function settingsMenuOptions(settings) {
     { id: 'effectsVolume', label: `Effects: ${settings.effectsVolume}` },
     { id: 'screenShake', label: `Screen shake: ${capitalized(settings.screenShake)}` },
     { id: 'reduceFlashes', label: `Reduce flashes: ${settings.reduceFlashes ? 'On' : 'Off'}` },
+    { id: 'controls', label: 'Controls' },
     { id: 'back', label: 'Back' },
   ];
 }
@@ -59,7 +61,7 @@ function settingsLayout(options) {
 
 // The Settings screen, shown over a title or pause menu. It changes the settings object it is given
 // and calls onChange after each change so the caller can save. Left and right change a row, confirm
-// or a tap steps it forward, and pause or the Back row closes it. `initialInput` seeds the held-key
+// or a tap steps it forward (or opens Controls), and pause or the Back row closes it. `initialInput` seeds the held-key
 // baseline so the press that opened the screen does not act inside it.
 export class SettingsMenu {
   constructor({ settings, events, onChange, initialInput = {} }) {
@@ -67,6 +69,7 @@ export class SettingsMenu {
     this.events = events;
     this.onChange = onChange;
     this.selectedIndex = 0;
+    this.controlsMenu = null;
     this.motion = new MenuMotion();
     this.previous = {};
     for (const control of CONTROLS) {
@@ -84,6 +87,10 @@ export class SettingsMenu {
     this.motion.update();
     const pressed = {};
     for (const control of CONTROLS) pressed[control] = this.consumeFreshPress(inputByPlayerId, control);
+    if (this.controlsMenu) {
+      if (this.controlsMenu.update(inputByPlayerId)) this.controlsMenu = null;
+      return false;
+    }
 
     const options = this.options;
     const moved = (pressed.down ? 1 : 0) - (pressed.up ? 1 : 0);
@@ -105,6 +112,15 @@ export class SettingsMenu {
     if (step === 0) return false;
     const settingId = options[this.selectedIndex].id;
     if (settingId === 'back') return pressed.confirm || tappedIndex >= 0;
+    if (settingId === 'controls') {
+      this.controlsMenu = new ControlsMenu({
+        events: this.events,
+        onChange: this.onChange,
+        initialInput: inputByPlayerId,
+      });
+      this.events?.emit('menu-selected', {});
+      return false;
+    }
     changeSetting(this.settings, settingId, step);
     this.onChange?.();
     this.events?.emit('menu-selected', {});
@@ -123,6 +139,10 @@ export class SettingsMenu {
   }
 
   render(context) {
+    if (this.controlsMenu) {
+      this.controlsMenu.render(context);
+      return;
+    }
     drawMenuBackdrop(context);
     const options = this.options;
     const { titleY, menuTopY } = settingsLayout(options);

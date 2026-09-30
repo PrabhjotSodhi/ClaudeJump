@@ -9,6 +9,7 @@ import { Renderer } from './engine/renderer.js';
 import { SceneManager } from './engine/scene-manager.js';
 import { MusicPlayer } from './engine/music-player.js';
 import { SoundPlayer } from './engine/sound-player.js';
+import { initKeyBindings, loadKeyBindings } from './engine/key-bindings.js';
 import { loadSettings, settings } from './engine/sound-settings.js';
 import { loadSpriteFile } from './engine/sprites.js';
 import { createTouchInput, TOUCH_BUTTONS, TWO_PLAYER_TOUCH_BUTTONS } from './engine/touch-input.js';
@@ -124,6 +125,7 @@ async function main() {
     return;
   }
   const renderer = new Renderer();
+  initKeyBindings(keyMappings);
   const keyboardInput = createKeyboardInput(keyMappings);
   // Gamepad slots follow seat order, so pads 3 and 4 drive green and yellow, which have no keyboard keys.
   const gamepadInput = createGamepadInput(PLAYERS.map((player) => player.id));
@@ -132,7 +134,10 @@ async function main() {
     keyMappings.map((mapping) => mapping.id),
   );
   const storage = readLocalStorage();
-  if (storage) Object.assign(settings, loadSettings(storage));
+  if (storage) {
+    Object.assign(settings, loadSettings(storage));
+    loadKeyBindings(storage);
+  }
   const soundPlayer = new SoundPlayer({ soundDefinitions, eventSounds, storage });
   const musicPlayer = new MusicPlayer({
     soundPlayer,

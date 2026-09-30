@@ -69,9 +69,15 @@ const KEY_HINT_ROWS = [
     device: 'keyboard',
     color: PLAYERS.find((spawn) => spawn.id === 'red').color,
     hints: [
-      { keys: ['A', 'D'], label: 'Pick' },
-      { keys: ['W'], label: 'Join or lock in' },
-      { keys: ['S'], label: 'Back' },
+      {
+        keys: [
+          { player: 'red', control: 'left' },
+          { player: 'red', control: 'right' },
+        ],
+        label: 'Pick',
+      },
+      { keys: [{ player: 'red', control: 'jump' }], label: 'Join or lock in' },
+      { keys: [{ player: 'red', control: 'action' }], label: 'Back' },
     ],
   },
   {
@@ -79,9 +85,15 @@ const KEY_HINT_ROWS = [
     device: 'keyboard',
     color: PLAYERS.find((spawn) => spawn.id === 'blue').color,
     hints: [
-      { keys: ['Left', 'Right'], label: 'Pick' },
-      { keys: ['Up'], label: 'Join or lock in' },
-      { keys: ['Down'], label: 'Back' },
+      {
+        keys: [
+          { player: 'blue', control: 'left' },
+          { player: 'blue', control: 'right' },
+        ],
+        label: 'Pick',
+      },
+      { keys: [{ player: 'blue', control: 'jump' }], label: 'Join or lock in' },
+      { keys: [{ player: 'blue', control: 'action' }], label: 'Back' },
     ],
   },
   {

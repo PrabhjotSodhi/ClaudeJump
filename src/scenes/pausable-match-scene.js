@@ -1,3 +1,4 @@
+import { saveKeyBindings } from '../engine/key-bindings.js';
 import { saveSettings, settings } from '../engine/sound-settings.js';
 import { AwardReveal } from '../ui/award-reveal.js';
 import { pickAwards } from '../ui/match-stats.js';
@@ -260,7 +261,9 @@ export class PausableMatchScene {
 
   saveSettings() {
     const storage = this.sceneManager.soundPlayer?.storage;
-    if (storage) saveSettings(storage, settings);
+    if (!storage) return;
+    saveSettings(storage, settings);
+    saveKeyBindings(storage);
   }
 
   confirmSelection(inputByPlayerId) {
