@@ -1,5 +1,13 @@
 {
-  "jump": [{ "waveform": "square", "startFrequency": 300, "endFrequency": 620, "duration": 0.12, "volume": 0.18 }],
+  "jump": [
+    {
+      "waveform": "square",
+      "startFrequency": 300,
+      "endFrequency": 620,
+      "duration": 0.12,
+      "volume": 0.18
+    }
+  ],
   "land": [
     {
       "waveform": "triangle",
@@ -30,13 +38,40 @@
       "noiseVolume": 0.25
     }
   ],
-  "stomp": [{ "waveform": "triangle", "startFrequency": 260, "endFrequency": 70, "duration": 0.14, "volume": 0.3 }],
+  "stomp": [
+    {
+      "waveform": "triangle",
+      "startFrequency": 260,
+      "endFrequency": 70,
+      "duration": 0.14,
+      "volume": 0.3
+    }
+  ],
   "pickup": [
-    { "waveform": "square", "startFrequency": 660, "endFrequency": 660, "duration": 0.07, "volume": 0.16 },
-    { "waveform": "square", "startFrequency": 990, "endFrequency": 990, "duration": 0.1, "volume": 0.16, "delay": 0.07 }
+    {
+      "waveform": "square",
+      "startFrequency": 660,
+      "endFrequency": 660,
+      "duration": 0.07,
+      "volume": 0.16
+    },
+    {
+      "waveform": "square",
+      "startFrequency": 990,
+      "endFrequency": 990,
+      "duration": 0.1,
+      "volume": 0.16,
+      "delay": 0.07
+    }
   ],
   "card-played": [
-    { "waveform": "sawtooth", "startFrequency": 400, "endFrequency": 800, "duration": 0.14, "volume": 0.16 }
+    {
+      "waveform": "sawtooth",
+      "startFrequency": 400,
+      "endFrequency": 800,
+      "duration": 0.14,
+      "volume": 0.16
+    }
   ],
   "blast": [
     {
@@ -58,8 +93,24 @@
       "noiseVolume": 0.4
     }
   ],
-  "trap-sprung": [{ "waveform": "sine", "startFrequency": 200, "endFrequency": 900, "duration": 0.22, "volume": 0.25 }],
-  "slip": [{ "waveform": "sine", "startFrequency": 900, "endFrequency": 200, "duration": 0.3, "volume": 0.2 }],
+  "trap-sprung": [
+    {
+      "waveform": "sine",
+      "startFrequency": 200,
+      "endFrequency": 900,
+      "duration": 0.22,
+      "volume": 0.25
+    }
+  ],
+  "slip": [
+    {
+      "waveform": "sine",
+      "startFrequency": 900,
+      "endFrequency": 200,
+      "duration": 0.3,
+      "volume": 0.2
+    }
+  ],
   "burn": [
     {
       "waveform": "sawtooth",
@@ -71,22 +122,30 @@
     }
   ],
   "crab-pinch": [
-    { "waveform": "square", "startFrequency": 900, "endFrequency": 500, "duration": 0.05, "volume": 0.2 },
-    { "waveform": "square", "startFrequency": 900, "endFrequency": 500, "duration": 0.05, "volume": 0.2, "delay": 0.08 }
-  ],
-  "splash": [
     {
-      "waveform": "sine",
-      "startFrequency": 200,
-      "endFrequency": 80,
-      "duration": 0.5,
-      "volume": 0.12,
-      "noiseVolume": 0.4,
-      "attack": 0.03
+      "waveform": "square",
+      "startFrequency": 900,
+      "endFrequency": 500,
+      "duration": 0.05,
+      "volume": 0.2
+    },
+    {
+      "waveform": "square",
+      "startFrequency": 900,
+      "endFrequency": 500,
+      "duration": 0.05,
+      "volume": 0.2,
+      "delay": 0.08
     }
   ],
   "round-won": [
-    { "waveform": "square", "startFrequency": 523, "endFrequency": 523, "duration": 0.12, "volume": 0.18 },
+    {
+      "waveform": "square",
+      "startFrequency": 523,
+      "endFrequency": 523,
+      "duration": 0.12,
+      "volume": 0.18
+    },
     {
       "waveform": "square",
       "startFrequency": 659,
@@ -95,10 +154,23 @@
       "volume": 0.18,
       "delay": 0.12
     },
-    { "waveform": "square", "startFrequency": 784, "endFrequency": 784, "duration": 0.3, "volume": 0.18, "delay": 0.24 }
+    {
+      "waveform": "square",
+      "startFrequency": 784,
+      "endFrequency": 784,
+      "duration": 0.3,
+      "volume": 0.18,
+      "delay": 0.24
+    }
   ],
   "sudden-death": [
-    { "waveform": "sawtooth", "startFrequency": 160, "endFrequency": 160, "duration": 0.18, "volume": 0.25 },
+    {
+      "waveform": "sawtooth",
+      "startFrequency": 160,
+      "endFrequency": 160,
+      "duration": 0.18,
+      "volume": 0.25
+    },
     {
       "waveform": "sawtooth",
       "startFrequency": 120,
@@ -109,7 +181,13 @@
     }
   ],
   "new-best": [
-    { "waveform": "triangle", "startFrequency": 784, "endFrequency": 784, "duration": 0.1, "volume": 0.25 },
+    {
+      "waveform": "triangle",
+      "startFrequency": 784,
+      "endFrequency": 784,
+      "duration": 0.1,
+      "volume": 0.25
+    },
     {
       "waveform": "triangle",
       "startFrequency": 1047,
@@ -127,9 +205,23 @@
       "delay": 0.2
     }
   ],
-  "menu-move": [{ "waveform": "square", "startFrequency": 440, "endFrequency": 440, "duration": 0.04, "volume": 0.1 }],
+  "menu-move": [
+    {
+      "waveform": "square",
+      "startFrequency": 440,
+      "endFrequency": 440,
+      "duration": 0.04,
+      "volume": 0.1
+    }
+  ],
   "menu-select": [
-    { "waveform": "square", "startFrequency": 520, "endFrequency": 520, "duration": 0.05, "volume": 0.12 },
+    {
+      "waveform": "square",
+      "startFrequency": 520,
+      "endFrequency": 520,
+      "duration": 0.05,
+      "volume": 0.12
+    },
     {
       "waveform": "square",
       "startFrequency": 780,
@@ -137,6 +229,47 @@
       "duration": 0.08,
       "volume": 0.12,
       "delay": 0.05
+    }
+  ],
+  "splash-small": [
+    {
+      "waveform": "sine",
+      "startFrequency": 260,
+      "endFrequency": 120,
+      "duration": 0.3,
+      "volume": 0.1,
+      "noiseVolume": 0.3,
+      "attack": 0.02
+    }
+  ],
+  "splash-medium": [
+    {
+      "waveform": "sine",
+      "startFrequency": 220,
+      "endFrequency": 90,
+      "duration": 0.5,
+      "volume": 0.14,
+      "noiseVolume": 0.45,
+      "attack": 0.03
+    }
+  ],
+  "splash-large": [
+    {
+      "waveform": "sine",
+      "startFrequency": 160,
+      "endFrequency": 50,
+      "duration": 0.8,
+      "volume": 0.25,
+      "noiseVolume": 0.6,
+      "attack": 0.04
+    },
+    {
+      "waveform": "triangle",
+      "startFrequency": 90,
+      "endFrequency": 35,
+      "duration": 0.6,
+      "volume": 0.3,
+      "attack": 0.01
     }
   ]
 }

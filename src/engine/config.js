@@ -23,6 +23,33 @@ export const CHARGED_SHOVE_EXTRA_SPARK_SPEED = 2;
 export const LAUNCH_TRAIL_STRENGTHS = ['medium', 'heavy'];
 export const LAUNCH_TRAIL_MIN_SPEED = 2.5;
 
+// How big the splash is when a player hits the sea. A fall at or above SPLASH_MEDIUM_FALL_SPEED makes a medium
+// splash, and the last knockout of a round always makes a large one. Height is the spout peak in pixels, ticks how
+// long the splash lasts, ringCount and ringSpeed the rings spreading over the water, dropletCount and dropletSpeed
+// the spray.
+export const SPLASH_MEDIUM_FALL_SPEED = 8;
+export const SPLASH_TIERS = {
+  small: { spoutHeight: 22, spoutWidth: 14, ticks: 32, ringCount: 1, ringSpeed: 1.2, dropletCount: 8, dropletSpeed: 3 },
+  medium: {
+    spoutHeight: 38,
+    spoutWidth: 28,
+    ticks: 42,
+    ringCount: 2,
+    ringSpeed: 1.6,
+    dropletCount: 14,
+    dropletSpeed: 4,
+  },
+  large: {
+    spoutHeight: 64,
+    spoutWidth: 28,
+    ticks: 56,
+    ringCount: 3,
+    ringSpeed: 2.2,
+    dropletCount: 24,
+    dropletSpeed: 5.5,
+  },
+};
+
 // The shove. A press winds up for at least SHOVE_WINDUP_TICKS, so a tap lands a few ticks after the press. Holding
 // the button charges up to SHOVE_MAX_CHARGE_TICKS, and the release fires. Knockback grows from the tap value to
 // SHOVE_MAX_KNOCKBACK_MULTIPLIER times it at full charge. Walking is slower while charging.

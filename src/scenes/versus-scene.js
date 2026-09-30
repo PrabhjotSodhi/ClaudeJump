@@ -30,6 +30,7 @@ import { WinPips } from '../ui/win-pips.js';
 import { PlayerEyes } from '../vfx/player-eyes.js';
 import { drawParticles, HARD_LANDING_SPEED, Particles } from '../vfx/particles.js';
 import { SeaRipple } from '../vfx/sea-ripple.js';
+import { drawSplashes, Splashes, splashTierFor } from '../vfx/splash.js';
 import { ScreenShake } from '../vfx/screen-shake.js';
 import { drawWrapPuffs, WrapPuffTracker } from '../vfx/wrap-puff.js';
 
@@ -118,6 +119,8 @@ export class VersusScene {
       getWaterLineY: () => this.waterLineY,
       getTickCount: () => this.tickCount,
     });
+    this.splashes = new Splashes();
+    this.splashes.attach(this.events, { getPlayers: () => this.players, getWaterLineY: () => this.waterLineY });
     // Display data for the results screen, counted only from events. Created here (rather than
     // lazily on first render) so it never misses an event: dev mode can run a whole match through
     // step() with no render call in between. Game logic never reads it, only the HUD does.
@@ -240,6 +243,7 @@ export class VersusScene {
     this.screenShake.update();
     this.seaRipple.update();
     this.particles.update();
+    this.splashes.update();
     this.playerEyes.update();
     switch (this.phase) {
       case 'ready':
@@ -321,8 +325,14 @@ export class VersusScene {
         this.breakBlocksWhere((block) => blockOverlaps(block, reachedBody));
       }
       if (!player.inWater && player.y + player.height >= this.waterLineY) {
+        const fallSpeed = player.velocityY;
         player.startSinking();
-        this.events.emit('player-fell-in-water', { playerId: player.id });
+        const lastKnockout = this.players.filter((candidate) => !candidate.inWater).length <= 1;
+        this.events.emit('player-fell-in-water', {
+          playerId: player.id,
+          fallSpeed,
+          splashTier: splashTierFor(fallSpeed, lastKnockout),
+        });
       }
       this.wrapPlayerAroundScreen(player);
     }
@@ -626,6 +636,7 @@ export class VersusScene {
     }
     drawWrapPuffs(renderer.gameContext, this);
     this.entityGroups.renderAll(renderer.gameContext, { sprites: this.sprites, playerEyes: this.playerEyes });
+    drawSplashes(renderer.gameContext, this);
     drawParticles(renderer.gameContext, this);
     drawHeldCardIcons(renderer.gameContext, this);
     drawPlayerTags(renderer.gameContext, this);
