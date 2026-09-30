@@ -76,6 +76,16 @@ export const HEAT_KNOCKBACK_STEP = 0.25;
 export const HEAT_KNOCKBACK_MAX_MULTIPLIER = 2;
 export const HEAT_GLOW_COLORS = ['#feae34', '#f77622', '#e43b44'];
 
+// The knockout that decides a round plays in slow motion: the world only steps every KNOCKOUT_SLOWMO_STEP_INTERVAL
+// ticks for KNOCKOUT_SLOWMO_TICKS ticks, then the round ends as usual. The view zooms in by a whole KNOCKOUT_ZOOM
+// toward the player who fell. The crop slides to the player over KNOCKOUT_ZOOM_IN_TICKS ticks and slides back to
+// the middle over KNOCKOUT_ZOOM_OUT_TICKS ticks after the slow motion, then the view snaps to normal.
+export const KNOCKOUT_SLOWMO_TICKS = 60;
+export const KNOCKOUT_SLOWMO_STEP_INTERVAL = 2;
+export const KNOCKOUT_ZOOM = 2;
+export const KNOCKOUT_ZOOM_IN_TICKS = 12;
+export const KNOCKOUT_ZOOM_OUT_TICKS = 20;
+
 // Online matches. A press is scheduled this many ticks ahead so it can cross the network before it is needed.
 export const INPUT_DELAY_TICKS = 4;
 export const HASH_INTERVAL_TICKS = 60;

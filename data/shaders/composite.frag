@@ -7,6 +7,8 @@ uniform vec2 u_resolution;
 uniform float u_time;
 uniform float u_waterLine;
 uniform vec2 u_shakeOffset;
+uniform float u_zoomFactor;
+uniform vec2 u_zoomOrigin;
 uniform sampler2D u_seaHeights;
 
 varying vec2 v_uv;
@@ -28,7 +30,7 @@ vec3 sceneColor(vec2 pixelPosition) {
 
 void main() {
   vec2 screenPixel = floor(v_uv * u_resolution);
-  vec2 pixelPosition = screenPixel - u_shakeOffset;
+  vec2 pixelPosition = floor(screenPixel / u_zoomFactor) + u_zoomOrigin - u_shakeOffset;
   float seaColumn = clamp(floor(pixelPosition.x / u_resolution.x * SEA_COLUMN_COUNT), 0.0, SEA_COLUMN_COUNT - 1.0);
   float rippleHeight = texture2D(u_seaHeights, vec2((seaColumn + 0.5) / SEA_COLUMN_COUNT, 0.5)).r * 255.0 - 128.0;
   float surfaceY = u_waterLine + rippleHeight + floor(sin(pixelPosition.x * 0.15 + u_time * 4.8) * 3.0 + 0.5);

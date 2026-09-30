@@ -220,6 +220,7 @@ async function main() {
     }
     renderer.touchActive = touchInput.visible;
     renderer.shakeOffset = { x: 0, y: 0 };
+    renderer.zoom = { factor: 1, originX: 0, originY: 0 };
     renderer.seaRippleBytes = null;
     sceneManager.render(renderer);
     if (touchInput.visible) {
@@ -236,6 +237,7 @@ async function main() {
       gameCanvas: renderer.gameCanvas,
       uiCanvas: renderer.uiCanvas,
       shakeOffset: renderer.shakeOffset,
+      zoom: renderer.zoom,
       seaRippleBytes: renderer.seaRippleBytes,
       waterLineY: sceneManager.currentScene.waterLineY,
       timeSeconds: timestamp / 1000,
