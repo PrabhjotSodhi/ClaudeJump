@@ -4,6 +4,7 @@ import { createGamepadInput } from './engine/gamepad-input.js';
 import { combineInputs, createKeyboardInput } from './engine/input.js';
 import { Renderer } from './engine/renderer.js';
 import { SceneManager } from './engine/scene-manager.js';
+import { SoundPlayer } from './engine/sound-player.js';
 import { loadSpriteFile } from './engine/sprites.js';
 import { loadLevel, stoneColorOverrides } from './levels/level-loader.js';
 import { createLevelThumbnail } from './levels/level-thumbnail.js';
@@ -24,12 +25,26 @@ async function loadText(path) {
   return response.text();
 }
 
+function readLocalStorage() {
+  try {
+    return localStorage;
+  } catch {
+    return null;
+  }
+}
+
+function isAnyControlHeld(inputByPlayerId) {
+  return Object.values(inputByPlayerId).some((input) => Object.values(input).some(Boolean));
+}
+
 async function main() {
   const searchParameters = new URLSearchParams(location.search);
   const isDevMode = searchParameters.has('dev');
 
   const [
     keyMappings,
+    soundDefinitions,
+    eventSounds,
     claude,
     muse,
     chatgpt,
@@ -44,6 +59,8 @@ async function main() {
     fragmentShaderSource,
   ] = await Promise.all([
     fetch('data/config/key-mappings.json').then((response) => response.json()),
+    fetch('data/sfx/sounds.json').then((response) => response.json()),
+    fetch('data/sfx/event-sounds.json').then((response) => response.json()),
     loadSpriteFile('data/sprites/claude.json'),
     loadSpriteFile('data/sprites/muse.json'),
     loadSpriteFile('data/sprites/chatgpt.json'),
@@ -71,7 +88,8 @@ async function main() {
   const renderer = new Renderer();
   const keyboardInput = createKeyboardInput(keyMappings);
   const gamepadInput = createGamepadInput(keyMappings.map((mapping) => mapping.id));
-  const sceneManager = new SceneManager();
+  const soundPlayer = new SoundPlayer({ soundDefinitions, eventSounds, storage: readLocalStorage() });
+  const sceneManager = new SceneManager({ soundPlayer });
   const sprites = { claude, muse, chatgpt, gemini, grok, deepseek, mistral, props, blocks };
   // Survival builds its platforms from the Harbor stone, the first level file.
   sprites.stoneBlocks = levels[0].tileSprites;
@@ -170,7 +188,9 @@ async function main() {
         sceneManager.currentScene?.pauseForFocusLoss?.();
         return;
       }
-      sceneManager.update(combineInputs(keyboardInput.sample(), gamepadInput.sample()));
+      const inputByPlayerId = combineInputs(keyboardInput.sample(), gamepadInput.sample());
+      if (isAnyControlHeld(inputByPlayerId)) soundPlayer.unlock();
+      sceneManager.update(inputByPlayerId);
     },
     render: renderFrame,
   });
@@ -200,7 +220,12 @@ async function main() {
 
   addEventListener('keydown', (event) => {
     if (event.code === 'KeyF') toggleFullscreen();
+    if (event.code === 'KeyM' && !event.repeat) soundPlayer.toggleSound();
   });
+
+  // Browsers block audio until a user gesture. Keys and gamepad buttons also unlock it from the tick loop.
+  for (const eventName of ['keydown', 'pointerdown', 'touchstart'])
+    addEventListener(eventName, () => soundPlayer.unlock());
 
   // The title screen draws its own fullscreen button; this just hit-tests a click against it.
   canvas.addEventListener('click', (event) => {
@@ -218,7 +243,7 @@ async function main() {
   });
 
   // Exposed for devtools and automated checks.
-  window.claudeJump = { sceneManager };
+  window.claudeJump = { sceneManager, soundPlayer };
 
   if (isDevMode) {
     // Lets a tester or script drive ticks directly, which keeps working while the tab is hidden.

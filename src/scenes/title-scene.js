@@ -1,4 +1,5 @@
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../engine/config.js';
+import { EventEmitter } from '../engine/events.js';
 import { DEFAULT_CHARACTER_BY_PLAYER_ID } from '../entities/characters.js';
 import { drawArenaBackground } from '../levels/arena-backgrounds.js';
 import { PLAYERS } from '../levels/versus-arena.js';
@@ -104,6 +105,7 @@ export class TitleScene {
   // pause menu) does not immediately count as a fresh press here.
   constructor({ sceneManager, levels, sprites, seed = Date.now(), options = MENU_OPTIONS, initialInput = {} } = {}) {
     this.sceneManager = sceneManager;
+    this.events = new EventEmitter();
     this.levels = levels;
     this.sprites = sprites;
     this.seed = seed;
@@ -136,7 +138,11 @@ export class TitleScene {
     const optionCount = this.options.length;
     if (pressed.down) this.selectedIndex = (this.selectedIndex + 1) % optionCount;
     if (pressed.up) this.selectedIndex = (this.selectedIndex + optionCount - 1) % optionCount;
-    if (pressed.confirm) this.confirmSelection();
+    if (pressed.down || pressed.up) this.events.emit('menu-moved', {});
+    if (pressed.confirm) {
+      this.events.emit('menu-selected', {});
+      this.confirmSelection();
+    }
   }
 
   confirmSelection() {

@@ -1,4 +1,5 @@
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../engine/config.js';
+import { EventEmitter } from '../engine/events.js';
 import { CHARACTERS, DEFAULT_CHARACTER_BY_PLAYER_ID } from '../entities/characters.js';
 import { PLAYERS } from '../levels/versus-arena.js';
 import { drawKeyHints, drawMenuTitle, KEYCAP_HEIGHT } from '../ui/menu-kit.js';
@@ -94,6 +95,7 @@ const PORTRAIT_EYES = EYE_STIFFNESSES.map((stiffness) => new GooglyEye(stiffness
 export class PlayerSelectScene {
   constructor({ sceneManager, levels, sprites = {}, seed = Date.now() } = {}) {
     this.sceneManager = sceneManager;
+    this.events = new EventEmitter();
     this.levels = levels;
     this.sprites = sprites;
     this.seed = seed;
@@ -150,6 +152,7 @@ export class PlayerSelectScene {
     const state = this.stateByPlayerId[playerId];
     if (!(state in NEXT_STATE)) return;
     this.stateByPlayerId[playerId] = NEXT_STATE[state];
+    this.events.emit('menu-selected', { playerId });
     if (this.stateByPlayerId[playerId] === 'ready') {
       this.hopStartTickByPlayerId[playerId] = this.tickCount;
       this.moveHoveringPlayersOff(playerId);
@@ -177,6 +180,7 @@ export class PlayerSelectScene {
   changeCharacter(playerId, direction) {
     this.characterIndexByPlayerId[playerId] = this.nextFreeCharacterIndex(playerId, direction);
     this.hopStartTickByPlayerId[playerId] = this.tickCount;
+    this.events.emit('menu-moved', { playerId });
   }
 
   // Anyone still hovering on the character that was just locked in moves on to the next free one.

@@ -1,4 +1,5 @@
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../engine/config.js';
+import { EventEmitter } from '../engine/events.js';
 import { SeededRandom } from '../engine/seeded-random.js';
 import { THUMBNAIL_HEIGHT, THUMBNAIL_WIDTH } from '../levels/level-thumbnail.js';
 import { PLAYERS } from '../levels/versus-arena.js';
@@ -49,6 +50,7 @@ const BADGE_EYES = EYE_STIFFNESSES.map((stiffness) => new GooglyEye(stiffness));
 export class LevelSelectScene {
   constructor({ sceneManager, levels, characterByPlayerId, sprites = {}, seed = Date.now() }) {
     this.sceneManager = sceneManager;
+    this.events = new EventEmitter();
     this.levels = levels;
     this.characterByPlayerId = characterByPlayerId;
     this.sprites = sprites;
@@ -86,10 +88,17 @@ export class LevelSelectScene {
       const input = inputByPlayerId[spawn.id] ?? {};
       const previous = this.previousInput[spawn.id];
       if (!this.lockedByPlayerId[spawn.id]) {
-        if (input.left && !previous.left) this.moveAlongRow(spawn.id, -1);
-        if (input.right && !previous.right) this.moveAlongRow(spawn.id, 1);
-        if (input.down && !previous.down) this.moveDown(spawn.id);
-        if (input.jump && !previous.jump) this.lockedByPlayerId[spawn.id] = true;
+        const leftPressed = input.left && !previous.left;
+        const rightPressed = input.right && !previous.right;
+        const downPressed = input.down && !previous.down;
+        if (leftPressed) this.moveAlongRow(spawn.id, -1);
+        if (rightPressed) this.moveAlongRow(spawn.id, 1);
+        if (downPressed) this.moveDown(spawn.id);
+        if (leftPressed || rightPressed || downPressed) this.events.emit('menu-moved', { playerId: spawn.id });
+        if (input.jump && !previous.jump) {
+          this.lockedByPlayerId[spawn.id] = true;
+          this.events.emit('menu-selected', { playerId: spawn.id });
+        }
       }
       this.previousInput[spawn.id] = { ...input };
     }
