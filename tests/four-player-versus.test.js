@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { SCREEN_WIDTH } from '../src/engine/config.js';
+import { SCREEN_WIDTH, SHOVE_WINDUP_TICKS } from '../src/engine/config.js';
 import { stateHash } from '../src/engine/state-hash.js';
 import { BOUNCE_PAD_WIDTH } from '../src/entities/bounce-pad.js';
 import { CHARACTERS } from '../src/entities/characters.js';
@@ -152,7 +152,7 @@ test('a shove knocks back every other player it touches, not only the first', ()
   const inputs = idleInputs(scene);
   inputs.red.action = true;
   scene.update(inputs);
-  advance(scene, 2);
+  advance(scene, SHOVE_WINDUP_TICKS + 1);
 
   assert.deepEqual(shoved.sort(), ['blue', 'green']);
 });

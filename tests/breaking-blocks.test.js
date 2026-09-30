@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { HITSTOP_TICKS, LEVEL_COLUMNS, LEVEL_ROWS } from '../src/engine/config.js';
+import { HITSTOP_TICKS, LEVEL_COLUMNS, LEVEL_ROWS, SHOVE_WINDUP_TICKS } from '../src/engine/config.js';
 import { Bomb } from '../src/entities/bomb.js';
 import { BouncePad } from '../src/entities/bounce-pad.js';
 import { buildLevel } from '../src/levels/level-loader.js';
@@ -90,6 +90,7 @@ test('a shove breaks the block in front of the shover', () => {
 
   advance(scene, 1);
   advance(scene, 1, { ...noInput(), action: true });
+  advance(scene, SHOVE_WINDUP_TICKS + 1);
 
   assert.ok(!isSolidAt(scene, 168, 152), 'the block in front broke');
   assert.ok(isSolidAt(scene, 168, FLOOR_Y + 8), 'the floor under the shover stayed');
@@ -128,6 +129,7 @@ test('the next round starts with every block back', () => {
   const scene = fightingScene({ 9: '..........s', [FLOOR_ROW]: '.....ssssssssssssssss' });
   advance(scene, 1);
   advance(scene, 1, { ...noInput(), action: true });
+  advance(scene, SHOVE_WINDUP_TICKS + 1);
   assert.ok(!isSolidAt(scene, 168, 152));
 
   scene.players.find((player) => player.id === 'blue').y = 600;
