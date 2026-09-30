@@ -66,6 +66,7 @@ import { ClashSparks, drawClashSparks } from '../vfx/clash-sparks.js';
 import { knockoutZoom } from '../vfx/knockout-zoom.js';
 import { CharacterAnimations } from '../vfx/character-animations.js';
 import { Confetti } from '../vfx/confetti.js';
+import { CrateOpenings } from '../vfx/crate-openings.js';
 import { PlayerEyes } from '../vfx/player-eyes.js';
 import { drawParticles, HARD_LANDING_SPEED, Particles } from '../vfx/particles.js';
 import { SeaRipple } from '../vfx/sea-ripple.js';
@@ -205,6 +206,8 @@ export class VersusScene {
     );
     this.confetti = new Confetti();
     this.confetti.attach(this.events, () => this.players);
+    this.crateOpenings = new CrateOpenings();
+    this.crateOpenings.attach(this.events, () => this.players);
     this.clashSparks = new ClashSparks();
     this.clashSparks.attach(
       this.events,
@@ -431,6 +434,7 @@ export class VersusScene {
       this.playerEyes.update();
       this.characterAnimations.update();
       this.confetti.update();
+      this.crateOpenings.update();
     }
     switch (this.phase) {
       case 'ready':
@@ -851,7 +855,13 @@ export class VersusScene {
       if (!player.overlaps(crate)) continue;
       if (!player.receiveCard(crate.cardName, crate.golden ? GOLDEN_PICKUP_USES : PICKUP_USES)) continue;
 
-      this.events.emit('card-picked-up', { playerId: player.id, cardName: crate.cardName, golden: crate.golden });
+      this.events.emit('card-picked-up', {
+        playerId: player.id,
+        cardName: crate.cardName,
+        golden: crate.golden,
+        x: crate.x + crate.width / 2,
+        y: crate.y,
+      });
       this.entityGroups.remove('crates', crate);
       this.scheduleNextCrate();
       return;
@@ -974,7 +984,9 @@ export class VersusScene {
       sprites: this.sprites,
       playerEyes: this.playerEyes,
       characterAnimations: this.characterAnimations,
+      arenaName: this.level.background,
     });
+    this.crateOpenings.render(renderer.gameContext);
     drawSplashes(renderer.gameContext, this);
     drawParticles(renderer.gameContext, this);
     drawClashSparks(renderer.gameContext, this);

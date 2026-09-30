@@ -1,6 +1,6 @@
 import { Entity } from '../engine/entity.js';
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../engine/config.js';
-import { flutterWobble, swayOffset } from '../vfx/parachute-sway.js';
+import { cordFlutter, flutterWobble, swayOffset } from '../vfx/parachute-sway.js';
 import { findLandingPlatform, predictCrateLanding } from './crate-landing.js';
 
 export const CRATE_WIDTH = 16;
@@ -21,10 +21,6 @@ const MARKER_ARROW_BOB_PIXELS = 4;
 const SHADOW_HEIGHT = 2;
 const GROUND_SHADOW_COLOR = '#3e2731';
 const GROUND_SHADOW_MIN_WIDTH = 4;
-const CRATE_SHADOW_COLOR = '#5c3c1e';
-const CRATE_FILL_COLOR = '#a0703c';
-const GOLDEN_SHADOW_COLOR = '#feae34';
-const GOLDEN_FILL_COLOR = '#fee761';
 // How many pixels the crate falls each tick. The sway is a render offset only, so it never
 // changes how long the fall takes or where the crate lands.
 const FALL_SPEED = 4;
@@ -38,10 +34,59 @@ const DROP_SPEED = 8;
 // Without its parachute the crate drops twice as fast.
 const POPPED_FALL_SPEED = 8;
 const OUTLINE_COLOR = '#3e2731';
-const CANOPY_COLOR = '#f77622';
-const CANOPY_LIGHT_COLOR = '#feae34';
-const CANOPY_SHADE_COLOR = '#be4a2f';
 const STRING_COLOR = '#c0cbdc';
+// Each arena's canopy has two stripe colors, each with a shade for the canopy's lower edge.
+const CANOPY_STRIPES_BY_ARENA = {
+  harbor: [
+    { color: '#e43b44', shade: '#a22633' },
+    { color: '#c0cbdc', shade: '#8b9bb4' },
+  ],
+  cave: [
+    { color: '#feae34', shade: '#d77643' },
+    { color: '#733e39', shade: '#3e2731' },
+  ],
+  rooftops: [
+    { color: '#0099db', shade: '#124e89' },
+    { color: '#fee761', shade: '#feae34' },
+  ],
+  'cooling-towers': [
+    { color: '#63c74d', shade: '#3e8948' },
+    { color: '#c0cbdc', shade: '#8b9bb4' },
+  ],
+  'server-farm': [
+    { color: '#2ce8f5', shade: '#0099db' },
+    { color: '#ffffff', shade: '#c0cbdc' },
+  ],
+  bridge: [
+    { color: '#f77622', shade: '#be4a2f' },
+    { color: '#fee761', shade: '#feae34' },
+  ],
+  quarry: [
+    { color: '#e43b44', shade: '#a22633' },
+    { color: '#feae34', shade: '#d77643' },
+  ],
+};
+const GOLDEN_CANOPY_STRIPES = [
+  { color: '#fee761', shade: '#feae34' },
+  { color: '#ffffff', shade: '#c0cbdc' },
+];
+const CANOPY_STRIPE_WIDTH = 3;
+// The crate hangs this many ticks behind the canopy's sway, so it swings under it.
+const SWING_LAG_TICKS = 8;
+// A landed crate hops this many pixels up over its first ticks on the ground, then rests.
+const LANDING_BOUNCE_PIXELS = [0, 2, 3, 3, 2, 1, 0, 1, 0];
+const LANDING_DUST_TICKS = 12;
+const LANDING_DUST_COLORS = ['#c0cbdc', '#8b9bb4'];
+// The golden crate's glint sweeps across it this often, and its sparkles twinkle in turn.
+const SHINE_PERIOD_TICKS = 48;
+const SHINE_COLOR = '#ffffff';
+const SPARKLE_SPOTS = [
+  [-3, 2],
+  [17, 6],
+  [8, -3],
+  [-2, 13],
+];
+const SPARKLE_TICKS = 6;
 const CANOPY_WIDTH = 16;
 const CANOPY_HEIGHT = 7;
 const STRING_LENGTH = 6;
@@ -59,7 +104,7 @@ const FALL_START_Y = -CRATE_HEIGHT;
 // break under it, and a shadow on that spot grows as the crate comes down. It can be taken by any player without a held card, in the air or landed.
 // It hangs under a parachute that sways
 // while it falls and folds away on landing. A hit on the parachute pops it and the crate then falls
-// at full speed. Placeholder shapes for the crate itself.
+// at full speed.
 export class Crate extends Entity {
   constructor({ x, y, cardName, golden = false }) {
     super({ x, y: FALL_START_Y, width: CRATE_WIDTH, height: CRATE_HEIGHT });
@@ -190,25 +235,59 @@ export class Crate extends Entity {
     this.landed = true;
   }
 
-  render(context) {
+  // appearance is { sprites, arenaName }: the loaded sprite files and the arena whose colors the canopy wears.
+  render(context, { sprites, arenaName } = {}) {
     const drawX = Math.round(this.x);
     this.renderLandingSpot(context);
     if (!this.landed && !this.dropping && this.ticksUntilLanded >= this.fallTicks) return; // hasn't started falling yet
 
     const fallenTicks = this.fallTicks - this.ticksUntilLanded;
-    const sway = this.landed || this.dropping ? 0 : swayOffset(fallenTicks, this.markerY - this.y);
-    const drawY = Math.round(this.y);
-    if (!this.parachuteAttached) this.renderFlutteringCanopy(context);
+    const swaying = !this.landed && !this.dropping;
+    const distanceToGround = this.markerY - this.y;
+    const canopySway = swaying ? swayOffset(fallenTicks, distanceToGround) : 0;
+    const crateSway = swaying ? swayOffset(fallenTicks - SWING_LAG_TICKS, distanceToGround) : 0;
+    const drawY = Math.round(this.y) - (this.landed ? landingBounce(this.landedTicks) : 0);
+    const stripes = canopyStripes(arenaName, this.golden);
+    const crateSprite = sprites?.props?.[this.golden ? 'crate-golden' : 'crate'];
+    if (!this.parachuteAttached) this.renderFlutteringCanopy(context, stripes);
     const drawAt = (x) => {
-      if (this.parachuteAttached && !this.dropping) this.renderParachute(context, x + sway, drawY);
-      context.fillStyle = this.golden ? GOLDEN_SHADOW_COLOR : CRATE_SHADOW_COLOR;
-      context.fillRect(x + sway, drawY, this.width, this.height);
-      context.fillStyle = this.golden ? GOLDEN_FILL_COLOR : CRATE_FILL_COLOR;
-      context.fillRect(x + sway + 2, drawY + 2, this.width - 4, this.height - 4);
+      if (this.parachuteAttached && !this.dropping) {
+        this.renderParachute(context, { canopyX: x + canopySway, crateX: x + crateSway, crateY: drawY, stripes });
+      }
+      if (crateSprite) context.drawImage(crateSprite, x + crateSway, drawY);
+      if (this.golden) this.renderShine(context, x + crateSway, drawY);
+      if (this.landed) this.renderLandingDust(context, x, Math.round(this.y) + this.height);
     };
     drawAt(drawX);
     if (drawX < 0) drawAt(drawX + SCREEN_WIDTH);
     else if (drawX + this.width > SCREEN_WIDTH) drawAt(drawX - SCREEN_WIDTH);
+  }
+
+  // A white glint slides diagonally across the golden crate, and sparkles pop around it one at a time.
+  renderShine(context, x, y) {
+    const tick = this.landed ? this.landedTicks : this.fallTicks - this.ticksUntilLanded;
+    const glintStep = tick % SHINE_PERIOD_TICKS;
+    context.fillStyle = SHINE_COLOR;
+    for (let row = 1; row < this.height - 1; row++) {
+      const column = glintStep - row;
+      if (column >= 1 && column < this.width - 1) context.fillRect(x + column, y + row, 1, 1);
+    }
+    const sparkleIndex = Math.floor(tick / SPARKLE_TICKS) % (SPARKLE_SPOTS.length * 2);
+    if (sparkleIndex >= SPARKLE_SPOTS.length) return;
+    const [sparkleX, sparkleY] = SPARKLE_SPOTS[sparkleIndex];
+    context.fillRect(x + sparkleX, y + sparkleY - 1, 1, 3);
+    context.fillRect(x + sparkleX - 1, y + sparkleY, 3, 1);
+  }
+
+  // Two puffs roll out from under the crate's corners as it lands.
+  renderLandingDust(context, x, groundY) {
+    if (this.landedTicks >= LANDING_DUST_TICKS) return;
+    const spread = 1 + Math.floor(this.landedTicks / 2);
+    const size = this.landedTicks < LANDING_DUST_TICKS / 2 ? 3 : 2;
+    context.fillStyle = LANDING_DUST_COLORS[this.landedTicks < LANDING_DUST_TICKS / 2 ? 0 : 1];
+    const rise = Math.floor(this.landedTicks / 4);
+    context.fillRect(x - spread - size + 1, groundY - size - rise, size, size);
+    context.fillRect(x + this.width + spread - 1, groundY - size - rise, size, size);
   }
 
   // The marker and the growing shadow sit on the surface the crate will land on, drawn again on the
@@ -274,7 +353,7 @@ export class Crate extends Entity {
   }
 
   // The popped canopy stays where it was hit, drifting up and away, and blinks out as it ends.
-  renderFlutteringCanopy(context) {
+  renderFlutteringCanopy(context, stripes) {
     if (this.poppedTicks >= FLUTTER_TICKS) return;
     if (this.poppedTicks > FLUTTER_TICKS - 12 && this.poppedTicks % 2 === 0) return;
     const wobble = flutterWobble(this.poppedTicks);
@@ -284,37 +363,58 @@ export class Crate extends Entity {
       this.poppedDirectionX * Math.floor(this.poppedTicks / FLUTTER_DRIFT_DIVISOR);
     const canopyY = Math.round(this.poppedAt.y) - Math.floor(this.poppedTicks / FLUTTER_RISE_DIVISOR);
     const flutterHeight = Math.max(2, CANOPY_HEIGHT - Math.floor(this.poppedTicks / 8));
-    context.fillStyle = OUTLINE_COLOR;
-    context.fillRect(canopyX, canopyY, CANOPY_WIDTH, flutterHeight);
-    context.fillStyle = CANOPY_COLOR;
-    context.fillRect(canopyX + 1, canopyY + 1, CANOPY_WIDTH - 2, Math.max(0, flutterHeight - 2));
+    drawCanopy(context, canopyX, canopyY, CANOPY_WIDTH, flutterHeight, stripes);
   }
 
-  // Open canopy with two strings while falling; on landing the canopy shrinks flat and vanishes.
-  renderParachute(context, crateX, crateY) {
+  // The striped canopy with two cords that ripple as it falls; on landing the canopy shrinks flat and vanishes.
+  renderParachute(context, { canopyX: swayedX, crateX, crateY, stripes }) {
     const foldProgress = this.landedTicks / FOLD_TICKS;
     if (foldProgress >= 1) return;
     const canopyHeight = Math.max(1, Math.round(CANOPY_HEIGHT * (1 - foldProgress)));
     const canopyWidth = Math.max(4, Math.round(CANOPY_WIDTH * (1 - foldProgress * 0.5)));
-    const canopyX = crateX + Math.floor((this.width - canopyWidth) / 2);
+    const canopyX = swayedX + Math.floor((this.width - canopyWidth) / 2);
     const canopyY = crateY - Math.round(STRING_LENGTH * (1 - foldProgress)) - canopyHeight;
     if (!this.landed) {
+      const fallenTicks = this.fallTicks - this.ticksUntilLanded;
       context.fillStyle = STRING_COLOR;
       for (let step = 0; step < STRING_LENGTH; step++) {
-        const inset = Math.floor((step * 3) / STRING_LENGTH);
-        context.fillRect(canopyX + 1 + inset, canopyY + canopyHeight + step, 1, 1);
-        context.fillRect(canopyX + canopyWidth - 2 - inset, canopyY + canopyHeight + step, 1, 1);
+        // Each cord runs from the canopy's edge to the crate's corner, rippling as the canopy sways.
+        const share = (step + 1) / STRING_LENGTH;
+        const flutter = cordFlutter(fallenTicks, step);
+        const leftX = Math.round(canopyX + 1 + (crateX + 1 - canopyX - 1) * share) + flutter;
+        const rightX = Math.round(canopyX + canopyWidth - 2 + (crateX - canopyX) * share) - flutter;
+        context.fillRect(leftX, canopyY + canopyHeight + step, 1, 1);
+        context.fillRect(rightX, canopyY + canopyHeight + step, 1, 1);
       }
     }
-    // A dome: the top two rows step in so the canopy reads as round, not as a bar.
-    for (let row = 0; row < canopyHeight; row++) {
-      const inset = canopyHeight >= 3 ? Math.max(0, 2 - row) * 2 : 0;
-      const rowWidth = canopyWidth - inset * 2;
-      context.fillStyle = OUTLINE_COLOR;
-      context.fillRect(canopyX + inset, canopyY + row, rowWidth, 1);
-      if (row === 0 || row === canopyHeight - 1 || rowWidth < 3) continue;
-      context.fillStyle = row === 1 ? CANOPY_LIGHT_COLOR : row === canopyHeight - 2 ? CANOPY_SHADE_COLOR : CANOPY_COLOR;
-      context.fillRect(canopyX + inset + 1, canopyY + row, rowWidth - 2, 1);
+    drawCanopy(context, canopyX, canopyY, canopyWidth, canopyHeight, stripes);
+  }
+}
+
+// The two stripe colors a crate's canopy wears in an arena. The golden crate always wears gold and white.
+export function canopyStripes(arenaName, golden = false) {
+  if (golden) return GOLDEN_CANOPY_STRIPES;
+  return CANOPY_STRIPES_BY_ARENA[arenaName] ?? CANOPY_STRIPES_BY_ARENA.harbor;
+}
+
+// How many pixels a crate that landed `landedTicks` ago is drawn above where it rests.
+export function landingBounce(landedTicks) {
+  return LANDING_BOUNCE_PIXELS[landedTicks] ?? 0;
+}
+
+// A dome: the top two rows step in so the canopy reads as round, not as a bar. Stripes run top to bottom and are shaded
+// along the canopy's lower edge.
+function drawCanopy(context, x, y, width, height, stripes) {
+  for (let row = 0; row < height; row++) {
+    const inset = height >= 3 ? Math.max(0, 2 - row) * 2 : 0;
+    const rowWidth = width - inset * 2;
+    context.fillStyle = OUTLINE_COLOR;
+    context.fillRect(x + inset, y + row, rowWidth, 1);
+    if (row === 0 || row === height - 1 || rowWidth < 3) continue;
+    for (let column = inset + 1; column < inset + rowWidth - 1; column++) {
+      const stripe = stripes[Math.floor(column / CANOPY_STRIPE_WIDTH) % stripes.length];
+      context.fillStyle = row === height - 2 ? stripe.shade : stripe.color;
+      context.fillRect(x + column, y + row, 1, 1);
     }
   }
 }
