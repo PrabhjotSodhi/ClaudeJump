@@ -10,6 +10,7 @@ export const CRATE_WARNING_TICKS = 60;
 
 const MARKER_PULSE_TICKS = 8;
 const MARKER_COLORS = ['#fee761', '#feae34'];
+const GOLDEN_MARKER_COLORS = ['#fee761', '#ffffff'];
 const MARKER_OUTLINE_COLOR = '#181425';
 const MARKER_BRACKET_WIDTH = 3;
 const MARKER_BRACKET_HEIGHT = 6;
@@ -22,6 +23,8 @@ const GROUND_SHADOW_COLOR = '#3e2731';
 const GROUND_SHADOW_MIN_WIDTH = 4;
 const CRATE_SHADOW_COLOR = '#5c3c1e';
 const CRATE_FILL_COLOR = '#a0703c';
+const GOLDEN_SHADOW_COLOR = '#feae34';
+const GOLDEN_FILL_COLOR = '#fee761';
 // How many pixels the crate falls each tick. The sway is a render offset only, so it never
 // changes how long the fall takes or where the crate lands.
 const FALL_SPEED = 4;
@@ -58,10 +61,11 @@ const FALL_START_Y = -CRATE_HEIGHT;
 // while it falls and folds away on landing. A hit on the parachute pops it and the crate then falls
 // at full speed. Placeholder shapes for the crate itself.
 export class Crate extends Entity {
-  constructor({ x, y, cardName }) {
+  constructor({ x, y, cardName, golden = false }) {
     super({ x, y: FALL_START_Y, width: CRATE_WIDTH, height: CRATE_HEIGHT });
     this.markerY = y;
     this.cardName = cardName;
+    this.golden = golden;
     this.ticksUntilLanded = CRATE_WARNING_TICKS;
     // Falling this many ticks at FALL_SPEED covers the distance to the marked spot, so starting
     // the fall this many ticks before the deadline lands the crate right on schedule.
@@ -197,9 +201,9 @@ export class Crate extends Entity {
     if (!this.parachuteAttached) this.renderFlutteringCanopy(context);
     const drawAt = (x) => {
       if (this.parachuteAttached && !this.dropping) this.renderParachute(context, x + sway, drawY);
-      context.fillStyle = CRATE_SHADOW_COLOR;
+      context.fillStyle = this.golden ? GOLDEN_SHADOW_COLOR : CRATE_SHADOW_COLOR;
       context.fillRect(x + sway, drawY, this.width, this.height);
-      context.fillStyle = CRATE_FILL_COLOR;
+      context.fillStyle = this.golden ? GOLDEN_FILL_COLOR : CRATE_FILL_COLOR;
       context.fillRect(x + sway + 2, drawY + 2, this.width - 4, this.height - 4);
     };
     drawAt(drawX);
@@ -218,7 +222,8 @@ export class Crate extends Entity {
       : 0;
     const shadowWidth = GROUND_SHADOW_MIN_WIDTH + Math.round((this.width - GROUND_SHADOW_MIN_WIDTH) * fallProgress);
     const pulse = Math.floor(this.ticksUntilLanded / MARKER_PULSE_TICKS);
-    const markerColor = MARKER_COLORS[pulse % MARKER_COLORS.length];
+    const markerColors = this.golden ? GOLDEN_MARKER_COLORS : MARKER_COLORS;
+    const markerColor = markerColors[pulse % markerColors.length];
     const arrowBob = pulse % 2 === 0 ? 0 : MARKER_ARROW_BOB_PIXELS;
     const drawAt = (x) => {
       if (this.isFalling) {

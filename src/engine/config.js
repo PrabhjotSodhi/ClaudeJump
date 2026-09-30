@@ -177,3 +177,7 @@ export const BRIDGE_PLANK_CRACK_INTERVAL_TICKS = 45;
 export const BRIDGE_PLANK_CRACK_TICKS = 60;
 export const BRIDGE_PLANK_FALL_GRAVITY = 0.4;
 export const BRIDGE_PLANK_FALL_VISIBLE_TICKS = 90;
+
+// Once per round, the first crate that starts to land after GOLDEN_CRATE_AFTER_TICKS of the fight is golden: it gives
+// GOLDEN_PICKUP_USES uses of its card (see card-definitions.js) and has a gold landing marker.
+export const GOLDEN_CRATE_AFTER_TICKS = 1200;

@@ -273,10 +273,10 @@ export class Player extends PhysicsEntity {
     }
   }
 
-  receiveCard(cardName) {
+  receiveCard(cardName, uses = PICKUP_USES) {
     if (this.heldCardName) return false;
     this.heldCardName = cardName;
-    this.heldCardUsesRemaining = PICKUP_USES;
+    this.heldCardUsesRemaining = uses;
     return true;
   }
 

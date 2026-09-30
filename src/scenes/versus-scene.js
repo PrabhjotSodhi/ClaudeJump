@@ -1,6 +1,7 @@
-import { CARD_NAMES } from '../cards/card-definitions.js';
+import { CARD_NAMES, GOLDEN_PICKUP_USES, PICKUP_USES } from '../cards/card-definitions.js';
 import {
   CALLOUT_CAUSE_TICKS,
+  GOLDEN_CRATE_AFTER_TICKS,
   KNOCKOUT_SLOWMO_STEP_INTERVAL,
   KNOCKOUT_SLOWMO_TICKS,
   MODIFIER_EVERY_N_ROUNDS,
@@ -159,6 +160,7 @@ export class VersusScene {
     this.modifierHighlight = 0;
     this.modifierJumpHeld = false;
     this.ticksUntilBananaDrop = 0;
+    this.goldenCrateSpawned = false;
     // Elapsed scene ticks, kept across rounds. Display-only effects (like the held card flash)
     // time themselves off it instead of off rendered frames.
     this.tickCount = 0;
@@ -257,6 +259,7 @@ export class VersusScene {
       );
     }
     this.ticksUntilCrateSpawn = this.crateSpawnDelayTicks();
+    this.goldenCrateSpawned = false;
     if (this.skipNextReadyPhase) {
       this.phase = 'fight';
       this.ticksRemaining = ROUND_GO_TICKS;
@@ -816,7 +819,9 @@ export class VersusScene {
     const cardName = CARD_NAMES[Math.floor(this.random.next() * CARD_NAMES.length)];
     const x = openTop.x + this.random.next() * (openTop.width - CRATE_WIDTH);
     const y = openTop.y - CRATE_HEIGHT;
-    const crate = new Crate({ x, y, cardName });
+    const golden = !this.goldenCrateSpawned && this.fightTicks >= GOLDEN_CRATE_AFTER_TICKS;
+    if (golden) this.goldenCrateSpawned = true;
+    const crate = new Crate({ x, y, cardName, golden });
     crate.predictLanding(this.entityGroups.get('platforms'));
     this.entityGroups.add('crates', crate);
   }
@@ -828,9 +833,9 @@ export class VersusScene {
   checkCratePickup(crate) {
     for (const player of this.players) {
       if (!player.overlaps(crate)) continue;
-      if (!player.receiveCard(crate.cardName)) continue;
+      if (!player.receiveCard(crate.cardName, crate.golden ? GOLDEN_PICKUP_USES : PICKUP_USES)) continue;
 
-      this.events.emit('card-picked-up', { playerId: player.id, cardName: crate.cardName });
+      this.events.emit('card-picked-up', { playerId: player.id, cardName: crate.cardName, golden: crate.golden });
       this.entityGroups.remove('crates', crate);
       this.scheduleNextCrate();
       return;

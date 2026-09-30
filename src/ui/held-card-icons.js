@@ -1,9 +1,14 @@
 import { CARD_ICON_HEIGHT, CARD_ICON_WIDTH, drawCardIcon } from './card-icons.js';
 import { HeldCardFlashTracker } from './held-card-flash.js';
 import { drawFollowingWrap } from './screen-wrap.js';
+import { drawText, TEXT_GLYPH_HEIGHT } from './text.js';
 
 // Gap between the icon and the player's head, leaving room above the icon for the color tag.
 const ICON_GAP_ABOVE_HEAD = 6;
+
+const USES_GAP = 2;
+const USES_TEXT_HEIGHT = TEXT_GLYPH_HEIGHT;
+const USES_COLOR = '#fee761';
 
 const flashTrackersByScene = new WeakMap();
 
@@ -35,8 +40,20 @@ export function drawHeldCardIcons(context, scene) {
     const x = Math.round(player.x + player.width / 2 - CARD_ICON_WIDTH / 2);
     const y = heldCardIconSlotY(player);
     const flashing = !player.heldCardName && Boolean(flashedCardName);
-    drawFollowingWrap(context, player, x, y, (context, x, y) =>
-      drawCardIcon(context, cardName, x, y, player.color, { flashing }),
-    );
+    drawFollowingWrap(context, player, x, y, (context, x, y) => {
+      drawCardIcon(context, cardName, x, y, player.color, { flashing });
+      if (player.heldCardUsesRemaining > 1) {
+        drawText(
+          context,
+          `x${player.heldCardUsesRemaining}`,
+          x + CARD_ICON_WIDTH + USES_GAP,
+          y + CARD_ICON_HEIGHT - USES_TEXT_HEIGHT,
+          {
+            scale: 1,
+            color: USES_COLOR,
+          },
+        );
+      }
+    });
   }
 }
