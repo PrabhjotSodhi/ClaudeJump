@@ -1,6 +1,6 @@
-import { wrapMenuIndex } from '../ui/menu-kit.js';
-import { drawPauseMenu } from '../ui/pause-menu.js';
-import { drawResultsMenu } from '../ui/results-menu.js';
+import { rowIndexAt, tapPoint, wrapMenuIndex } from '../ui/menu-kit.js';
+import { drawPauseMenu, pauseMenuRowRectangles } from '../ui/pause-menu.js';
+import { drawResultsMenu, resultsMenuRowRectangles } from '../ui/results-menu.js';
 import { LevelSelectScene } from './level-select-scene.js';
 import { PlayerSelectScene } from './player-select-scene.js';
 import { TitleScene } from './title-scene.js';
@@ -95,7 +95,9 @@ export class PausableMatchScene {
     if (downPressed) this.selectedIndex = wrapMenuIndex(this.selectedIndex, 1, optionCount);
     if (upPressed) this.selectedIndex = wrapMenuIndex(this.selectedIndex, -1, optionCount);
     if (downPressed || upPressed) this.events.emit('menu-moved', {});
-    if (confirmPressed) {
+    const tappedIndex = rowIndexAt(pauseMenuRowRectangles(this.pauseMenuOptions), tapPoint(inputByPlayerId));
+    if (tappedIndex >= 0) this.selectedIndex = tappedIndex;
+    if (confirmPressed || tappedIndex >= 0) {
       this.events.emit('menu-selected', {});
       this.confirmSelection(inputByPlayerId);
     }
@@ -120,7 +122,9 @@ export class PausableMatchScene {
     if (downPressed) this.resultsSelectedIndex = (this.resultsSelectedIndex + 1) % optionCount;
     if (upPressed) this.resultsSelectedIndex = (this.resultsSelectedIndex + optionCount - 1) % optionCount;
     if (downPressed || upPressed) this.events.emit('menu-moved', {});
-    if (confirmPressed || jumpPressed) {
+    const tappedIndex = rowIndexAt(resultsMenuRowRectangles(RESULTS_MENU_OPTIONS), tapPoint(inputByPlayerId));
+    if (tappedIndex >= 0) this.resultsSelectedIndex = tappedIndex;
+    if (confirmPressed || jumpPressed || tappedIndex >= 0) {
       this.events.emit('menu-selected', {});
       this.confirmResultsOption(inputByPlayerId);
     }

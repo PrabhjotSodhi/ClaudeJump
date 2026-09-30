@@ -56,22 +56,16 @@ export function createKeyboardInput(playerKeyMappings) {
   };
 }
 
-// A control counts as pressed if either source pressed it.
-export function combineInputs(inputByPlayerIdA, inputByPlayerIdB) {
+const CONTROLS = ['left', 'right', 'jump', 'up', 'down', 'action', 'confirm', 'pause'];
+
+// A control counts as pressed if any source pressed it. A tap is the first source's tap point.
+export function combineInputs(...inputByPlayerIdSources) {
+  const [firstSource] = inputByPlayerIdSources;
   const inputByPlayerId = {};
-  for (const playerId in inputByPlayerIdA) {
-    const inputA = inputByPlayerIdA[playerId];
-    const inputB = inputByPlayerIdB[playerId] ?? {};
-    inputByPlayerId[playerId] = {
-      left: inputA.left || !!inputB.left,
-      right: inputA.right || !!inputB.right,
-      jump: inputA.jump || !!inputB.jump,
-      up: inputA.up || !!inputB.up,
-      down: inputA.down || !!inputB.down,
-      action: inputA.action || !!inputB.action,
-      confirm: inputA.confirm || !!inputB.confirm,
-      pause: inputA.pause || !!inputB.pause,
-    };
+  for (const playerId in firstSource) {
+    const inputs = inputByPlayerIdSources.map((source) => source[playerId] ?? {});
+    inputByPlayerId[playerId] = { tap: inputs.find((input) => input.tap)?.tap ?? null };
+    for (const control of CONTROLS) inputByPlayerId[playerId][control] = inputs.some((input) => !!input[control]);
   }
   return inputByPlayerId;
 }

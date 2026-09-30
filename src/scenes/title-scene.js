@@ -3,7 +3,7 @@ import { EventEmitter } from '../engine/events.js';
 import { DEFAULT_CHARACTER_BY_PLAYER_ID } from '../entities/characters.js';
 import { drawArenaBackground } from '../levels/arena-backgrounds.js';
 import { PLAYERS } from '../levels/versus-arena.js';
-import { drawKeyHints, drawMenuList, KEYCAP_HEIGHT } from '../ui/menu-kit.js';
+import { drawKeyHints, drawMenuList, KEYCAP_HEIGHT, menuRowRectangles, rowIndexAt, tapPoint } from '../ui/menu-kit.js';
 import { NO_WATER_LINE_Y } from '../ui/menu-screen.js';
 import { drawPanel } from '../ui/panel.js';
 import { drawText } from '../ui/text.js';
@@ -36,6 +36,9 @@ const LEDGE_STANDERS = [
 ];
 
 const MENU_TOP_Y = 176;
+
+const TOUCH_HINT_TEXT = 'Tap a mode to play';
+const TOUCH_HINT_Y = 240;
 
 const HINTS_PANEL_WIDTH = 300;
 const HINTS_PANEL_TOP_Y = 250;
@@ -85,11 +88,11 @@ const KEY_HINT_ROWS = [
 const FULLSCREEN_BUTTON_SIZE = 28;
 const FULLSCREEN_BUTTON_MARGIN = 12;
 const FULLSCREEN_BUTTON_ARM_LENGTH = 10;
-// Bottom-right corner button, in screen pixels, that main.js hit-tests a click against to
+// Top-right corner button, in screen pixels, that main.js hit-tests a click against to
 // toggle fullscreen. Kept as data here so drawing and hit-testing never drift apart.
 export const FULLSCREEN_BUTTON = {
   x: SCREEN_WIDTH - FULLSCREEN_BUTTON_MARGIN - FULLSCREEN_BUTTON_SIZE,
-  y: SCREEN_HEIGHT - FULLSCREEN_BUTTON_MARGIN - FULLSCREEN_BUTTON_SIZE,
+  y: FULLSCREEN_BUTTON_MARGIN,
   width: FULLSCREEN_BUTTON_SIZE,
   height: FULLSCREEN_BUTTON_SIZE,
 };
@@ -139,8 +142,16 @@ export class TitleScene {
     const optionCount = this.options.length;
     if (pressed.down) this.selectedIndex = (this.selectedIndex + 1) % optionCount;
     if (pressed.up) this.selectedIndex = (this.selectedIndex + optionCount - 1) % optionCount;
+    const tappedIndex = rowIndexAt(
+      menuRowRectangles(
+        this.options.map((option) => option.label),
+        MENU_TOP_Y,
+      ),
+      tapPoint(inputByPlayerId),
+    );
+    if (tappedIndex >= 0) this.selectedIndex = tappedIndex;
     if (pressed.down || pressed.up) this.events.emit('menu-moved', {});
-    if (pressed.confirm) {
+    if (pressed.confirm || tappedIndex >= 0) {
       this.events.emit('menu-selected', {});
       this.confirmSelection();
     }
@@ -170,7 +181,7 @@ export class TitleScene {
     renderer.clearGameLayer();
     renderer.clearUiLayer();
     drawLedgeAndCharacters(renderer.gameContext, this);
-    drawTitleUi(renderer.uiContext, this);
+    drawTitleUi(renderer.uiContext, this, renderer.touchActive);
   }
 }
 
@@ -257,9 +268,19 @@ function drawKeyHintPanel(context) {
   });
 }
 
-function drawTitleUi(context, scene) {
+function drawTouchHint(context) {
+  drawText(context, TOUCH_HINT_TEXT, SCREEN_WIDTH / 2, TOUCH_HINT_Y, {
+    scale: 1,
+    align: 'center',
+    color: HINTS_LABEL_COLOR,
+    outlineColor: LOGO_OUTLINE_COLOR,
+  });
+}
+
+function drawTitleUi(context, scene, touchActive) {
   drawLogo(context);
   drawFullscreenButton(context);
   drawMenuList(context, { options: scene.options, selectedIndex: scene.selectedIndex, topY: MENU_TOP_Y });
-  drawKeyHintPanel(context);
+  if (touchActive) drawTouchHint(context);
+  else drawKeyHintPanel(context);
 }
