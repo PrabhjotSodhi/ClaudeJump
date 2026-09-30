@@ -1,3 +1,5 @@
+import { keyCapture } from './key-bindings.js';
+
 // Keyboard state only. Game logic reads the sampled records, never the keyboard.
 // These keys press `confirm` for every player, so menus confirm with a key no match control uses.
 const CONFIRM_KEY_CODES = ['Enter', 'Space'];
@@ -6,13 +8,22 @@ export function createKeyboardInput(playerKeyMappings) {
   const heldCodes = new Set();
   // A tap shorter than one tick still counts for the next sample.
   const tappedCodes = new Set();
-  const trackedCodes = new Set([
-    ...playerKeyMappings.flatMap((mapping) => Object.values(mapping.keys)),
-    ...CONFIRM_KEY_CODES,
-  ]);
+
+  // Read on every key press because the Controls screen can change the keys.
+  function isTracked(code) {
+    return (
+      CONFIRM_KEY_CODES.includes(code) ||
+      playerKeyMappings.some((mapping) => Object.values(mapping.keys).includes(code))
+    );
+  }
 
   function handleKeyDown(event) {
-    if (!trackedCodes.has(event.code)) return;
+    if (keyCapture.waiting) {
+      event.preventDefault();
+      if (!event.repeat) keyCapture.code = event.code;
+      return;
+    }
+    if (!isTracked(event.code)) return;
     event.preventDefault();
     if (event.repeat) return;
     heldCodes.add(event.code);
