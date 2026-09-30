@@ -1,5 +1,11 @@
 import { CARD_NAMES } from '../cards/card-definitions.js';
-import { SCREEN_WIDTH, TILE_SIZE } from '../engine/config.js';
+import {
+  SCREEN_WIDTH,
+  SHOVE_CLASH_BOUNCE_VELOCITY_X,
+  SHOVE_CLASH_CHARGE_MARGIN,
+  SHOVE_CLASH_WIN_KNOCKBACK_MULTIPLIER,
+  TILE_SIZE,
+} from '../engine/config.js';
 import { BLAST_STRENGTH, blastIsReady, knockBackPlayersInBlast } from '../engine/blast.js';
 import { EntityGroups } from '../engine/entity-groups.js';
 import { EventEmitter } from '../engine/events.js';
@@ -104,6 +110,7 @@ export class VersusScene {
     // Which opponents each shover has already hit this shove, so one shove lands at most one hit
     // per opponent even while its hit zone stays active for several ticks.
     this.shoveHitIdsByShoverId = new Map();
+    this.shoveClashPairIds = new Set();
     // Elapsed scene ticks, kept across rounds. Display-only effects (like the held card flash)
     // time themselves off it instead of off rendered frames.
     this.tickCount = 0;
@@ -174,6 +181,7 @@ export class VersusScene {
     this.winnerId = null;
     this.dashHitPairIds.clear();
     this.shoveHitIdsByShoverId.clear();
+    this.shoveClashPairIds.clear();
     this.waterLineY = this.level.waterLineY;
     this.fightTicks = 0;
     this.suddenDeathPhase = 'none';
@@ -327,8 +335,55 @@ export class VersusScene {
       this.wrapPlayerAroundScreen(player);
     }
     // Hits resolve once everyone has moved, so a freeze lasts the same number of ticks for every player.
+    this.resolveShoveClashes();
     for (const player of this.players) if (player.isShoveActive) this.resolveShoveHit(player);
     this.resolvePlayerCollisions();
+  }
+
+  // Resolves every pair in a fixed order, once per pair of shoves.
+  resolveShoveClashes() {
+    const players = this.players;
+    for (let firstIndex = 0; firstIndex < players.length; firstIndex++) {
+      for (let secondIndex = firstIndex + 1; secondIndex < players.length; secondIndex++) {
+        this.resolveShoveClash(players[firstIndex], players[secondIndex]);
+      }
+    }
+  }
+
+  // Shoves clash when both are active and the players face each other with a hit zone reaching the other body. The
+  // stronger charge wins with reduced knockback. Otherwise neither lands and both players bounce apart.
+  resolveShoveClash(playerA, playerB) {
+    const pairId = [playerA.id, playerB.id].sort().join('-');
+    const leftPlayer = playerA.x <= playerB.x ? playerA : playerB;
+    const rightPlayer = leftPlayer === playerA ? playerB : playerA;
+    const shovesAreClashing =
+      leftPlayer.isShoveActive &&
+      rightPlayer.isShoveActive &&
+      !leftPlayer.inWater &&
+      !rightPlayer.inWater &&
+      leftPlayer.facing > 0 &&
+      rightPlayer.facing < 0 &&
+      (rightPlayer.overlaps(leftPlayer.shoveHitZone) || leftPlayer.overlaps(rightPlayer.shoveHitZone));
+    if (!shovesAreClashing) {
+      this.shoveClashPairIds.delete(pairId);
+      return;
+    }
+    if (this.shoveClashPairIds.has(pairId)) return;
+
+    this.shoveClashPairIds.add(pairId);
+    this.shoveHitIdsByShoverId.get(playerA.id).add(playerB.id);
+    this.shoveHitIdsByShoverId.get(playerB.id).add(playerA.id);
+    const chargeLead = playerA.shoveCharge - playerB.shoveCharge;
+    if (Math.abs(chargeLead) >= SHOVE_CLASH_CHARGE_MARGIN) {
+      const winner = chargeLead > 0 ? playerA : playerB;
+      this.knockBackShoveTarget(winner, winner === playerA ? playerB : playerA, SHOVE_CLASH_WIN_KNOCKBACK_MULTIPLIER);
+    } else {
+      leftPlayer.freeze('light', -SHOVE_CLASH_BOUNCE_VELOCITY_X, 0);
+      rightPlayer.freeze('light', SHOVE_CLASH_BOUNCE_VELOCITY_X, 0);
+    }
+    const centerX = (leftPlayer.x + leftPlayer.width / 2 + rightPlayer.x + rightPlayer.width / 2) / 2;
+    const centerY = (leftPlayer.y + leftPlayer.height / 2 + rightPlayer.y + rightPlayer.height / 2) / 2;
+    this.events.emit('shove-clash', { x: centerX, y: centerY, playerIds: [playerA.id, playerB.id] });
   }
 
   // Every other player touching the shover's hit zone gets knocked away, once per shove. The pop
@@ -341,21 +396,25 @@ export class VersusScene {
       if (!opponent.overlaps(hitZone)) continue;
 
       alreadyHitIds.add(opponent.id);
-      const strength = shover.shoveCharge >= 1 ? 'medium' : 'light';
-      const multiplier = shover.shoveKnockbackMultiplier;
-      opponent.freeze(
-        strength,
-        SHOVE_KNOCKBACK_VELOCITY_X * multiplier * shover.facing,
-        SHOVE_KNOCKBACK_VELOCITY_Y * multiplier,
-      );
-      shover.freeze(strength);
-      this.events.emit('player-shoved', {
-        shoverId: shover.id,
-        targetId: opponent.id,
-        strength,
-        charge: shover.shoveCharge,
-      });
+      this.knockBackShoveTarget(shover, opponent, 1);
     }
+  }
+
+  knockBackShoveTarget(shover, opponent, knockbackScale) {
+    const strength = shover.shoveCharge >= 1 ? 'medium' : 'light';
+    const multiplier = shover.shoveKnockbackMultiplier * knockbackScale;
+    opponent.freeze(
+      strength,
+      SHOVE_KNOCKBACK_VELOCITY_X * multiplier * shover.facing,
+      SHOVE_KNOCKBACK_VELOCITY_Y * multiplier,
+    );
+    shover.freeze(strength);
+    this.events.emit('player-shoved', {
+      shoverId: shover.id,
+      targetId: opponent.id,
+      strength,
+      charge: shover.shoveCharge,
+    });
   }
 
   spawnRocket(player) {
