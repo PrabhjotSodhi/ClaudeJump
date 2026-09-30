@@ -2,7 +2,7 @@ import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../engine/config.js';
 import { EventEmitter } from '../engine/events.js';
 import { CHARACTERS, DEFAULT_CHARACTER_BY_PLAYER_ID } from '../entities/characters.js';
 import { MENU_PLAYERS } from '../levels/versus-arena.js';
-import { drawKeyHints, drawMenuTitle, KEYCAP_HEIGHT } from '../ui/menu-kit.js';
+import { drawKeyHints, drawMenuTitle, KEYCAP_HEIGHT, rowIndexAt, tapPoint } from '../ui/menu-kit.js';
 import { MENU_BACKGROUND_COLOR, NO_WATER_LINE_Y } from '../ui/menu-screen.js';
 import { drawPanel } from '../ui/panel.js';
 import { drawText, measureText } from '../ui/text.js';
@@ -96,6 +96,7 @@ export class PlayerSelectScene {
   constructor({ sceneManager, levels, sprites = {}, seed = Date.now() } = {}) {
     this.sceneManager = sceneManager;
     this.events = new EventEmitter();
+    this.musicTrackName = 'menu';
     this.levels = levels;
     this.sprites = sprites;
     this.seed = seed;
@@ -135,6 +136,8 @@ export class PlayerSelectScene {
       this.previousInput[spawn.id] = { ...input };
     }
 
+    this.advanceTappedCard(inputByPlayerId);
+
     if (Object.values(this.stateByPlayerId).every((state) => state === 'ready')) {
       this.sceneManager.setScene(
         new LevelSelectScene({
@@ -146,6 +149,13 @@ export class PlayerSelectScene {
         }),
       );
     }
+  }
+
+  // Touch drives the first player. A tap on their card joins, then locks in.
+  advanceTappedCard(inputByPlayerId) {
+    const cardX = SCREEN_WIDTH / 2 - CARD_OFFSET_X - CARD_WIDTH / 2;
+    const card = { x: cardX, y: CARD_TOP_Y, width: CARD_WIDTH, height: CARD_HEIGHT };
+    if (rowIndexAt([card], tapPoint(inputByPlayerId)) === 0) this.advance(MENU_PLAYERS[0].id);
   }
 
   advance(playerId) {

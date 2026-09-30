@@ -18,6 +18,7 @@ import { drawParticles, Particles } from '../vfx/particles.js';
 import { PlayerEyes } from '../vfx/player-eyes.js';
 import { ScreenShake } from '../vfx/screen-shake.js';
 import { SeaRipple } from '../vfx/sea-ripple.js';
+import { tapPoint } from '../ui/menu-kit.js';
 import { difficultyAt } from './survival-difficulty.js';
 
 const PLAYER_ID = 'red';
@@ -98,6 +99,7 @@ export class SurvivalScene {
     this.sprites = sprites;
     this.seed = seed;
     this.events = new EventEmitter();
+    this.musicTrackName = 'match';
     this.entityGroups = new EntityGroups();
     this.playerEyes = new PlayerEyes();
     this.playerEyes.attach(this.events, () => this.players);
@@ -379,7 +381,7 @@ export class SurvivalScene {
     this.screenShake.update();
 
     if (this.phase === 'over') {
-      if (freshJump) {
+      if (freshJump || tapPoint(inputByPlayerId)) {
         this.seed++;
         this.startRun();
       }

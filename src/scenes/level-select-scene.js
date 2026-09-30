@@ -3,7 +3,15 @@ import { EventEmitter } from '../engine/events.js';
 import { SeededRandom } from '../engine/seeded-random.js';
 import { THUMBNAIL_HEIGHT, THUMBNAIL_WIDTH } from '../levels/level-thumbnail.js';
 import { MENU_PLAYERS } from '../levels/versus-arena.js';
-import { drawKeyHints, drawMenuTitle, KEYCAP_HEIGHT, TITLE_HEIGHT, wrapMenuIndex } from '../ui/menu-kit.js';
+import {
+  drawKeyHints,
+  drawMenuTitle,
+  KEYCAP_HEIGHT,
+  rowIndexAt,
+  TITLE_HEIGHT,
+  tapPoint,
+  wrapMenuIndex,
+} from '../ui/menu-kit.js';
 import { MENU_BACKGROUND_COLOR, NO_WATER_LINE_Y } from '../ui/menu-screen.js';
 import { drawPanel } from '../ui/panel.js';
 import { drawText, measureText } from '../ui/text.js';
@@ -51,6 +59,7 @@ export class LevelSelectScene {
   constructor({ sceneManager, levels, characterByPlayerId, sprites = {}, seed = Date.now() }) {
     this.sceneManager = sceneManager;
     this.events = new EventEmitter();
+    this.musicTrackName = 'menu';
     this.levels = levels;
     this.characterByPlayerId = characterByPlayerId;
     this.sprites = sprites;
@@ -103,10 +112,21 @@ export class LevelSelectScene {
       this.previousInput[spawn.id] = { ...input };
     }
 
+    this.selectTappedTile(inputByPlayerId);
+
     if (Object.values(this.lockedByPlayerId).every((locked) => locked)) {
       this.pickedLevel = this.pickLevel();
       this.revealTicksRemaining = REVEAL_TICKS;
     }
+  }
+
+  // Touch drives the first player. A tap moves their cursor to the tile, and a tap on the tile they are on votes.
+  selectTappedTile(inputByPlayerId) {
+    const playerId = MENU_PLAYERS[0].id;
+    const tappedIndex = rowIndexAt(levelSelectLayout(this.levels.length + 1).bounds, tapPoint(inputByPlayerId));
+    if (tappedIndex < 0 || this.lockedByPlayerId[playerId]) return;
+    if (this.cursorByPlayerId[playerId] === tappedIndex) this.lockedByPlayerId[playerId] = true;
+    else this.cursorByPlayerId[playerId] = tappedIndex;
   }
 
   // Left and right wrap inside the cursor's row, which may be a shorter last row.

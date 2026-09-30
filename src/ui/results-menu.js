@@ -1,6 +1,6 @@
 import { SCREEN_WIDTH } from '../engine/config.js';
 import { drawCharacterBody, FRAME_SIZE } from '../vfx/character-body.js';
-import { drawKeyHints, drawMenuList, KEYCAP_HEIGHT, menuPanelSize } from './menu-kit.js';
+import { drawKeyHints, drawMenuList, KEYCAP_HEIGHT, menuPanelSize, menuRowRectangles } from './menu-kit.js';
 import { drawMenuBackdrop } from './menu-options.js';
 import { drawPanel } from './panel.js';
 import { drawText, measureText } from './text.js';
@@ -136,6 +136,13 @@ function drawStatsPanel(context, panel, player, matchScene) {
   rows.forEach(([text, color], index) => {
     drawText(context, text, textX, firstRowY + index * STATS_ROW_HEIGHT, { scale: 1, color, outlineColor: null });
   });
+}
+
+export function resultsMenuRowRectangles(options) {
+  return menuRowRectangles(
+    options.map((option) => option.label),
+    MENU_TOP_Y,
+  );
 }
 
 export function drawResultsMenu(context, { matchScene, options, selectedIndex }) {
