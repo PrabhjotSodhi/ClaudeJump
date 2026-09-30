@@ -15,6 +15,13 @@ const TOWER_LAYERS = [
 ];
 const TOWER_BOTTOM_Y = 300;
 const STEAM_PUFF_COUNT = 9;
+const LIGHTHOUSE_LAMP_X = 320;
+const LIGHTHOUSE_LAMP_Y = 91;
+const LIGHTHOUSE_BEAM_TURN_TICKS = 480;
+const LIGHTHOUSE_BEAM_LENGTH = 360;
+const LIGHTHOUSE_BEAM_START = 6;
+const LIGHTHOUSE_BEAM_SPREAD = 0.1;
+const LIGHTHOUSE_FLARE_SINE = 0.9;
 
 function fillRect(context, color, x, y, width, height) {
   context.fillStyle = color;
@@ -265,6 +272,64 @@ function drawQuarry(context) {
   fillRect(context, '#feae34', 246, 222, 2, 2);
 }
 
+// Stars in the top of a night sky, a few brighter than the rest.
+function drawStars(context, random, count, bottomY) {
+  for (let index = 0; index < count; index++) {
+    const color = random.next() < 0.2 ? '#c0cbdc' : '#5a6988';
+    fillRect(context, color, Math.floor(random.next() * SCREEN_WIDTH), Math.floor(random.next() * bottomY), 1, 1);
+  }
+}
+
+// A low hill that rises to peakY at centerX and falls to baseY halfWidth away on each side.
+function drawHill(context, color, centerX, halfWidth, peakY, baseY, density) {
+  for (let x = centerX - halfWidth; x <= centerX + halfWidth; x++) {
+    const offset = (x - centerX) / halfWidth;
+    const top = Math.round(peakY + (baseY - peakY) * offset * offset);
+    fillDither(context, color, x, top, 1, baseY - top, density);
+  }
+}
+
+function drawLighthouse(context, random) {
+  fillRect(context, '#181425', 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+  fillDither(context, '#262b44', 0, 150, SCREEN_WIDTH, 30, 'quarter');
+  fillDither(context, '#262b44', 0, 180, SCREEN_WIDTH, 120);
+  drawStars(context, random, 60, 150);
+  drawHill(context, '#3a4466', 60, 150, 210, 300, 'half');
+  drawHill(context, '#3a4466', 590, 130, 225, 300, 'half');
+  drawMistBand(context, 250, '#3a4466');
+  for (let x = 0; x < SCREEN_WIDTH; x += 36 + Math.floor(random.next() * 30)) {
+    const height = 8 + Math.floor(random.next() * 14);
+    fillRect(context, '#262b44', x, 300 - height, 20 + Math.floor(random.next() * 20), height);
+  }
+  fillRect(context, '#181425', 0, 300, SCREEN_WIDTH, SCREEN_HEIGHT - 300);
+  // The lantern room on the gallery, where the beam starts.
+  fillRect(context, '#262b44', LIGHTHOUSE_LAMP_X - 18, 100, 36, 12);
+  fillRect(context, '#3a4466', LIGHTHOUSE_LAMP_X - 18, 100, 36, 1);
+  fillRect(context, '#262b44', LIGHTHOUSE_LAMP_X - 14, 82, 28, 18);
+  fillRect(context, '#3a4466', LIGHTHOUSE_LAMP_X - 12, 84, 24, 14);
+  fillSpike(context, '#262b44', LIGHTHOUSE_LAMP_X, 82, 32, 12, -1);
+  fillRect(context, '#feae34', LIGHTHOUSE_LAMP_X - 4, LIGHTHOUSE_LAMP_Y - 4, 8, 8);
+  fillRect(context, '#fee761', LIGHTHOUSE_LAMP_X - 2, LIGHTHOUSE_LAMP_Y - 2, 4, 4);
+}
+
+// The beam turns once every LIGHTHOUSE_BEAM_TURN_TICKS. Seen from the side it sweeps across the stage and shrinks to
+// nothing as it points at or away from the viewer. A quarter dither keeps it faint, so it never outshines a player.
+function drawLighthouseBeam(context, tick) {
+  const angle = (tick / LIGHTHOUSE_BEAM_TURN_TICKS) * 2 * Math.PI;
+  const reach = Math.round(Math.cos(angle) * LIGHTHOUSE_BEAM_LENGTH);
+  if (Math.sin(angle) > LIGHTHOUSE_FLARE_SINE) {
+    fillRect(context, '#ffffff', LIGHTHOUSE_LAMP_X - 2, LIGHTHOUSE_LAMP_Y - 2, 4, 4);
+  }
+  const direction = Math.sign(reach);
+  for (let distance = LIGHTHOUSE_BEAM_START; distance < Math.abs(reach); distance++) {
+    const x = LIGHTHOUSE_LAMP_X + direction * distance;
+    const halfHeight = 2 + Math.floor(distance * LIGHTHOUSE_BEAM_SPREAD);
+    for (let y = LIGHTHOUSE_LAMP_Y - halfHeight; y <= LIGHTHOUSE_LAMP_Y + halfHeight; y++) {
+      if (x % 2 === 0 && y % 2 === 0) fillRect(context, '#5a6988', x, y, 1, 1);
+    }
+  }
+}
+
 const DRAW_BY_BACKGROUND_NAME = {
   harbor: drawHarbor,
   cave: drawCave,
@@ -273,6 +338,12 @@ const DRAW_BY_BACKGROUND_NAME = {
   bridge: drawBridge,
   'cooling-towers': drawCoolingTowers,
   quarry: drawQuarry,
+  lighthouse: drawLighthouse,
+};
+
+// Backgrounds that move are drawn again every frame over the still picture, from the tick count alone.
+const DRAW_MOTION_BY_BACKGROUND_NAME = {
+  lighthouse: drawLighthouseBeam,
 };
 
 // Each arena draws the same picture every time, from its own fixed seed.
@@ -280,4 +351,9 @@ export function drawArenaBackground(context, backgroundName) {
   const draw = DRAW_BY_BACKGROUND_NAME[backgroundName];
   if (!draw) throw new Error(`No background named ${backgroundName}`);
   draw(context, new SeededRandom(backgroundName.length * 97));
+}
+
+// Draws the moving part of a background, if it has one, for this tick. Render only.
+export function drawArenaMotion(context, backgroundName, tick) {
+  DRAW_MOTION_BY_BACKGROUND_NAME[backgroundName]?.(context, tick);
 }

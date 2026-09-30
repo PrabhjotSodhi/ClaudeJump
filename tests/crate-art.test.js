@@ -11,7 +11,7 @@ const palette = new Set(
     .flat()
     .map((color) => color.toLowerCase()),
 );
-const ARENAS = ['harbor', 'cave', 'rooftops', 'cooling-towers', 'server-farm', 'bridge', 'quarry'];
+const ARENAS = ['harbor', 'cave', 'rooftops', 'cooling-towers', 'server-farm', 'bridge', 'quarry', 'lighthouse'];
 
 test('each arena dresses its canopies in its own palette stripes', () => {
   const stripeSets = ARENAS.map((arena) => canopyStripes(arena));

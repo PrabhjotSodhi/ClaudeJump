@@ -38,7 +38,16 @@ import { drawTouchControls } from './ui/touch-controls.js';
 import { drawPortraitControls } from './ui/portrait-controls.js';
 
 // The order of the level select tiles.
-const LEVEL_FILE_NAMES = ['harbor', 'rooftops', 'cave', 'server-farm', 'cooling-towers', 'bridge', 'quarry'];
+const LEVEL_FILE_NAMES = [
+  'harbor',
+  'rooftops',
+  'cave',
+  'server-farm',
+  'cooling-towers',
+  'bridge',
+  'quarry',
+  'lighthouse',
+];
 
 async function loadText(path) {
   const response = await fetch(path);
