@@ -45,8 +45,13 @@ const GLYPHS = {
 const SPACE_WIDTH = 3;
 const GLYPH_GAP = 1;
 export const TEXT_GLYPH_HEIGHT = 10;
-// drawText outlines each glyph by one pixel on every side, including above and below.
-export const TEXT_OUTLINE_MARGIN = 2;
+// drawText outlines each glyph by one glyph pixel on every side, including above and below. At 1x that is one
+// screen pixel; from 2x up it stays 2, so bigger text keeps the same outline weight.
+export function textOutlineMargin(scale) {
+  return scale === 1 ? 1 : 2;
+}
+// The outline margin of 2x text, the size player tags use.
+export const TEXT_OUTLINE_MARGIN = textOutlineMargin(2);
 const glyphCanvasCache = new Map();
 
 function glyphCanvas(character, color) {
@@ -99,17 +104,18 @@ export function drawText(
   if (align === 'right') x -= width;
 
   if (outlineColor) {
-    for (const [offsetX, offsetY] of [
-      [-2, 0],
-      [2, 0],
-      [0, -2],
-      [0, 2],
-      [-2, -2],
-      [2, -2],
-      [-2, 2],
-      [2, 2],
+    const margin = textOutlineMargin(scale);
+    for (const [directionX, directionY] of [
+      [-1, 0],
+      [1, 0],
+      [0, -1],
+      [0, 1],
+      [-1, -1],
+      [1, -1],
+      [-1, 1],
+      [1, 1],
     ]) {
-      drawRun(context, text, x + offsetX, y + offsetY, scale, outlineColor);
+      drawRun(context, text, x + directionX * margin, y + directionY * margin, scale, outlineColor);
     }
   }
   drawRun(context, text, x, y, scale, color);
