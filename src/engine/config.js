@@ -168,3 +168,12 @@ export const STEAM_VENT_BLAST_TICKS = 30;
 export const STEAM_VENT_WIDTH = 24;
 export const STEAM_VENT_BLAST_HEIGHT = 96;
 export const STEAM_VENT_LAUNCH_VELOCITY = -13;
+
+// Bridge planks. After BRIDGE_PLANK_FIRST_CRACK_TICKS of the fight a plank starts cracking every
+// BRIDGE_PLANK_CRACK_INTERVAL_TICKS. It shakes and shows cracks for BRIDGE_PLANK_CRACK_TICKS, then falls. A fallen
+// plank is drawn dropping with BRIDGE_PLANK_FALL_GRAVITY for BRIDGE_PLANK_FALL_VISIBLE_TICKS.
+export const BRIDGE_PLANK_FIRST_CRACK_TICKS = 900;
+export const BRIDGE_PLANK_CRACK_INTERVAL_TICKS = 45;
+export const BRIDGE_PLANK_CRACK_TICKS = 60;
+export const BRIDGE_PLANK_FALL_GRAVITY = 0.4;
+export const BRIDGE_PLANK_FALL_VISIBLE_TICKS = 90;
