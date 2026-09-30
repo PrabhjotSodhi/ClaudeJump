@@ -29,17 +29,17 @@ test('jumps and landings kick up pale grey dust', () => {
 
 test('shoves and card plays throw sparks in the hitting player color', () => {
   const { events, particles } = setUp();
-  events.emit('player-shoved', { shoverId: 'blue', targetId: 'red' });
+  events.emit('player-shoved', { shoverId: 'blue', targetId: 'red', directionX: -1, directionY: 0, strength: 'light' });
   events.emit('card-played', { playerId: 'red', cardName: 'dash' });
-  assert.equal(particles.list.length, 16, 'two events, eight sparks each');
+  assert.equal(particles.list.length, 14, 'six shove sparks and eight card sparks');
   const colors = new Set(particles.list.map((particle) => particle.color));
   assert.deepEqual([...colors].sort(), ['#2864dc', '#dc2828']);
 });
 
 test('a sprung trap throws sparks at the target in the trap owner color', () => {
   const { events, particles } = setUp();
-  events.emit('trap-sprung', { ownerId: 'blue', targetId: 'red' });
-  assert.equal(particles.list.length, 8);
+  events.emit('trap-sprung', { ownerId: 'blue', targetId: 'red', directionX: 0, directionY: -1, strength: 'light' });
+  assert.equal(particles.list.length, 6);
   assert.ok(particles.list.every((particle) => particle.color === '#2864dc'));
 });
 
@@ -140,4 +140,96 @@ test('a long fall onto a platform emits a hard landing', () => {
   red.y = 0;
   for (let tick = 0; tick < 120; tick++) scene.update({ red: idle, blue: idle });
   assert.deepEqual(landed, ['red']);
+});
+
+function sparkCountFor(strength) {
+  const { events, particles } = setUp();
+  events.emit('player-shoved', { shoverId: 'blue', targetId: 'red', directionX: 1, directionY: 0, strength });
+  return particles.list.length;
+}
+
+test('stronger hits throw more sparks', () => {
+  assert.ok(sparkCountFor('light') < sparkCountFor('medium'));
+  assert.ok(sparkCountFor('medium') < sparkCountFor('heavy'));
+});
+
+test('hit sparks fly the way the hit went', () => {
+  const { events, particles } = setUp();
+  events.emit('player-shoved', { shoverId: 'blue', targetId: 'red', directionX: -1, directionY: 0, strength: 'heavy' });
+  assert.ok(particles.list.every((particle) => particle.velocityX < 0));
+  particles.list = [];
+  events.emit('trap-sprung', { ownerId: 'blue', targetId: 'red', directionX: 0, directionY: -1, strength: 'light' });
+  assert.ok(particles.list.every((particle) => particle.velocityY < 0));
+});
+
+function launchedScene() {
+  const players = [
+    { id: 'red', color: '#dc2828', x: 100, y: 200, knockbackVelocityX: 0, isFrozen: true, inWater: false },
+    { id: 'blue', color: '#2864dc', x: 300, y: 200, knockbackVelocityX: 0, isFrozen: false, inWater: false },
+  ];
+  const events = new EventEmitter();
+  const particles = new Particles();
+  particles.attach(events, { getPlayers: () => players, getWaterLineY: () => 330, getTickCount: () => 0 });
+  return { events, particles, players };
+}
+
+test('a player launched by a heavy hit trails in their color until their knockback slows down', () => {
+  const { events, particles, players } = launchedScene();
+  const red = players[0];
+  events.emit('rocket-exploded', { x: 90, y: 200, playerIds: ['red'], strength: 'heavy' });
+  particles.list = [];
+
+  particles.update();
+  assert.equal(particles.list.length, 0, 'no trail while the hit freezes the player');
+
+  red.isFrozen = false;
+  red.knockbackVelocityX = 8;
+  particles.update();
+  assert.ok(particles.list.some((particle) => particle.color === '#dc2828' && particle.size === 8));
+  for (const particle of particles.list) {
+    assert.ok(Number.isInteger(particle.x) && Number.isInteger(particle.y));
+  }
+
+  red.knockbackVelocityX = 1;
+  particles.list = [];
+  particles.update();
+  particles.update();
+  assert.equal(particles.list.length, 0, 'the trail stops once they slow down');
+});
+
+test('light hits leave no launch trail', () => {
+  const { events, particles, players } = launchedScene();
+  players[0].isFrozen = false;
+  players[0].knockbackVelocityX = 8;
+  events.emit('player-shoved', { shoverId: 'blue', targetId: 'red', directionX: -1, directionY: 0, strength: 'light' });
+  particles.list = [];
+  particles.update();
+  assert.equal(particles.list.length, 0);
+});
+
+test('a fully charged shove throws more and faster sparks than a tap', () => {
+  const sparksFor = (charge) => {
+    const { events, particles } = setUp();
+    events.emit('player-shoved', {
+      shoverId: 'blue',
+      targetId: 'red',
+      directionX: 1,
+      directionY: 0,
+      strength: 'light',
+      charge,
+    });
+    return particles.list;
+  };
+  const tapSparks = sparksFor(0);
+  const chargedSparks = sparksFor(1);
+  assert.ok(chargedSparks.length > tapSparks.length);
+  const fastest = (sparks) => Math.max(...sparks.map((spark) => Math.hypot(spark.velocityX, spark.velocityY)));
+  assert.ok(fastest(chargedSparks) > fastest(tapSparks));
+});
+
+test('a shove reaching full charge sparkles around the player', () => {
+  const { events, particles } = setUp();
+  events.emit('shove-fully-charged', { playerId: 'red' });
+  assert.ok(particles.list.length > 0);
+  assert.ok(particles.list.every((particle) => particle.color === '#fee761'));
 });

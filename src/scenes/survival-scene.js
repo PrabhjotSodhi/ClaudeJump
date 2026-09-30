@@ -327,7 +327,12 @@ export class SurvivalScene {
         const awayDirection = Math.sign(player.x + player.width / 2 - (crab.x + crab.width / 2)) || -player.facing;
         player.freeze('light', CRAB_KNOCKBACK_VELOCITY_X * awayDirection, CRAB_KNOCKBACK_VELOCITY_Y);
         crab.freeze('light');
-        this.events.emit('player-pinched', { playerId: player.id, strength: 'light' });
+        this.events.emit('player-pinched', {
+          playerId: player.id,
+          directionX: awayDirection,
+          directionY: 0,
+          strength: 'light',
+        });
       }
     }
   }
