@@ -4,6 +4,7 @@ import { EventEmitter } from '../src/engine/events.js';
 import { SEA_COLUMN_COUNT } from '../src/engine/config.js';
 import { Particles } from '../src/vfx/particles.js';
 import { SeaRipple } from '../src/vfx/sea-ripple.js';
+import { Splashes, splashTierFor } from '../src/vfx/splash.js';
 import { VersusScene } from '../src/scenes/versus-scene.js';
 import { harborLevel } from './fixtures/harbor-level.mjs';
 
@@ -232,4 +233,56 @@ test('a shove reaching full charge sparkles around the player', () => {
   events.emit('shove-fully-charged', { playerId: 'red' });
   assert.ok(particles.list.length > 0);
   assert.ok(particles.list.every((particle) => particle.color === '#fee761'));
+});
+
+test('splash size grows with fall speed and the last knockout is always the largest', () => {
+  assert.equal(splashTierFor(3), 'small');
+  assert.equal(splashTierFor(12), 'medium');
+  assert.equal(splashTierFor(3, true), 'large');
+  assert.equal(splashTierFor(12, true), 'large');
+});
+
+test('bigger splashes throw more droplets and last longer', () => {
+  const dropletsFor = (splashTier) => {
+    const { events, particles } = setUp();
+    events.emit('player-fell-in-water', { playerId: 'red', splashTier });
+    return particles.list.length;
+  };
+  assert.ok(dropletsFor('small') < dropletsFor('medium'));
+  assert.ok(dropletsFor('medium') < dropletsFor('large'));
+
+  const ticksFor = (splashTier) => {
+    const events = new EventEmitter();
+    const splashes = new Splashes();
+    splashes.attach(events, { getPlayers: () => PLAYERS, getWaterLineY: () => 330 });
+    events.emit('player-fell-in-water', { playerId: 'red', splashTier });
+    let ticks = 0;
+    while (splashes.list.length > 0) {
+      splashes.update();
+      ticks++;
+    }
+    return ticks;
+  };
+  assert.ok(ticksFor('small') < ticksFor('large'));
+});
+
+test('the scene reports fall speed and only the last knockout of a round gets the large splash', () => {
+  const players = ['red', 'blue', 'green'].map((id) => ({ id, character: 'claude' }));
+  const scene = new VersusScene({ level: harborLevel, startInFightPhase: true, seed: 0, players });
+  const inputs = Object.fromEntries(players.map(({ id }) => [id, { left: false, right: false, jump: false }]));
+  const falls = [];
+  scene.events.on('player-fell-in-water', (fall) => falls.push(fall));
+  const fallIn = (playerId, velocityY) => {
+    const player = scene.players.find((candidate) => candidate.id === playerId);
+    player.y = scene.waterLineY;
+    player.velocityY = velocityY;
+    scene.update(inputs);
+  };
+
+  fallIn('red', 12);
+  fallIn('blue', 2);
+
+  assert.equal(falls[0].fallSpeed, 12);
+  assert.equal(falls[0].splashTier, 'medium', 'a player is still standing after the first fall');
+  assert.equal(falls[1].splashTier, 'large', 'the second fall leaves one player, which ends the round');
 });

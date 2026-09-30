@@ -113,6 +113,21 @@ test('emitting an event starts its sound', () => {
   assert.ok(audioContext.startedSources > 0);
 });
 
+test('a fall into the sea plays the splash sound of its tier', () => {
+  const audioContext = fakeAudioContext();
+  const events = new EventEmitter();
+  unlockedPlayer(audioContext).attach(events);
+  const sourcesFor = (splashTier) => {
+    const before = audioContext.startedSources;
+    events.emit('player-fell-in-water', { playerId: 'red', splashTier });
+    return audioContext.startedSources - before;
+  };
+  const smallSources = sourcesFor('small');
+  const largeSources = sourcesFor('large');
+  assert.ok(smallSources > 0);
+  assert.ok(largeSources > smallSources, 'the large splash is layered heavier');
+});
+
 // The frequency of the first voice, the low thump, for one emitted event.
 function thumpFrequencyFor(eventName, eventData) {
   const audioContext = fakeAudioContext();

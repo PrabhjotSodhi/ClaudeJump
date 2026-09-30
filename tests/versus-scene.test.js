@@ -39,7 +39,8 @@ test('falling in the sea scores the other player', () => {
   findPlayer(scene, 'red').y = 600;
   scene.update(neutralInputs());
 
-  assert.deepEqual(waterEvents, [{ playerId: 'red' }]);
+  assert.equal(waterEvents.length, 1);
+  assert.equal(waterEvents[0].playerId, 'red');
   assert.equal(scene.phase, 'point');
   assert.equal(scene.winnerId, 'blue');
   assert.equal(scene.wins.blue, 1);

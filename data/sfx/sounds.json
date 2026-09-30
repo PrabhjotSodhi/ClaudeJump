@@ -118,17 +118,6 @@
       "delay": 0.08
     }
   ],
-  "splash": [
-    {
-      "waveform": "sine",
-      "startFrequency": 200,
-      "endFrequency": 80,
-      "duration": 0.5,
-      "volume": 0.12,
-      "noiseVolume": 0.4,
-      "attack": 0.03
-    }
-  ],
   "round-won": [
     {
       "waveform": "square",
@@ -220,6 +209,47 @@
       "duration": 0.08,
       "volume": 0.12,
       "delay": 0.05
+    }
+  ],
+  "splash-small": [
+    {
+      "waveform": "sine",
+      "startFrequency": 260,
+      "endFrequency": 120,
+      "duration": 0.3,
+      "volume": 0.1,
+      "noiseVolume": 0.3,
+      "attack": 0.02
+    }
+  ],
+  "splash-medium": [
+    {
+      "waveform": "sine",
+      "startFrequency": 220,
+      "endFrequency": 90,
+      "duration": 0.5,
+      "volume": 0.14,
+      "noiseVolume": 0.45,
+      "attack": 0.03
+    }
+  ],
+  "splash-large": [
+    {
+      "waveform": "sine",
+      "startFrequency": 160,
+      "endFrequency": 50,
+      "duration": 0.8,
+      "volume": 0.25,
+      "noiseVolume": 0.6,
+      "attack": 0.04
+    },
+    {
+      "waveform": "triangle",
+      "startFrequency": 90,
+      "endFrequency": 35,
+      "duration": 0.6,
+      "volume": 0.3,
+      "attack": 0.01
     }
   ],
   "hit-light": [
