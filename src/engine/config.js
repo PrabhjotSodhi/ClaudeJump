@@ -7,6 +7,9 @@ export const LEVEL_ROWS = 23;
 export const SEA_COLUMN_COUNT = 80;
 export const SEA_COLUMN_WIDTH = SCREEN_WIDTH / SEA_COLUMN_COUNT;
 
+// How many ticks a hit freezes the hitter, the player hit and the projectile, by how hard the hit is.
+export const HITSTOP_TICKS = { light: 3, medium: 4, heavy: 6 };
+
 // Online matches. A press is scheduled this many ticks ahead so it can cross the network before it is needed.
 export const INPUT_DELAY_TICKS = 4;
 export const HASH_INTERVAL_TICKS = 60;
