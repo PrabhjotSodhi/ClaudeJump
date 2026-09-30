@@ -30,7 +30,7 @@ function phaseMessages(scene) {
     case 'point':
       return [winnerName ? `${winnerName} scores!` : 'Draw!', ''];
     case 'match':
-      return [`${winnerName} wins!`, ''];
+      return [scene.ticksRemaining > 0 ? `${winnerName} wins!` : '', ''];
     default:
       return ['', ''];
   }
