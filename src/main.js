@@ -137,7 +137,6 @@ async function main() {
   const musicPlayer = new MusicPlayer({
     soundPlayer,
     tracks: { menu: menuTrack, match: matchTrack },
-    storage,
   });
   musicPlayer.start();
   const fullscreen = createFullscreen();

@@ -17,24 +17,6 @@ export function saveSoundEnabled(storage, soundEnabled) {
   }
 }
 
-const MUSIC_STORAGE_KEY = 'claudejump-music-enabled';
-
-export function loadMusicEnabled(storage) {
-  try {
-    return storage.getItem(MUSIC_STORAGE_KEY) !== 'false';
-  } catch {
-    return true;
-  }
-}
-
-export function saveMusicEnabled(storage, musicEnabled) {
-  try {
-    storage.setItem(MUSIC_STORAGE_KEY, String(musicEnabled));
-  } catch {
-    // The choice just is not remembered.
-  }
-}
-
 // Display and audio settings the player picks in the Settings screen. The effects that use them
 // (sounds, music, screen shake, flashes) only read this; game logic never does.
 // Volumes are whole steps from 0 to VOLUME_STEPS.

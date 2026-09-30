@@ -73,7 +73,7 @@ function setUp({ storage = fakeStorage(), audioContext = fakeAudioContext() } = 
     createAudioContext: () => audioContext,
   });
   soundPlayer.unlock();
-  const musicPlayer = new MusicPlayer({ soundPlayer, tracks, storage });
+  const musicPlayer = new MusicPlayer({ soundPlayer, tracks });
   return { audioContext, soundPlayer, musicPlayer };
 }
 
@@ -112,23 +112,6 @@ test('note names and semitone numbers give the same pitches', () => {
   assert.equal(semitonesFromA4('F#3'), -15);
   assert.equal(semitonesFromA4('7'), 7);
   assert.throws(() => semitonesFromA4('H2'));
-});
-
-test('the music choice is saved separately from the sound choice', () => {
-  const storage = fakeStorage();
-  const { soundPlayer, musicPlayer } = setUp({ storage });
-
-  musicPlayer.toggleMusic();
-
-  const reloaded = setUp({ storage });
-  assert.equal(reloaded.musicPlayer.musicEnabled, false);
-  assert.equal(reloaded.soundPlayer.soundEnabled, true);
-  assert.equal(soundPlayer.soundEnabled, true);
-
-  reloaded.soundPlayer.toggleSound();
-  const reloadedAgain = setUp({ storage });
-  assert.equal(reloadedAgain.soundPlayer.soundEnabled, false);
-  assert.equal(reloadedAgain.musicPlayer.musicEnabled, false);
 });
 
 test('the music starts on the audio clock, slightly ahead of now', () => {
@@ -211,11 +194,8 @@ test('muting sound, turning music off and pausing change the music volume', () =
   soundPlayer.toggleSound();
   const mutedVolume = currentVolume();
   soundPlayer.toggleSound();
-  musicPlayer.toggleMusic();
-  const musicOffVolume = currentVolume();
 
   assert.ok(normalVolume > 0);
   assert.ok(pausedVolume > 0 && pausedVolume < normalVolume);
   assert.equal(mutedVolume, 0);
-  assert.equal(musicOffVolume, 0);
 });
