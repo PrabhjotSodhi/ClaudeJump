@@ -23,6 +23,7 @@ const VERSUS_FIELDS = [
   'modifierHighlight',
   'modifierJumpHeld',
   'ticksUntilBananaDrop',
+  'goldenCrateSpawned',
 ];
 
 const SURVIVAL_FIELDS = [

@@ -24,5 +24,7 @@ export const CARD_DEFINITIONS = {
 
 // Every pickup can be played this many times before it is gone.
 export const PICKUP_USES = 1;
+// A golden crate gives this many.
+export const GOLDEN_PICKUP_USES = 2;
 
 export const CARD_NAMES = Object.keys(CARD_DEFINITIONS);
