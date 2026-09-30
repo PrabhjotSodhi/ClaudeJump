@@ -5,10 +5,14 @@ import { LevelSelectScene } from './level-select-scene.js';
 import { PlayerSelectScene } from './player-select-scene.js';
 import { TitleScene } from './title-scene.js';
 
-export const PAUSE_MENU_OPTIONS = [
-  { id: 'resume', label: 'Resume' },
-  { id: 'title', label: 'Return to title' },
-];
+// The sound row shows the current setting, so the list is built fresh each time it is used.
+function pauseMenuOptions(soundEnabled) {
+  return [
+    { id: 'resume', label: 'Resume' },
+    { id: 'title', label: 'Return to title' },
+    { id: 'sound', label: soundEnabled ? 'Sound: On' : 'Sound: Off' },
+  ];
+}
 
 export const RESULTS_MENU_OPTIONS = [
   { id: 'rematch', label: 'Rematch' },
@@ -28,12 +32,18 @@ export class PausableMatchScene {
   constructor({ sceneManager, matchScene }) {
     this.sceneManager = sceneManager;
     this.matchScene = matchScene;
+    // Menu sounds ride on the match's events so one sound player hears both.
+    this.events = matchScene.events;
     this.paused = false;
     this.selectedIndex = 0;
     this.previousPauseByPlayerId = {};
     this.previousMenuControls = { up: {}, down: {}, confirm: {}, jump: {} };
     this.resultsMenuOpen = false;
     this.resultsSelectedIndex = 0;
+  }
+
+  get pauseMenuOptions() {
+    return pauseMenuOptions(this.sceneManager.soundPlayer?.soundEnabled ?? true);
   }
 
   get waterLineY() {
@@ -76,11 +86,16 @@ export class PausableMatchScene {
     const downPressed = this.consumeFreshPress(inputByPlayerId, 'down', this.previousMenuControls.down);
     const confirmPressed = this.consumeFreshPress(inputByPlayerId, 'confirm', this.previousMenuControls.confirm);
 
-    if (downPressed) this.selectedIndex = wrapMenuIndex(this.selectedIndex, 1, PAUSE_MENU_OPTIONS.length);
-    if (upPressed) this.selectedIndex = wrapMenuIndex(this.selectedIndex, -1, PAUSE_MENU_OPTIONS.length);
-    const tappedIndex = rowIndexAt(pauseMenuRowRectangles(PAUSE_MENU_OPTIONS), tapPoint(inputByPlayerId));
+    const optionCount = this.pauseMenuOptions.length;
+    if (downPressed) this.selectedIndex = wrapMenuIndex(this.selectedIndex, 1, optionCount);
+    if (upPressed) this.selectedIndex = wrapMenuIndex(this.selectedIndex, -1, optionCount);
+    if (downPressed || upPressed) this.events.emit('menu-moved', {});
+    const tappedIndex = rowIndexAt(pauseMenuRowRectangles(this.pauseMenuOptions), tapPoint(inputByPlayerId));
     if (tappedIndex >= 0) this.selectedIndex = tappedIndex;
-    if (confirmPressed || tappedIndex >= 0) this.confirmSelection(inputByPlayerId);
+    if (confirmPressed || tappedIndex >= 0) {
+      this.events.emit('menu-selected', {});
+      this.confirmSelection(inputByPlayerId);
+    }
   }
 
   // The first tick the results show only records what is held, so the jump that ended the last
@@ -101,9 +116,13 @@ export class PausableMatchScene {
     const optionCount = RESULTS_MENU_OPTIONS.length;
     if (downPressed) this.resultsSelectedIndex = (this.resultsSelectedIndex + 1) % optionCount;
     if (upPressed) this.resultsSelectedIndex = (this.resultsSelectedIndex + optionCount - 1) % optionCount;
+    if (downPressed || upPressed) this.events.emit('menu-moved', {});
     const tappedIndex = rowIndexAt(resultsMenuRowRectangles(RESULTS_MENU_OPTIONS), tapPoint(inputByPlayerId));
     if (tappedIndex >= 0) this.resultsSelectedIndex = tappedIndex;
-    if (confirmPressed || jumpPressed || tappedIndex >= 0) this.confirmResultsOption(inputByPlayerId);
+    if (confirmPressed || jumpPressed || tappedIndex >= 0) {
+      this.events.emit('menu-selected', {});
+      this.confirmResultsOption(inputByPlayerId);
+    }
   }
 
   confirmResultsOption(inputByPlayerId) {
@@ -206,9 +225,11 @@ export class PausableMatchScene {
   }
 
   confirmSelection(inputByPlayerId) {
-    const option = PAUSE_MENU_OPTIONS[this.selectedIndex];
+    const option = this.pauseMenuOptions[this.selectedIndex];
     if (option.id === 'resume') {
       this.resume(inputByPlayerId);
+    } else if (option.id === 'sound') {
+      this.sceneManager.soundPlayer?.toggleSound();
     } else if (option.id === 'title') {
       this.sceneManager.setScene(
         new TitleScene({
@@ -231,6 +252,6 @@ export class PausableMatchScene {
         selectedIndex: this.resultsSelectedIndex,
       });
     if (this.paused)
-      drawPauseMenu(renderer.uiContext, { options: PAUSE_MENU_OPTIONS, selectedIndex: this.selectedIndex });
+      drawPauseMenu(renderer.uiContext, { options: this.pauseMenuOptions, selectedIndex: this.selectedIndex });
   }
 }

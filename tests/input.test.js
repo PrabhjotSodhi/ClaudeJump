@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { combineInputs, createKeyboardInput, isAnyControlPressed } from '../src/engine/input.js';
+import { combineInputs, createKeyboardInput } from '../src/engine/input.js';
 
 function input({
   left = false,
@@ -137,9 +137,4 @@ test('combineInputs merges three sources and keeps the tap point', () => {
 
   assert.equal(combined.red.jump, true);
   assert.deepEqual(combined.red.tap, { x: 10, y: 20 });
-});
-
-test('isAnyControlPressed sees any pressed control and ignores taps', () => {
-  assert.equal(isAnyControlPressed({ red: input(), blue: input({ left: true }) }), true);
-  assert.equal(isAnyControlPressed({ red: { ...input(), tap: { x: 1, y: 1 } }, blue: input() }), false);
 });

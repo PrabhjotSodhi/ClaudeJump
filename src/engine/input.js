@@ -69,7 +69,3 @@ export function combineInputs(...inputByPlayerIdSources) {
   }
   return inputByPlayerId;
 }
-
-export function isAnyControlPressed(inputByPlayerId) {
-  return Object.values(inputByPlayerId).some((input) => CONTROLS.some((control) => input[control]));
-}
