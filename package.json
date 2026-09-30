@@ -15,5 +15,8 @@
   "devDependencies": {
     "prettier": "3.9.9",
     "serve": "14.2.6"
+  },
+  "dependencies": {
+    "@netlify/blobs": "^11.1.1"
   }
 }

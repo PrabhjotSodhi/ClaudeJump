@@ -26,6 +26,12 @@ npm run dev
 
 Then open http://localhost:8000.
 
+## Online rooms
+
+Offline play runs from static files alone. Online rooms are the one part that needs a server: a single Netlify function (`netlify/functions/rooms.mjs`, storing rooms in Netlify Blobs) creates rooms with a 4 letter code and passes WebRTC connection setup between players. Rooms expire after 10 minutes without activity. Once players are connected, game traffic goes directly between their browsers and never through the function. Networks that block direct connections cannot play online.
+
+`npm run dev` serves only the static game. To try rooms locally, use `npx netlify dev`.
+
 ## License
 
 [MIT](LICENSE)
