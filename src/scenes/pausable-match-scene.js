@@ -1,3 +1,5 @@
+import { AwardReveal } from '../ui/award-reveal.js';
+import { pickAwards } from '../ui/match-stats.js';
 import { MenuMotion, rowIndexAt, tapPoint, wrapMenuIndex } from '../ui/menu-kit.js';
 import { drawPauseMenu, pauseMenuRowRectangles } from '../ui/pause-menu.js';
 import { drawResultsMenu, resultsMenuRowRectangles } from '../ui/results-menu.js';
@@ -45,6 +47,7 @@ export class PausableMatchScene {
     this.previousMenuControls = { up: {}, down: {}, confirm: {}, jump: {} };
     this.resultsMenuOpen = false;
     this.resultsSelectedIndex = 0;
+    this.awardReveal = null;
     this.pauseMotion = new MenuMotion();
     this.resultsMotion = new MenuMotion();
   }
@@ -119,9 +122,17 @@ export class PausableMatchScene {
       this.resultsMenuOpen = true;
       this.resultsSelectedIndex = 0;
       this.resultsMotion = new MenuMotion();
+      this.awardReveal = new AwardReveal(
+        pickAwards(
+          this.matchScene.matchStats,
+          this.matchScene.players.map((player) => player.id),
+        ),
+        this.events,
+      );
       this.seedMenuBaseline(inputByPlayerId);
       return;
     }
+    this.awardReveal.update();
 
     const upPressed = this.consumeFreshPress(inputByPlayerId, 'up', this.previousMenuControls.up);
     const downPressed = this.consumeFreshPress(inputByPlayerId, 'down', this.previousMenuControls.down);
@@ -273,6 +284,7 @@ export class PausableMatchScene {
         options: RESULTS_MENU_OPTIONS,
         selectedIndex: this.resultsSelectedIndex,
         motion: this.resultsMotion,
+        awardReveal: this.awardReveal,
       });
     if (this.paused || !this.pauseMotion.isClosed) {
       drawPauseMenu(renderer.uiContext, {

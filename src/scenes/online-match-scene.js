@@ -2,6 +2,8 @@ import { ONLINE_MESSAGE_TICKS, STALL_MESSAGE_TICKS, SCREEN_HEIGHT, SCREEN_WIDTH 
 import { mergeLocalInputs } from '../engine/input.js';
 import { stateHash } from '../engine/state-hash.js';
 import { PLAYERS } from '../levels/versus-arena.js';
+import { AwardReveal } from '../ui/award-reveal.js';
+import { pickAwards } from '../ui/match-stats.js';
 import { drawWithMenuMotion, MenuMotion, menuPanelSize, rowIndexAt, wrapMenuIndex } from '../ui/menu-kit.js';
 import { drawPanel } from '../ui/panel.js';
 import { drawResultsMenu, resultsLayout, resultsMenuRowRectangles } from '../ui/results-menu.js';
@@ -53,6 +55,7 @@ export class OnlineMatchScene {
     this.resultsOpen = false;
     this.resultsMotion = new MenuMotion();
     this.resultsSelectedIndex = 0;
+    this.awardReveal = null;
     this.previousInput = null;
   }
 
@@ -91,6 +94,13 @@ export class OnlineMatchScene {
     if (!this.resultsOpen) {
       this.resultsOpen = true;
       this.resultsMotion = new MenuMotion();
+      this.awardReveal = new AwardReveal(
+        pickAwards(
+          this.matchScene.matchStats,
+          this.matchScene.players.map((player) => player.id),
+        ),
+        this.events,
+      );
       this.previousInput = localInput;
       const transport = this.session.transport;
       transport.onMessage = (peerId, data) => this.handleRoomMessage(data);
@@ -103,6 +113,7 @@ export class OnlineMatchScene {
 
     const optionCount = this.resultsOptions.length;
     this.resultsMotion.update();
+    this.awardReveal.update();
     if (isFresh('down')) this.resultsSelectedIndex = wrapMenuIndex(this.resultsSelectedIndex, 1, optionCount);
     if (isFresh('up')) this.resultsSelectedIndex = wrapMenuIndex(this.resultsSelectedIndex, -1, optionCount);
     if (isFresh('down') || isFresh('up')) this.events.emit('menu-moved', {});
@@ -205,6 +216,7 @@ export class OnlineMatchScene {
       options: this.resultsOptions,
       selectedIndex: this.resultsSelectedIndex,
       motion: this.resultsMotion,
+      awardReveal: this.awardReveal,
     });
     if (this.isHost) return;
     const winnerIndex = this.matchScene.players.findIndex((player) => player.id === this.matchScene.winnerId);
