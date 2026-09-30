@@ -8,7 +8,7 @@ The game is built in plain JavaScript with a 2D canvas for drawing and one WebGL
 
 1. **Crisp pixels.** Everything is drawn at 640x360 and scaled up by a whole number. Nothing blurs, nothing is drawn between pixels.
 2. **The same game on every machine.** Game logic runs at a fixed 60 ticks per second. The same inputs always produce the same state. This is what makes replays and online play possible later.
-3. **Runs anywhere.** Any modern browser on Windows, Mac and Linux, straight from static files.
+3. **Runs anywhere.** Any modern browser on Windows, Mac and Linux, straight from static files. Offline play needs nothing else. Online rooms are the one part that needs a server: a single Netlify function that hands out room codes and relays connection setup. Game traffic never goes through it, and nothing loads `online-connection.js` until a player chooses online.
 
 ## Design rules
 
@@ -39,7 +39,8 @@ Rules that keep the game deterministic:
 
 ## Where code lives
 
-- `src/engine/` runs any scene: the tick loop, window and shader, renderer, input, events, entities, assets, sounds.
+- `src/engine/` runs any scene: the tick loop, window and shader, renderer, input, events, entities, assets, sounds, and the online connection.
+- `netlify/` holds online rooms: `functions/rooms.mjs` is the one Netlify function and `rooms/` holds the room logic it calls. It is the only code that is not static files, and `@netlify/blobs` is its only dependency.
 - `src/entities/` holds the things in the world: player, platform, rocket, crab.
 - `src/scenes/` holds the rules of each screen: title, Versus, Survival.
 - `src/levels/` holds the level loader and the Versus background.
