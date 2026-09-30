@@ -236,6 +236,35 @@ function drawCoolingTowers(context, random) {
   }
 }
 
+// A cut rock wall: stepped ledges that climb from one side, one dithered band per step.
+function drawRockWall(context, color, startX, direction, stepWidth, stepHeight, topY, stepCount) {
+  for (let step = 0; step < stepCount; step++) {
+    const x = direction > 0 ? startX + step * stepWidth : startX - (step + 1) * stepWidth;
+    const y = topY + step * stepHeight;
+    fillDither(context, color, x, y, stepWidth, TOWER_BOTTOM_Y - y);
+  }
+}
+
+function drawQuarry(context) {
+  fillRect(context, '#5a6988', 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+  fillDither(context, '#8b9bb4', 0, 190, SCREEN_WIDTH, 110, 'quarter');
+  drawRockWall(context, '#3a4466', 0, 1, 40, 22, 90, 6);
+  drawRockWall(context, '#3a4466', SCREEN_WIDTH, -1, 40, 22, 90, 6);
+  drawMistBand(context, 226, '#5a6988');
+  fillRect(context, '#262b44', 300, 150, 10, 150);
+  fillRect(context, '#262b44', 250, 150, 130, 8);
+  fillRect(context, '#262b44', 250, 158, 2, 60);
+  fillRect(context, '#262b44', 244, 218, 14, 8);
+  drawRockWall(context, '#262b44', 0, 1, 30, 26, 160, 5);
+  drawRockWall(context, '#262b44', SCREEN_WIDTH, -1, 30, 26, 160, 5);
+  fillRect(context, '#262b44', 150, 262, 340, 6);
+  fillRect(context, '#3a4466', 150, 262, 340, 1);
+  for (let x = 156; x < 490; x += 24) fillRect(context, '#181425', x, 268, 4, 4);
+  drawMistBand(context, 244, '#5a6988');
+  fillRect(context, '#181425', 0, TOWER_BOTTOM_Y, SCREEN_WIDTH, SCREEN_HEIGHT - TOWER_BOTTOM_Y);
+  fillRect(context, '#feae34', 246, 222, 2, 2);
+}
+
 const DRAW_BY_BACKGROUND_NAME = {
   harbor: drawHarbor,
   cave: drawCave,
@@ -243,6 +272,7 @@ const DRAW_BY_BACKGROUND_NAME = {
   'server-farm': drawServerFarm,
   bridge: drawBridge,
   'cooling-towers': drawCoolingTowers,
+  quarry: drawQuarry,
 };
 
 // Each arena draws the same picture every time, from its own fixed seed.
