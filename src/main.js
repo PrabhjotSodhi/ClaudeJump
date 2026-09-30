@@ -9,6 +9,7 @@ import { Renderer } from './engine/renderer.js';
 import { SceneManager } from './engine/scene-manager.js';
 import { MusicPlayer } from './engine/music-player.js';
 import { SoundPlayer } from './engine/sound-player.js';
+import { loadSettings, settings } from './engine/sound-settings.js';
 import { loadSpriteFile } from './engine/sprites.js';
 import { createTouchInput, TOUCH_BUTTONS, TWO_PLAYER_TOUCH_BUTTONS } from './engine/touch-input.js';
 import { HOVER_CHARACTER_BY_PLAYER_ID } from './entities/characters.js';
@@ -130,11 +131,12 @@ async function main() {
     canvas,
     keyMappings.map((mapping) => mapping.id),
   );
-  const soundPlayer = new SoundPlayer({ soundDefinitions, eventSounds, storage: readLocalStorage() });
+  const storage = readLocalStorage();
+  if (storage) Object.assign(settings, loadSettings(storage));
+  const soundPlayer = new SoundPlayer({ soundDefinitions, eventSounds, storage });
   const musicPlayer = new MusicPlayer({
     soundPlayer,
     tracks: { menu: menuTrack, match: matchTrack },
-    storage: readLocalStorage(),
   });
   musicPlayer.start();
   const fullscreen = createFullscreen();

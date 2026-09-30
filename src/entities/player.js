@@ -12,6 +12,7 @@ import {
 } from '../engine/config.js';
 import { PICKUP_USES } from '../cards/card-definitions.js';
 import { PhysicsEntity } from '../engine/physics-entity.js';
+import { settings } from '../engine/sound-settings.js';
 import { drawCharacterBody, FRAME_SIZE } from '../vfx/character-body.js';
 
 export const PLAYER_WIDTH = 24;
@@ -383,8 +384,8 @@ export class Player extends PhysicsEntity {
     const bodyCenterX = drawX + this.width / 2 - (charging ? this.facing * leanPixels : 0);
     const crouch = charging && this.shoveChargeTicks > SHOVE_WINDUP_TICKS ? CHARGE_CROUCH_PIXELS : 0;
     const sprite = sprites[this.character.spriteName].body;
-    const flashing =
-      this.isShoveFullyCharged && Math.floor(this.shoveFullChargeTicks / FULL_CHARGE_FLASH_TICKS) % 2 === 0;
+    const blinkOn = Math.floor(this.shoveFullChargeTicks / FULL_CHARGE_FLASH_TICKS) % 2 === 0;
+    const flashing = this.isShoveFullyCharged && (blinkOn || settings.reduceFlashes);
     drawCharacterBody(context, {
       sprite,
       flashSprite: flashing ? silhouetteOf(sprite, '#ffffff') : null,

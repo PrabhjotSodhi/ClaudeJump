@@ -1,3 +1,4 @@
+import { flashStrength } from '../engine/sound-settings.js';
 import { drawGooglyEye, EYE_SIZE } from './googly-eyes.js';
 
 // Every character sprite is drawn in a square frame this big. Its last row is the white outline.
@@ -25,7 +26,11 @@ export function drawCharacterBody(
     }
   }
   context.drawImage(sprite, left, top, width, height);
-  if (flashSprite) context.drawImage(flashSprite, centerX - Math.floor(width / 2), bottomY - height, width, height);
+  if (flashSprite) {
+    context.globalAlpha = flashStrength();
+    context.drawImage(flashSprite, left, top, width, height);
+    context.globalAlpha = 1;
+  }
   const scaleX = width / FRAME_SIZE;
   const scaleY = height / FRAME_SIZE;
   eyeFramePositions.forEach(([frameX, frameY], index) => {

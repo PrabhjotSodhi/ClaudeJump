@@ -1,4 +1,4 @@
-import { loadMusicEnabled, saveMusicEnabled } from './sound-settings.js';
+import { settings, volumeScale } from './sound-settings.js';
 import { MusicSequencer } from './music-sequencer.js';
 
 const MUSIC_VOLUME = 0.5;
@@ -16,11 +16,9 @@ const START_DELAY_SECONDS = 0.05;
 // sound player's audio context, so it stays silent until the sound player is unlocked. It only
 // listens: it never changes game state, and its timing comes from the audio clock.
 export class MusicPlayer {
-  constructor({ soundPlayer, tracks, storage = null }) {
+  constructor({ soundPlayer, tracks }) {
     this.soundPlayer = soundPlayer;
     this.tracks = tracks;
-    this.storage = storage;
-    this.musicEnabled = storage ? loadMusicEnabled(storage) : true;
     this.wantedTrackName = null;
     this.paused = false;
     this.suddenDeath = false;
@@ -44,11 +42,6 @@ export class MusicPlayer {
 
   setPaused(paused) {
     this.paused = paused;
-  }
-
-  toggleMusic() {
-    this.musicEnabled = !this.musicEnabled;
-    if (this.storage) saveMusicEnabled(this.storage, this.musicEnabled);
   }
 
   start() {
@@ -77,8 +70,9 @@ export class MusicPlayer {
 
   updateVolume(audioContext, now) {
     this.musicGain ??= this.createMusicGain(audioContext);
-    const audible = this.soundPlayer.soundEnabled && this.musicEnabled;
-    const volume = audible ? MUSIC_VOLUME * (this.paused ? PAUSED_VOLUME_SCALE : 1) : 0;
+    const audible = this.soundPlayer.soundEnabled;
+    const pausedScale = this.paused ? PAUSED_VOLUME_SCALE : 1;
+    const volume = audible ? MUSIC_VOLUME * volumeScale(settings.musicVolume) * pausedScale : 0;
     this.musicGain.gain.setTargetAtTime(volume, now, VOLUME_SMOOTHING_SECONDS);
   }
 
