@@ -11,10 +11,12 @@ export const CRATE_WARNING_TICKS = 60;
 const MARKER_PULSE_TICKS = 8;
 const MARKER_COLORS = ['#fee761', '#feae34'];
 const MARKER_OUTLINE_COLOR = '#181425';
-const MARKER_BRACKET_WIDTH = 2;
-const MARKER_BRACKET_HEIGHT = 4;
+const MARKER_BRACKET_WIDTH = 3;
+const MARKER_BRACKET_HEIGHT = 6;
 const MARKER_ARROW_GAP = 3;
-const MARKER_ARROW_BOB_PIXELS = 2;
+const MARKER_ARROW_WIDTH = 8;
+const MARKER_ARROW_ROW_HEIGHT = 2;
+const MARKER_ARROW_BOB_PIXELS = 4;
 const SHADOW_HEIGHT = 2;
 const GROUND_SHADOW_COLOR = '#3e2731';
 const GROUND_SHADOW_MIN_WIDTH = 4;
@@ -138,17 +140,27 @@ export class Crate extends Entity {
       for (const bracketX of [leftX, rightX]) {
         context.fillRect(bracketX, bracketY, MARKER_BRACKET_WIDTH, MARKER_BRACKET_HEIGHT);
       }
-      // A down arrow above the surface, three rows tall, bobbing by two pixels.
+      // A down arrow above the surface that narrows by one pixel each side per row.
+      const arrowRows = MARKER_ARROW_WIDTH / 2;
+      const arrowHeight = arrowRows * MARKER_ARROW_ROW_HEIGHT;
       const arrowCenterX = x + Math.floor(this.width / 2);
-      const arrowTopY = bracketY - MARKER_ARROW_GAP - 4 - arrowBob;
-      context.fillStyle = MARKER_OUTLINE_COLOR;
-      context.fillRect(arrowCenterX - 3, arrowTopY, 6, 2);
-      context.fillRect(arrowCenterX - 2, arrowTopY + 2, 4, 1);
-      context.fillRect(arrowCenterX - 1, arrowTopY + 3, 2, 1);
-      context.fillStyle = markerColor;
-      context.fillRect(arrowCenterX - 2, arrowTopY, 4, 1);
-      context.fillRect(arrowCenterX - 1, arrowTopY + 1, 2, 1);
-      context.fillRect(arrowCenterX - 1, arrowTopY + 2, 2, 1);
+      const arrowTopY = bracketY - MARKER_ARROW_GAP - arrowHeight - arrowBob;
+      const drawArrowRows = (color, outlineWidth) => {
+        context.fillStyle = color;
+        for (let row = 0; row < arrowRows; row++) {
+          const halfWidth = arrowRows - row + outlineWidth;
+          context.fillRect(
+            arrowCenterX - halfWidth,
+            arrowTopY + row * MARKER_ARROW_ROW_HEIGHT,
+            halfWidth * 2,
+            MARKER_ARROW_ROW_HEIGHT,
+          );
+        }
+      };
+      drawArrowRows(MARKER_OUTLINE_COLOR, 1);
+      context.fillRect(arrowCenterX - arrowRows - 1, arrowTopY - 1, arrowRows * 2 + 2, 1);
+      context.fillRect(arrowCenterX - 1, arrowTopY + arrowHeight, 2, 1);
+      drawArrowRows(markerColor, 0);
     };
     drawAt(spotX);
     if (spotX < 0) drawAt(spotX + SCREEN_WIDTH);
