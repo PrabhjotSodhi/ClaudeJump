@@ -27,7 +27,7 @@ function drawArrow(context, centerX, centerY, direction) {
   }
 }
 
-function drawGlyph(context, button, color) {
+export function drawGlyph(context, button, color) {
   const centerX = button.x + button.width / 2;
   const centerY = button.y + button.height / 2;
   context.fillStyle = color;

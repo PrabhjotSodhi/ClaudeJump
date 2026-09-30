@@ -1,4 +1,5 @@
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from './config.js';
+import { CONTROLS_PANEL_WIDTH } from './portrait-layout.js';
 
 // About 12 mm on a phone held in landscape, where the 640 pixel wide screen fills the display.
 const BUTTON_SIZE = 68;
@@ -54,6 +55,31 @@ export const TWO_PLAYER_TOUCH_BUTTONS = [
   PAUSE_BUTTON,
 ];
 
+// The portrait controls panel sits below the game and has its own pixels. One player, like the
+// online scenes: every button fills the first player's record. The panel is CONTROLS_PANEL_WIDTH
+// wide and as tall as the phone allows, so the layout takes its height.
+const PANEL_BUTTON_SIZE = 34;
+const PANEL_BUTTON_GAP = 4;
+const PANEL_EDGE_MARGIN = 6;
+const PANEL_PAUSE = { id: 'pause', width: 36, height: 20, y: 8 };
+// The action button sits higher than its neighbour, so thumbs resting on the row do not collide.
+const PANEL_ACTION_RAISE = 18;
+
+export function portraitTouchButtons(panelHeight) {
+  const pauseBottom = PANEL_PAUSE.y + PANEL_PAUSE.height;
+  const rowY = Math.round(pauseBottom + (panelHeight - pauseBottom - PANEL_BUTTON_SIZE) * 0.55);
+  const jumpX = CONTROLS_PANEL_WIDTH - PANEL_EDGE_MARGIN - PANEL_BUTTON_SIZE;
+  const actionX = jumpX - PANEL_BUTTON_GAP - PANEL_BUTTON_SIZE;
+  return [
+    { id: 'left', x: PANEL_EDGE_MARGIN, y: rowY },
+    { id: 'right', x: PANEL_EDGE_MARGIN + PANEL_BUTTON_SIZE + PANEL_BUTTON_GAP, y: rowY },
+    { id: 'action', x: actionX, y: rowY - PANEL_ACTION_RAISE },
+    { id: 'jump', x: jumpX, y: rowY },
+  ]
+    .map((button) => ({ width: PANEL_BUTTON_SIZE, height: PANEL_BUTTON_SIZE, ...button }))
+    .concat({ ...PANEL_PAUSE, x: (CONTROLS_PANEL_WIDTH - PANEL_PAUSE.width) / 2 });
+}
+
 function isInside(button, point) {
   return (
     point.x >= button.x &&
@@ -85,49 +111,69 @@ export function mapTouchesToInput(points, tap = null, buttons = TOUCH_BUTTONS) {
 }
 
 // Touch state only. A button with a playerId fills that player's record. Buttons without one, and
-// the tap, fill the first player's.
-export function createTouchInput(canvas, playerIds) {
-  let points = [];
+// the tap, fill the first player's. The game canvas gives points in game pixels and the tap. The
+// optional controls canvas, the portrait panel below the game, gives points in its own pixels.
+// sample and pressedButtons read the game points by default and the panel's when area is 'controls'.
+export function createTouchInput(canvas, playerIds, controlsCanvas = null) {
+  const pointsByArea = { game: [], controls: [] };
   let tap = null;
   let visible = false;
 
-  function toGamePoint(touch) {
-    const bounds = canvas.getBoundingClientRect();
+  function toPoint(touch, area) {
+    const bounds = area === 'controls' ? controlsCanvas.getBoundingClientRect() : canvas.getBoundingClientRect();
+    const logicalWidth = area === 'controls' ? controlsCanvas.width : SCREEN_WIDTH;
+    const logicalHeight = area === 'controls' ? controlsCanvas.height : SCREEN_HEIGHT;
     return {
-      x: ((touch.clientX - bounds.left) / bounds.width) * SCREEN_WIDTH,
-      y: ((touch.clientY - bounds.top) / bounds.height) * SCREEN_HEIGHT,
+      x: ((touch.clientX - bounds.left) / bounds.width) * logicalWidth,
+      y: ((touch.clientY - bounds.top) / bounds.height) * logicalHeight,
     };
   }
 
-  function updatePoints(event) {
-    if (canvas.getBoundingClientRect().width === 0) return;
-    points = Array.from(event.touches, toGamePoint);
+  function isShown(area) {
+    const shownCanvas = area === 'controls' ? controlsCanvas : canvas;
+    return shownCanvas.getBoundingClientRect().width > 0;
   }
 
-  canvas.addEventListener('touchstart', (event) => {
+  // Every finger on the screen counts for both areas, so a finger that started on one keeps its
+  // button while it slides. Fingers outside an area land off its buttons.
+  function updatePoints(event) {
+    for (const area of Object.keys(pointsByArea)) {
+      if (area === 'controls' && !controlsCanvas) continue;
+      if (isShown(area)) pointsByArea[area] = Array.from(event.touches, (touch) => toPoint(touch, area));
+    }
+  }
+
+  function onTouchStart(event) {
     visible = true;
-    if (canvas.getBoundingClientRect().width > 0) tap = toGamePoint(event.changedTouches[0]);
+    if (canvas.getBoundingClientRect().width > 0 && event.target !== controlsCanvas) {
+      tap = toPoint(event.changedTouches[0], 'game');
+    }
     updatePoints(event);
-  });
-  canvas.addEventListener('touchmove', updatePoints);
-  canvas.addEventListener('touchend', updatePoints);
-  canvas.addEventListener('touchcancel', updatePoints);
+  }
+
+  for (const target of [canvas, controlsCanvas]) {
+    if (!target) continue;
+    target.addEventListener('touchstart', onTouchStart);
+    target.addEventListener('touchmove', updatePoints);
+    target.addEventListener('touchend', updatePoints);
+    target.addEventListener('touchcancel', updatePoints);
+  }
 
   return {
     get visible() {
       return visible;
     },
-    pressedButtons(buttons = TOUCH_BUTTONS) {
-      return pressedButtons(points, buttons);
+    pressedButtons(buttons = TOUCH_BUTTONS, area = 'game') {
+      return pressedButtons(pointsByArea[area], buttons);
     },
     hide() {
       visible = false;
     },
-    sample(buttons = TOUCH_BUTTONS) {
+    sample(buttons = TOUCH_BUTTONS, area = 'game') {
       const inputByPlayerId = {};
       playerIds.forEach((playerId, index) => {
         const playerButtons = buttons.filter((button) => (button.playerId ?? playerIds[0]) === playerId);
-        inputByPlayerId[playerId] = mapTouchesToInput(points, index === 0 ? tap : null, playerButtons);
+        inputByPlayerId[playerId] = mapTouchesToInput(pointsByArea[area], index === 0 ? tap : null, playerButtons);
       });
       tap = null;
       return inputByPlayerId;

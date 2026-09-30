@@ -49,9 +49,19 @@
           0 0 0 calc(var(--game-pixel) * 3) #262b44,
           0 0 0 calc(var(--game-pixel) * 5) #3e2731;
       }
-      #rotate-prompt {
+
+      /* Held upright on a touch device, the page is a handheld: the game on top, a controls panel below. */
+      #controls {
         display: none;
+        position: fixed;
         image-rendering: pixelated;
+      }
+      .portrait,
+      .portrait body {
+        background: #262b44;
+      }
+      .portrait #controls {
+        display: block;
       }
       #webgl-message {
         display: none;
@@ -65,7 +75,7 @@
   </head>
   <body>
     <canvas id="screen"></canvas>
-    <canvas id="rotate-prompt" width="120" height="160"></canvas>
+    <canvas id="controls"></canvas>
     <p id="webgl-message">
       ClaudeJump needs WebGL. Turn on graphics acceleration in your browser settings, then reload.
     </p>
