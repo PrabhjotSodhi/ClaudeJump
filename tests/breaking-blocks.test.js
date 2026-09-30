@@ -11,8 +11,8 @@ import { Bomb } from '../src/entities/bomb.js';
 import { BouncePad } from '../src/entities/bounce-pad.js';
 import { buildLevel } from '../src/levels/level-loader.js';
 import { VersusScene } from '../src/scenes/versus-scene.js';
+import { ROUND_COUNTDOWN_TICKS as READY_TICKS } from '../src/engine/config.js';
 
-const READY_TICKS = 60;
 const FLOOR_ROW = 10;
 const FLOOR_Y = FLOOR_ROW * 16;
 const PLAYER_HEIGHT = 28;

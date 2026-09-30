@@ -11,8 +11,8 @@ import { SHOVE_KNOCKBACK_VELOCITY_X } from '../src/entities/player.js';
 import { PLAYERS } from '../src/levels/versus-arena.js';
 import { VersusScene } from '../src/scenes/versus-scene.js';
 import { harborLevel } from './fixtures/harbor-level.mjs';
+import { ROUND_COUNTDOWN_TICKS as READY_TICKS } from '../src/engine/config.js';
 
-const READY_TICKS = 60;
 const TAP_HOLD_TICKS = 1;
 const FIRE_TICK = SHOVE_MAX_CHARGE_TICKS + 5;
 

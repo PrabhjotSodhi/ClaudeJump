@@ -9,8 +9,8 @@ import { PLAYERS } from '../src/levels/versus-arena.js';
 import { VersusScene } from '../src/scenes/versus-scene.js';
 import { arenaLevels } from './fixtures/arena-levels.mjs';
 import { harborLevel } from './fixtures/harbor-level.mjs';
+import { ROUND_COUNTDOWN_TICKS as READY_TICKS } from '../src/engine/config.js';
 
-const READY_TICKS = 60;
 const POINT_PAUSE_TICKS = 90;
 const WINS_NEEDED = 5;
 // Harbor's two islands leave room for exactly this much between a new spawn and its neighbor.

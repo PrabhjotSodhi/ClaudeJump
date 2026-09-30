@@ -1,12 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { CHARACTERS } from '../src/entities/characters.js';
-import {
-  hopOffsetY,
-  PlayerSelectScene,
-  playerCardBox,
-  START_COUNTDOWN_TICKS,
-} from '../src/scenes/player-select-scene.js';
+import { PlayerSelectScene, playerCardBox, START_COUNTDOWN_TICKS } from '../src/scenes/player-select-scene.js';
 import { harborLevel } from './fixtures/harbor-level.mjs';
 
 function noInput() {
@@ -185,22 +180,30 @@ test('level select gets the character each player locked in', () => {
   assert.deepEqual([characterByPlayerId.red.name, characterByPlayerId.blue.name], ['muse', 'chatgpt']);
 });
 
-test('a hop leaves the pedestal, peaks in the middle and lands after its duration', () => {
-  assert.equal(hopOffsetY(-1), 0);
-  assert.equal(hopOffsetY(0), 0);
-  assert.ok(hopOffsetY(4) > 0);
-  assert.ok(hopOffsetY(12) > hopOffsetY(4));
-  assert.equal(hopOffsetY(24), 0);
-});
-
-test('changing character starts a hop, joining does not', () => {
+test('changing character starts a hop, joining slides the card in instead', () => {
   const { scene } = sceneWithBaseline();
+  const cardBox = playerCardBox(0);
 
   scene.update(inputsWithJump('red'));
-  assert.equal(scene.hopStartTickByPlayerId.red, undefined);
+  assert.equal(scene.cardMotion.pose(0).offsetY, 0);
+  assert.ok(scene.cardMotion.slideOffsetX(0, cardBox) < 0);
 
   scene.update({ ...neutralInputs(), red: { ...noInput(), right: true } });
-  assert.equal(scene.hopStartTickByPlayerId.red, scene.tickCount);
+  for (let tick = 0; tick < 8; tick++) scene.update(neutralInputs());
+  assert.ok(scene.cardMotion.pose(0).offsetY > 0);
+});
+
+test('locking in emits a cheer for the chosen character and starts the cheer pose', () => {
+  const { scene } = sceneWithBaseline();
+  const cheers = [];
+  scene.events.on('character-cheered', (data) => cheers.push(data));
+
+  press(scene, 'red', 'jump');
+  press(scene, 'red', 'jump');
+
+  assert.deepEqual(cheers, [{ playerId: 'red', characterName: 'claude' }]);
+  for (let tick = 0; tick < 12; tick++) scene.update(neutralInputs());
+  assert.ok(scene.cardMotion.pose(0).offsetY > 0);
 });
 
 function lockIn(scene, playerId) {

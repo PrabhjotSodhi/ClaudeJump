@@ -7,6 +7,7 @@ import { PLAYERS } from '../levels/versus-arena.js';
 import { drawWithMenuMotion, MenuMotion, rowIndexAt, wrapMenuIndex } from '../ui/menu-kit.js';
 import { MENU_BACKGROUND_COLOR, NO_WATER_LINE_Y } from '../ui/menu-screen.js';
 import { CHANGEABLE_ROWS, drawOnlineLobby, lobbyRowLabels, lobbyRowRectangles } from '../ui/online-lobby-view.js';
+import { SelectCardMotion } from '../ui/select-card-motion.js';
 import { OnlineLobby } from './online-lobby-state.js';
 import { OnlineMatchScene } from './online-match-scene.js';
 import { sendMatchSetup, versusSceneOptionsFromSetup } from './online-match-setup.js';
@@ -38,6 +39,7 @@ export class OnlineLobbyScene {
     this.musicTrackName = 'menu';
     this.waterLineY = NO_WATER_LINE_Y;
     this.menuMotion = new MenuMotion();
+    this.cardMotion = new SelectCardMotion();
     this.backgroundDrawn = false;
     this.rows = isHost ? HOST_ROWS : JOINER_ROWS;
     this.selectedRow = 0;
@@ -69,6 +71,7 @@ export class OnlineLobbyScene {
     this.attachConnection();
     this.previousInput = null;
     this.menuMotion = new MenuMotion();
+    this.cardMotion = new SelectCardMotion();
     this.backgroundDrawn = false;
     this.sceneManager.setScene(this);
     if (this.isHost) {
@@ -128,6 +131,8 @@ export class OnlineLobbyScene {
 
   update(inputByPlayerId) {
     this.menuMotion.update();
+    this.cardMotion.update();
+    this.startSeatMotion();
     const input = mergeLocalInputs(inputByPlayerId);
     if (!this.previousInput) {
       this.previousInput = input;
@@ -146,6 +151,18 @@ export class OnlineLobbyScene {
     if (isFresh('right') && CHANGEABLE_ROWS.includes(row)) this.changeRow(row, 1);
     if (isFresh('confirm')) this.activateRow(row, inputByPlayerId);
     this.handleTap(input.tap, inputByPlayerId);
+  }
+
+  // Seats change by network messages too, so the card motion follows what the lobby shows.
+  startSeatMotion() {
+    const seats = this.lobby.seats.map((seat) =>
+      seat ? { characterName: seat.characterName, ready: seat.ready } : null,
+    );
+    for (const { seat, kind } of this.cardMotion.observeSeats(seats)) {
+      if (kind === 'cheered') {
+        this.events.emit('character-cheered', { playerId: PLAYERS[seat].id, characterName: seats[seat].characterName });
+      }
+    }
   }
 
   // A tap on a row that changes with left and right steps it by the side that was tapped. Any other row is chosen.
@@ -261,6 +278,7 @@ export class OnlineLobbyScene {
         levels: this.levels,
         touchActive: renderer.touchActive,
         motion: this.menuMotion,
+        cardMotion: this.cardMotion,
       }),
     );
   }

@@ -53,13 +53,6 @@ const OVER_ROW_HEIGHT = 14;
 const OVER_ROW_COLOR = '#c0cbdc';
 const OVER_HINT_GAP = 12;
 
-const CONTROLS_LABEL_BY_PLAYER_ID = {
-  red: 'Red: WASD',
-  blue: 'Blue: Arrows',
-  green: 'Green: Pad 3',
-  yellow: 'Yellow: Pad 4',
-};
-
 function displayName(scene, playerId) {
   return scene.players.find((player) => player.id === playerId).character.displayName;
 }
@@ -74,13 +67,6 @@ function formatCountdown(ticksRemaining) {
 function phaseMessages(scene) {
   const winnerName = scene.winnerId && displayName(scene, scene.winnerId);
   switch (scene.phase) {
-    case 'ready': {
-      const totalWins = Object.values(scene.wins).reduce((sum, wins) => sum + wins, 0);
-      const controls = scene.players.map((player) => CONTROLS_LABEL_BY_PLAYER_ID[player.id]).join('    ');
-      return ['Ready...', totalWins === 0 ? controls : ''];
-    }
-    case 'fight':
-      return [scene.ticksRemaining > 0 ? 'Go!' : '', ''];
     case 'point':
       return [winnerName ? `${winnerName} scores!` : 'Draw!', ''];
     case 'match':
@@ -221,7 +207,7 @@ function drawRunOver(context, scene) {
       outlineColor: null,
     });
   });
-  drawKeyHints(context, [{ keys: ['W', 'Pad A'], label: 'Retry' }], OVER_PANEL_Y + height + OVER_HINT_GAP);
+  drawKeyHints(context, [{ keys: ['W'], pad: ['south'], label: 'Retry' }], OVER_PANEL_Y + height + OVER_HINT_GAP);
 }
 
 export function drawSurvivalHud(context, scene) {
