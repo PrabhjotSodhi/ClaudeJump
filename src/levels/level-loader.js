@@ -84,7 +84,7 @@ export function buildLevel(levelData, tileSprites = {}) {
     grid,
     spawns,
     bouncePads = [],
-    hazard = null,
+    hazards = [],
     waterLineY,
     suddenDeathLineY,
   } = levelData;
@@ -142,7 +142,7 @@ export function buildLevel(levelData, tileSprites = {}) {
     openTops,
     spawns,
     bouncePads,
-    hazard,
+    hazards,
     waterLineY,
     suddenDeathLineY,
     tileSprites,

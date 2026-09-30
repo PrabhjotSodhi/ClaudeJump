@@ -2,6 +2,8 @@ import {
   CRANE_FIRST_SWING_TICKS,
   CRANE_HOOK_HEIGHT,
   CRANE_HOOK_WIDTH,
+  CRANE_KNOCKBACK_VELOCITY_X,
+  CRANE_KNOCKBACK_VELOCITY_Y,
   CRANE_PATH_BOTTOM_Y,
   CRANE_PATH_DIP,
   CRANE_PATH_END_X,
@@ -40,9 +42,9 @@ export function cranePathPoint(progress, direction) {
 }
 
 // The hook of Harbor's crane, driven only by how many ticks of the fight have passed. `phase` is 'idle' (parked, harmless),
-// 'warning' (parked and shaking, its path flashing) or 'swinging' (dangerous). The scene calls update() once per fight tick
-// and knocks back every player who overlaps the hook while `isSwinging`, using `direction`. `hitPlayerIds` holds the
-// players already hit this swing.
+// 'warning' (parked and shaking, its path flashing) or 'swinging' (dangerous). The scene calls update(scene) once per
+// fight tick. While swinging, every player who overlaps the hook is knocked away in `direction`, once per swing.
+// `hitPlayerIds` holds the players already hit this swing.
 export class CraneHook extends Entity {
   constructor() {
     super({ x: 0, y: 0, width: CRANE_HOOK_WIDTH, height: CRANE_HOOK_HEIGHT });
@@ -55,16 +57,31 @@ export class CraneHook extends Entity {
     this.moveTo(cranePathPoint(0, 1));
   }
 
-  get isSwinging() {
-    return this.phase === 'swinging';
-  }
-
   moveTo(center) {
     this.x = center.x - this.width / 2;
     this.y = center.y - this.height / 2;
   }
 
-  update() {
+  update({ players, events }) {
+    this.updateSwing();
+    if (this.phase !== 'swinging') return;
+
+    for (const player of players) {
+      if (player.inWater || this.hitPlayerIds.has(player.id) || !player.overlaps(this)) continue;
+
+      this.hitPlayerIds.add(player.id);
+      player.freeze('heavy', CRANE_KNOCKBACK_VELOCITY_X * this.direction, CRANE_KNOCKBACK_VELOCITY_Y);
+      events.emit('trap-sprung', {
+        ownerId: null,
+        targetId: player.id,
+        directionX: this.direction,
+        directionY: 0,
+        strength: 'heavy',
+      });
+    }
+  }
+
+  updateSwing() {
     this.ticks++;
     const ticksIntoCycles = this.ticks - FIRST_WARNING_TICKS;
     if (ticksIntoCycles < 0) return;

@@ -157,3 +157,14 @@ export const CRANE_HOOK_WIDTH = 14;
 export const CRANE_HOOK_HEIGHT = 18;
 export const CRANE_KNOCKBACK_VELOCITY_X = 9;
 export const CRANE_KNOCKBACK_VELOCITY_Y = -5;
+
+// Cooling Towers' steam vents. Each vent sits on a tower top and cycles through STEAM_VENT_REST_TICKS of quiet,
+// STEAM_VENT_WARNING_TICKS of hissing and puffing, and STEAM_VENT_BLAST_TICKS of blast. A player in the blast column,
+// STEAM_VENT_WIDTH wide and STEAM_VENT_BLAST_HEIGHT tall above the vent, is launched up at STEAM_VENT_LAUNCH_VELOCITY
+// once per blast. A vent's `offsetTicks` in the level file moves it along its cycle so vents do not fire together.
+export const STEAM_VENT_REST_TICKS = 150;
+export const STEAM_VENT_WARNING_TICKS = 60;
+export const STEAM_VENT_BLAST_TICKS = 30;
+export const STEAM_VENT_WIDTH = 24;
+export const STEAM_VENT_BLAST_HEIGHT = 96;
+export const STEAM_VENT_LAUNCH_VELOCITY = -13;
