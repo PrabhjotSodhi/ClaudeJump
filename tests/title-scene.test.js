@@ -131,3 +131,68 @@ test('tapping a menu row selects and confirms it', () => {
 
   assert.equal(scene.confirmed, 2);
 });
+
+function playersAfter(seed, tickCount) {
+  const scene = new TitleScene({ seed });
+  for (let tick = 0; tick < tickCount; tick++) scene.update(neutralInputs());
+  return scene.brawl.players.map((player) => ({ id: player.id, x: player.x, y: player.y }));
+}
+
+test('the same seed puts the title characters in the same places after the same ticks', () => {
+  assert.deepEqual(playersAfter(7, 900), playersAfter(7, 900));
+});
+
+test('different seeds play out differently', () => {
+  assert.notDeepEqual(playersAfter(1, 900), playersAfter(2, 900));
+});
+
+test('the title characters fight: they shove each other and get knocked out and respawn', () => {
+  const scene = new TitleScene({ seed: 3 });
+  let shoves = 0;
+  scene.brawl.events.on('player-shoved', () => shoves++);
+
+  for (let tick = 0; tick < 3600; tick++) scene.update(neutralInputs());
+
+  assert.ok(shoves > 0);
+  assert.ok(scene.brawl.respawnCount > 0);
+});
+
+test('a title character that falls out drops back in from the top of the screen and lands', () => {
+  const scene = new TitleScene({ seed: 0 });
+  const red = scene.brawl.players.find((player) => player.id === 'red');
+  red.y = 400;
+
+  scene.update(neutralInputs());
+  const returned = scene.brawl.players.find((player) => player.id === 'red');
+  assert.notEqual(returned, red);
+  assert.ok(returned.y + returned.height < 0);
+
+  for (let tick = 0; tick < 120; tick++) scene.update(neutralInputs());
+  assert.ok(scene.brawl.players.find((player) => player.id === 'red').y > 100);
+});
+
+function overlapsRectangle(player, rectangle) {
+  return (
+    player.x < rectangle.x + rectangle.width &&
+    player.x + player.width > rectangle.x &&
+    player.y < rectangle.y + rectangle.height &&
+    player.y + player.height > rectangle.y
+  );
+}
+
+test('four characters fight, at least three are on screen, and none cross the logo or the menu', () => {
+  const scene = new TitleScene({ seed: 5 });
+  const logo = { x: 220, y: 30, width: 200, height: 30 };
+  const menu = { x: 270, y: 176, width: 100, height: 64 };
+  assert.equal(scene.brawl.players.length, 4);
+
+  for (let tick = 0; tick < 3600; tick++) {
+    scene.update(neutralInputs());
+    const onScreen = scene.brawl.players.filter((player) => player.y + player.height > 0);
+    assert.ok(onScreen.length >= 3, `only ${onScreen.length} on screen at tick ${tick}`);
+    for (const player of scene.brawl.players) {
+      assert.ok(!overlapsRectangle(player, logo), `behind the logo at tick ${tick}`);
+      assert.ok(!overlapsRectangle(player, menu), `behind the menu at tick ${tick}`);
+    }
+  }
+});
