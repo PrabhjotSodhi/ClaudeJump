@@ -1,4 +1,4 @@
-import { loadMusicEnabled, saveMusicEnabled } from './sound-settings.js';
+import { loadMusicEnabled, saveMusicEnabled, settings, volumeScale } from './sound-settings.js';
 import { MusicSequencer } from './music-sequencer.js';
 
 const MUSIC_VOLUME = 0.5;
@@ -78,7 +78,8 @@ export class MusicPlayer {
   updateVolume(audioContext, now) {
     this.musicGain ??= this.createMusicGain(audioContext);
     const audible = this.soundPlayer.soundEnabled && this.musicEnabled;
-    const volume = audible ? MUSIC_VOLUME * (this.paused ? PAUSED_VOLUME_SCALE : 1) : 0;
+    const pausedScale = this.paused ? PAUSED_VOLUME_SCALE : 1;
+    const volume = audible ? MUSIC_VOLUME * volumeScale(settings.musicVolume) * pausedScale : 0;
     this.musicGain.gain.setTargetAtTime(volume, now, VOLUME_SMOOTHING_SECONDS);
   }
 

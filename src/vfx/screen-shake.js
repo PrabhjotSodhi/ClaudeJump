@@ -4,6 +4,7 @@
 // A hit with a direction kicks the picture that way and settles back. A shake with no direction,
 // like a blast or a fall in the sea, jumps back and forth as it fades.
 import { IMPACT_EFFECTS } from '../engine/config.js';
+import { screenShakeScale } from '../engine/sound-settings.js';
 
 const FALL_SHAKE_PIXELS = 3;
 const FALL_SHAKE_TICKS = 10;
@@ -46,7 +47,7 @@ export class ScreenShake {
   }
 
   currentPixels() {
-    return Math.round((this.pixels * this.ticksRemaining) / this.totalTicks);
+    return Math.round((this.pixels * screenShakeScale() * this.ticksRemaining) / this.totalTicks);
   }
 
   get offset() {

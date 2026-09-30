@@ -1,7 +1,9 @@
+import { saveSettings, settings } from '../engine/sound-settings.js';
 import { AwardReveal } from '../ui/award-reveal.js';
 import { pickAwards } from '../ui/match-stats.js';
 import { MenuMotion, rowIndexAt, tapPoint, wrapMenuIndex } from '../ui/menu-kit.js';
 import { drawPauseMenu, pauseMenuRowRectangles } from '../ui/pause-menu.js';
+import { SettingsMenu } from '../ui/settings-menu.js';
 import { drawResultsMenu, resultsMenuRowRectangles } from '../ui/results-menu.js';
 import { LevelSelectScene } from './level-select-scene.js';
 import { PlayerSelectScene } from './player-select-scene.js';
@@ -14,6 +16,7 @@ function pauseMenuOptions(soundEnabled, musicEnabled, fullscreen) {
     { id: 'title', label: 'Return to title' },
     { id: 'sound', label: soundEnabled ? 'Sound: On' : 'Sound: Off' },
     { id: 'music', label: musicEnabled ? 'Music: On' : 'Music: Off' },
+    { id: 'settings', label: 'Settings' },
   ];
   if (fullscreen?.supported)
     options.push({ id: 'fullscreen', label: fullscreen.active ? 'Fullscreen: On' : 'Fullscreen: Off' });
@@ -48,6 +51,7 @@ export class PausableMatchScene {
     this.resultsMenuOpen = false;
     this.resultsSelectedIndex = 0;
     this.awardReveal = null;
+    this.settingsMenu = null;
     this.pauseMotion = new MenuMotion({ closed: true });
     this.resultsMotion = new MenuMotion();
   }
@@ -81,6 +85,13 @@ export class PausableMatchScene {
     this.resultsMenuOpen = false;
 
     if (this.paused) {
+      if (this.settingsMenu) {
+        if (this.settingsMenu.update(inputByPlayerId)) {
+          this.settingsMenu = null;
+          this.seedMenuBaseline(inputByPlayerId);
+        }
+        return;
+      }
       if (pausePressed) {
         this.resume(inputByPlayerId);
         return;
@@ -253,6 +264,11 @@ export class PausableMatchScene {
     return maskedInput;
   }
 
+  saveSettings() {
+    const storage = this.sceneManager.soundPlayer?.storage;
+    if (storage) saveSettings(storage, settings);
+  }
+
   confirmSelection(inputByPlayerId) {
     const option = this.pauseMenuOptions[this.selectedIndex];
     if (option.id === 'resume') {
@@ -261,6 +277,13 @@ export class PausableMatchScene {
       this.sceneManager.soundPlayer?.toggleSound();
     } else if (option.id === 'music') {
       this.sceneManager.musicPlayer?.toggleMusic();
+    } else if (option.id === 'settings') {
+      this.settingsMenu = new SettingsMenu({
+        settings,
+        events: this.events,
+        onChange: () => this.saveSettings(),
+        initialInput: inputByPlayerId,
+      });
     } else if (option.id === 'fullscreen') {
       this.sceneManager.fullscreen.toggle();
     } else if (option.id === 'title') {
@@ -286,12 +309,13 @@ export class PausableMatchScene {
         motion: this.resultsMotion,
         awardReveal: this.awardReveal,
       });
-    if (this.paused || !this.pauseMotion.isClosed) {
+    if (!this.settingsMenu && (this.paused || !this.pauseMotion.isClosed)) {
       drawPauseMenu(renderer.uiContext, {
         options: this.pauseMenuOptions,
         selectedIndex: this.selectedIndex,
         motion: this.pauseMotion,
       });
     }
+    this.settingsMenu?.render(renderer.uiContext);
   }
 }
