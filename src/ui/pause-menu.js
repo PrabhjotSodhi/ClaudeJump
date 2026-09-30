@@ -14,8 +14,8 @@ import { drawMenuBackdrop } from './menu-options.js';
 const TITLE_GAP = 14;
 const HINT_GAP = 14;
 const HINTS = [
-  { keys: ['Enter', 'A'], label: 'Select' },
-  { keys: ['Esc', 'Start'], label: 'Resume' },
+  { keys: ['Enter'], pad: ['south'], label: 'Select' },
+  { keys: ['Esc'], pad: ['start'], label: 'Resume' },
 ];
 
 function pauseLayout(options) {
