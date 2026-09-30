@@ -214,3 +214,13 @@ export const ICE_SHOT_SPEED = 5;
 export const ICE_SHOT_LIFETIME_TICKS = 120;
 export const FREEZE_TICKS = 60;
 export const FROZEN_KNOCKBACK_DECAY = 0.15;
+
+// Hold the hill. A round lasts HILL_ROUND_TICKS and the most points wins it. The zone sits on one platform top,
+// HILL_ZONE_WIDTH wide (or the platform's width if narrower) and HILL_ZONE_HEIGHT tall, and moves to the platform its
+// marker shows every HILL_ZONE_MOVE_TICKS. A player alone in the zone earns a point each tick. A knocked out player
+// comes back at their spawn HILL_RESPAWN_TICKS after hitting the water.
+export const HILL_ROUND_TICKS = 1800;
+export const HILL_ZONE_MOVE_TICKS = 600;
+export const HILL_ZONE_WIDTH = 64;
+export const HILL_ZONE_HEIGHT = 40;
+export const HILL_RESPAWN_TICKS = 120;

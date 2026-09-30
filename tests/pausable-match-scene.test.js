@@ -260,6 +260,9 @@ test('Return to title, then Versus, opens a player select that can run a tick', 
     playerSelectScene.update(neutralInputs());
   }
   for (let tick = 0; tick < START_COUNTDOWN_TICKS; tick++) playerSelectScene.update(neutralInputs());
+  const modeSelectScene = currentScene;
+  modeSelectScene.update(neutralInputs());
+  modeSelectScene.update(readyInputs());
   const levelSelectScene = currentScene;
   levelSelectScene.update(neutralInputs());
   levelSelectScene.update(readyInputs());

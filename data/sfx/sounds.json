@@ -143,6 +143,32 @@
       "noiseVolume": 0.2
     }
   ],
+  "hill-move": [
+    {
+      "waveform": "triangle",
+      "startFrequency": 520,
+      "endFrequency": 520,
+      "duration": 0.08,
+      "volume": 0.16
+    },
+    {
+      "waveform": "triangle",
+      "startFrequency": 780,
+      "endFrequency": 780,
+      "duration": 0.12,
+      "volume": 0.16,
+      "delay": 0.09
+    }
+  ],
+  "respawn": [
+    {
+      "waveform": "square",
+      "startFrequency": 330,
+      "endFrequency": 660,
+      "duration": 0.18,
+      "volume": 0.12
+    }
+  ],
   "slip": [
     {
       "waveform": "sine",

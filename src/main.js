@@ -27,6 +27,7 @@ import { createWindow } from './engine/window.js';
 import { LevelSelectScene } from './scenes/level-select-scene.js';
 import { OnlineLobbyScene } from './scenes/online-lobby-scene.js';
 import { OnlineMatchScene } from './scenes/online-match-scene.js';
+import { ModeSelectScene } from './scenes/mode-select-scene.js';
 import { PausableMatchScene } from './scenes/pausable-match-scene.js';
 import { PlayerSelectScene } from './scenes/player-select-scene.js';
 import { StyleTestScene } from './scenes/style-test-scene.js';
@@ -61,7 +62,10 @@ function isAnyControlHeld(inputByPlayerId) {
 function touchButtonsFor(scene) {
   if (scene instanceof OnlineLobbyScene || scene instanceof OnlineMatchScene) return TOUCH_BUTTONS;
   const isVersus =
-    scene instanceof PlayerSelectScene || scene instanceof LevelSelectScene || scene.matchScene instanceof VersusScene;
+    scene instanceof PlayerSelectScene ||
+    scene instanceof ModeSelectScene ||
+    scene instanceof LevelSelectScene ||
+    scene.matchScene instanceof VersusScene;
   return isVersus ? TWO_PLAYER_TOUCH_BUTTONS : TOUCH_BUTTONS;
 }
 
@@ -183,7 +187,7 @@ async function main() {
     sceneManager.setScene(new SurvivalScene({ sprites, seed: 0 }));
   } else if (isDevMode) {
     // ?dev&level=cave starts on that level file. Harbor is the default.
-    // ?dev&players=4 seats that many players, 2 to 4.
+    // ?dev&players=4 seats that many players, 2 to 4. ?dev&mode=hill plays that mode.
     const playerCount = Math.min(PLAYERS.length, Math.max(2, Number(searchParameters.get('players')) || 2));
     const levelIndex = Math.max(0, LEVEL_FILE_NAMES.indexOf(searchParameters.get('level')));
     sceneManager.setScene(
@@ -197,6 +201,7 @@ async function main() {
           sprites,
           levels,
           heat: gameOptions.heat,
+          mode: searchParameters.get('mode') ?? 'knockout',
         }),
       }),
     );

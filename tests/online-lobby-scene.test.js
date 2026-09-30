@@ -14,8 +14,8 @@ import {
 
 const LEVELS = [harborLevel, { ...harborLevel, name: 'cave' }];
 const ROW_READY = 1;
-const ROW_START = 3;
-const ROW_LEAVE = 4;
+const ROW_START = 4;
+const ROW_LEAVE = 5;
 
 function startLobby({ isHost, connection = new FakeOnlineConnection() }) {
   const sceneManager = fakeSceneManager();
@@ -217,6 +217,7 @@ test('a joiner sees the lobby the host sends, and which seat is theirs', () => {
   const lobby = startLobby({ isHost: false, connection: new FakeOnlineConnection({ peerIds: ['host-peer'] }) });
   const snapshot = {
     levelName: 'cave',
+    modeId: 'hill',
     seats: [{ characterName: 'claude', ready: true }, null, { characterName: 'gemini', ready: false }, null],
   };
 

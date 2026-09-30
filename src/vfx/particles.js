@@ -112,6 +112,7 @@ export class Particles {
       burst(x, y, ICE_GLINT_COLOR, HIT_SPARKS);
     });
     events.on('ice-shattered', ({ x, y }) => burst(x, y, ICE_COLOR, HIT_SPARKS));
+    events.on('player-respawned', ({ x, y }) => burst(x, y, DUST_COLOR, LANDING_DUST));
     events.on('crab-stomped', ({ x, y }) => burst(x, y, CRAB_COLOR, HIT_SPARKS));
     events.on('player-pinched', (hit) => {
       const player = findPlayer(hit.playerId);

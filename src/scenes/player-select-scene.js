@@ -20,7 +20,7 @@ import {
 } from '../ui/select-card.js';
 import { SelectCardMotion } from '../ui/select-card-motion.js';
 import { drawText } from '../ui/text.js';
-import { LevelSelectScene } from './level-select-scene.js';
+import { ModeSelectScene } from './mode-select-scene.js';
 
 const TITLE_Y = 24;
 
@@ -155,7 +155,7 @@ export class PlayerSelectScene {
     }
     if (this.countdownTicksRemaining === 0) {
       this.sceneManager.setScene(
-        new LevelSelectScene({
+        new ModeSelectScene({
           sceneManager: this.sceneManager,
           levels: this.levels,
           characterByPlayerId: this.pickedCharacters(),

@@ -1,6 +1,7 @@
 import { SeededRandom } from '../engine/seeded-random.js';
 import { CHARACTERS, HOVER_CHARACTER_BY_PLAYER_ID } from '../entities/characters.js';
 import { PLAYERS } from '../levels/versus-arena.js';
+import { MATCH_MODES } from './match-modes.js';
 import { wrapMenuIndex } from '../ui/menu-kit.js';
 
 export const MINIMUM_READY_PLAYERS = 2;
@@ -14,6 +15,7 @@ export class OnlineLobby {
   constructor({ levelNames }) {
     this.levelChoices = [...levelNames, RANDOM_LEVEL];
     this.levelName = RANDOM_LEVEL;
+    this.modeId = MATCH_MODES[0].id;
     this.seats = PLAYERS.map(() => null);
   }
 
@@ -96,6 +98,11 @@ export class OnlineLobby {
     this.levelName = this.levelChoices[(index + direction + count) % count];
   }
 
+  changeMode(direction) {
+    const index = MATCH_MODES.findIndex((mode) => mode.id === this.modeId);
+    this.modeId = MATCH_MODES[wrapMenuIndex(index, direction, MATCH_MODES.length)].id;
+  }
+
   // A match needs two ready players and nobody left out: everyone in the room plays.
   canStart() {
     return this.readyCount >= MINIMUM_READY_PLAYERS && this.readyCount === this.playerCount;
@@ -112,7 +119,7 @@ export class OnlineLobby {
     this.seats.forEach((seat, seatIndex) => {
       if (seat) players.push({ id: PLAYERS[seatIndex].id, characterName: seat.characterName });
     });
-    return { seed, levelName, players };
+    return { seed, levelName, mode: this.modeId, players };
   }
 
   // The player id that each member plays, for the members who are seated.
@@ -128,12 +135,14 @@ export class OnlineLobby {
   snapshot() {
     return {
       levelName: this.levelName,
+      modeId: this.modeId,
       seats: this.seats.map((seat) => seat && { characterName: seat.characterName, ready: seat.ready }),
     };
   }
 
   load(snapshot) {
     this.levelName = this.levelChoices.includes(snapshot?.levelName) ? snapshot.levelName : RANDOM_LEVEL;
+    this.modeId = MATCH_MODES.some((mode) => mode.id === snapshot?.modeId) ? snapshot.modeId : MATCH_MODES[0].id;
     this.seats = PLAYERS.map((_, seatIndex) => {
       const seat = snapshot?.seats?.[seatIndex];
       const isKnownCharacter = CHARACTERS.some((character) => character.name === seat?.characterName);

@@ -75,7 +75,7 @@ test('a press held over from before this scene does not count as a fresh press',
   assert.equal(scene.stateByPlayerId.red, 'picking', 'released and pressed again is a fresh press');
 });
 
-test('level select does not open until both players are ready', () => {
+test('the mode choice does not open until both players are ready', () => {
   const { scene, scenes } = sceneWithBaseline();
 
   readyUp(scene, 'red');
@@ -88,8 +88,8 @@ test('level select does not open until both players are ready', () => {
   assert.equal(scenes.length, 0, 'the countdown has only just begun');
   runCountdown(scene);
 
-  assert.equal(scenes.length, 1, 'level select opens once every player is ready');
-  assert.equal(scenes[0].constructor.name, 'LevelSelectScene');
+  assert.equal(scenes.length, 1, 'the mode choice opens once every player is ready');
+  assert.equal(scenes[0].constructor.name, 'ModeSelectScene');
 });
 
 function press(scene, playerId, button) {

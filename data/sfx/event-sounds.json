@@ -24,6 +24,8 @@
   "magnet-pulled": "magnet",
   "spring-jumped": "spring",
   "player-iced": "freeze",
+  "hill-moved": "hill-move",
+  "player-respawned": "respawn",
   "ice-shattered": "ice-shatter",
   "player-burned": "burn",
   "player-pinched": "crab-pinch",

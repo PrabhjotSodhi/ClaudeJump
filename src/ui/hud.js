@@ -21,6 +21,7 @@ const TIMER_CALM = { scale: 1, height: 16, textTop: 5 };
 const TIMER_URGENT = { scale: 2, height: 24, textTop: 6 };
 const SUDDEN_DEATH_BANNER_Y = 60;
 const MODIFIER_ICON_Y = 36;
+const HILL_POINTS_GAP = 3;
 
 function timerPanelBox({ scale, height }) {
   const width = Math.ceil((measureText(TIMER_TEXT_WIDEST) * scale + 2 * TIMER_PANEL_PADDING_X) / 2) * 2;
@@ -126,9 +127,24 @@ function drawSuddenDeathBanner(context, scene) {
   });
 }
 
+// Hold the hill points under each player panel, in whole seconds held.
+function drawHillPoints(context, scene, panelBoxes) {
+  scene.players.forEach((player, index) => {
+    const box = panelBoxes[index];
+    const points = Math.floor(scene.modeRules.pointsByPlayerId[player.id] / TICK_RATE);
+    const holding = scene.modeRules.holderId === player.id;
+    drawText(context, `${points}s`, box.x + box.width / 2, box.y + box.height + HILL_POINTS_GAP, {
+      scale: holding ? 2 : 1,
+      align: 'center',
+      color: player.color,
+    });
+  });
+}
+
 export function drawHud(context, scene) {
   const panelBoxes = playerPanelBoxes(scene.players.length);
   scene.players.forEach((player, index) => drawPlayerPanel(context, scene, player, panelBoxes[index]));
+  if (scene.modeRules && scene.phase !== 'modifier') drawHillPoints(context, scene, panelBoxes);
 
   if (scene.phase === 'fight') drawTimerPanel(context, scene);
   if (scene.activeModifierId && (scene.phase === 'fight' || scene.phase === 'knockout')) {
