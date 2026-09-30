@@ -98,12 +98,14 @@ export class VersusScene {
     players = DEFAULT_JOINED_PLAYERS,
     sprites = {},
     levels = [],
+    heat = false,
   } = {}) {
     // The joined players, each { id, character }, in seat order. Every level has a spawn for each id.
     this.joinedPlayers = players;
     this.characterByPlayerId = Object.fromEntries(players.map(({ id, character }) => [id, character]));
     this.sprites = sprites;
     this.levels = levels;
+    this.heatEnabled = heat;
     this.events = new EventEmitter();
     this.random = new SeededRandom(seed);
     this.entityGroups = new EntityGroups();
@@ -185,7 +187,10 @@ export class VersusScene {
     }
     for (const { id, character } of this.joinedPlayers) {
       const { x, y, facing } = this.level.spawns.find((spawn) => spawn.id === id);
-      this.entityGroups.add('players', new Player({ id, character, spawnX: x, spawnY: y, facing }));
+      this.entityGroups.add(
+        'players',
+        new Player({ id, character, spawnX: x, spawnY: y, facing, heatEnabled: this.heatEnabled }),
+      );
     }
     this.ticksUntilCrateSpawn = CRATE_SPAWN_DELAY_TICKS;
     if (this.skipNextReadyPhase) {
