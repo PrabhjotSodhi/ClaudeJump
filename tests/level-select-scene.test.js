@@ -288,3 +288,22 @@ test('voting waits for every joined player and no one else', () => {
 
   assert.notEqual(scene.pickedLevel, null, 'blue and yellow never joined, so they are not waited for');
 });
+
+test('players sharing one phone vote by tapping in turn', () => {
+  const { scene, scenes } = sceneWithBaseline();
+  const { bounds } = levelSelectLayout(twoLevels.length + 1);
+  const tapTile = (index) => {
+    const tile = bounds[index];
+    scene.update({ ...neutralInputs(), red: { ...noInput(), tap: { x: tile.x + 2, y: tile.y + 2 } } });
+  };
+
+  tapTile(1);
+  tapTile(1);
+  assert.equal(scene.lockedByPlayerId.red, true);
+  assert.equal(scene.lockedByPlayerId.blue, false);
+  tapTile(1);
+  tapTile(1);
+  assert.equal(scene.lockedByPlayerId.blue, true);
+  ticksUntilMatch(scene, scenes);
+  assert.equal(scenes[0].matchScene.level, otherLevel);
+});

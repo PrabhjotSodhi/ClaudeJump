@@ -55,6 +55,16 @@ export const TWO_PLAYER_TOUCH_BUTTONS = [
   PAUSE_BUTTON,
 ];
 
+// The buttons a scene shows. Only scenes where players move need them: a scene sets `touchLayout` to 'onePlayer' or
+// 'twoPlayers', or wraps a match scene that does. Menus leave it unset, show no buttons and are driven by taps on
+// what they draw.
+export function touchButtonsFor(scene) {
+  const layout = scene.touchLayout ?? scene.matchScene?.touchLayout;
+  if (layout === 'twoPlayers') return TWO_PLAYER_TOUCH_BUTTONS;
+  if (layout === 'onePlayer') return TOUCH_BUTTONS;
+  return [];
+}
+
 // The portrait controls panel sits below the game and has its own pixels. One player, like the
 // online scenes: every button fills the first player's record. The panel is CONTROLS_PANEL_WIDTH
 // wide and as tall as the phone allows, so the layout takes its height. Buttons sit near the

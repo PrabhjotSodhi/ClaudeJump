@@ -148,13 +148,19 @@ export class LevelSelectScene {
     }
   }
 
-  // Touch drives the first player. A tap moves their cursor to the tile, and a tap on the tile they are on votes.
+  // Taps vote in seat order, so players sharing one phone take turns: a tap moves the cursor of the first voter who
+  // has not voted yet, and a tap on the tile that cursor is on locks their vote.
   selectTappedTile(inputByPlayerId) {
-    const playerId = this.voters[0].id;
     const tappedIndex = rowIndexAt(levelSelectLayout(this.levels.length + 1).bounds, tapPoint(inputByPlayerId));
-    if (tappedIndex < 0 || this.lockedByPlayerId[playerId]) return;
-    if (this.cursorByPlayerId[playerId] === tappedIndex) this.lockedByPlayerId[playerId] = true;
-    else this.cursorByPlayerId[playerId] = tappedIndex;
+    const voter = this.voters.find((spawn) => !this.lockedByPlayerId[spawn.id]);
+    if (tappedIndex < 0 || !voter) return;
+    if (this.cursorByPlayerId[voter.id] === tappedIndex) {
+      this.lockedByPlayerId[voter.id] = true;
+      this.events.emit('menu-selected', { playerId: voter.id });
+    } else {
+      this.cursorByPlayerId[voter.id] = tappedIndex;
+      this.events.emit('menu-moved', { playerId: voter.id });
+    }
   }
 
   // Left and right wrap inside the cursor's row, which may be a shorter last row.
@@ -215,7 +221,9 @@ export class LevelSelectScene {
 
     renderer.clearGameLayer();
     renderer.clearUiLayer();
-    drawWithMenuMotion(renderer.uiContext, this.menuMotion, () => drawLevelSelectUi(renderer.uiContext, this));
+    drawWithMenuMotion(renderer.uiContext, this.menuMotion, () =>
+      drawLevelSelectUi(renderer.uiContext, this, renderer.touchActive),
+    );
   }
 }
 
@@ -315,7 +323,8 @@ function drawBadge(context, x, y, seatIndex, character, sprites) {
   });
 }
 
-function drawLevelSelectUi(context, scene) {
+// With touch there are no buttons on this screen, so the prompt asks for taps instead of a jump.
+function drawLevelSelectUi(context, scene, touchActive) {
   const cardCount = scene.levels.length + 1;
   const { tiles, titleY, promptY, hintY } = levelSelectLayout(cardCount);
   drawMenuTitle(context, 'Level Select', titleY);
@@ -339,7 +348,8 @@ function drawLevelSelectUi(context, scene) {
   scene.voters.forEach((spawn, voterIndex) => {
     const centerX = SCREEN_WIDTH / 2 + STATUS_OFFSETS_X[scene.voters.length][voterIndex];
     const locked = scene.lockedByPlayerId[spawn.id];
-    const prompt = `${TAG_LABEL_BY_PLAYER_ID[spawn.id]} ${locked ? 'Locked in!' : 'Press jump to vote'}`;
+    const votePrompt = touchActive ? 'Tap twice to vote' : 'Press jump to vote';
+    const prompt = `${TAG_LABEL_BY_PLAYER_ID[spawn.id]} ${locked ? 'Locked in!' : votePrompt}`;
     drawText(context, prompt, centerX - Math.floor(measureText(prompt) / 2), promptY, {
       scale: 1,
       outlineColor: null,

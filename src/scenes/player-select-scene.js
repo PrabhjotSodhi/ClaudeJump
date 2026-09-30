@@ -85,6 +85,9 @@ const JOIN_TEXT_BY_PLAYER_ID = {
   yellow: 'Press jump on pad 4',
 };
 
+// With touch there are no buttons on this screen, so every card is joined by a tap on it.
+const TOUCH_JOIN_TEXT = 'Tap to join';
+
 // Each card goes through these states in order, one jump press apart.
 const NEXT_STATE = { unjoined: 'picking', picking: 'ready' };
 
@@ -174,14 +177,17 @@ export class PlayerSelectScene {
     return readyCount >= MINIMUM_PLAYERS && states.every((state) => state !== 'picking');
   }
 
-  // Touch drives the first player. A tap on their card joins, then locks in. While picking, a tap on
-  // either arrow changes the character instead.
+  // A tap on a card drives that seat, so players sharing one phone each tap their own card. The tap joins, then locks
+  // in. While picking, a tap on either arrow changes the character instead.
   advanceTappedCard(inputByPlayerId) {
     const point = tapPoint(inputByPlayerId);
-    const box = playerCardBox(0);
-    if (rowIndexAt([box], point) !== 0) return;
-    const playerId = PLAYERS[0].id;
-    const direction = pickArrowDirectionAt(box, point);
+    const seatIndex = rowIndexAt(
+      PLAYERS.map((spawn, index) => playerCardBox(index)),
+      point,
+    );
+    if (seatIndex < 0) return;
+    const playerId = PLAYERS[seatIndex].id;
+    const direction = pickArrowDirectionAt(playerCardBox(seatIndex), point);
     if (this.stateByPlayerId[playerId] === 'picking' && direction !== 0) this.changeCharacter(playerId, direction);
     else this.advance(playerId);
   }
@@ -280,7 +286,8 @@ function drawPlayerCard(context, scene, spawn, textScale) {
   const seatIndex = PLAYERS.indexOf(spawn);
   const box = playerCardBox(seatIndex);
   if (state === 'unjoined') {
-    drawEmptySelectCard(context, box, spawn, [JOIN_TEXT_BY_PLAYER_ID[spawn.id]], textScale);
+    const joinText = textScale === 2 ? TOUCH_JOIN_TEXT : JOIN_TEXT_BY_PLAYER_ID[spawn.id];
+    drawEmptySelectCard(context, box, spawn, [joinText], textScale);
     return;
   }
   context.save();
