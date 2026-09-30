@@ -81,9 +81,20 @@ function clamp(value, minimum, maximum) {
 }
 
 export class Player extends PhysicsEntity {
-  constructor({ id, character, spawnX, spawnY, facing, heatEnabled = false }) {
+  constructor({
+    id,
+    character,
+    spawnX,
+    spawnY,
+    facing,
+    heatEnabled = false,
+    gravityMultiplier = 1,
+    groundAccelerationMultiplier = 1,
+  }) {
     super({ x: spawnX - PLAYER_WIDTH / 2, y: spawnY - PLAYER_HEIGHT, width: PLAYER_WIDTH, height: PLAYER_HEIGHT });
     this.id = id;
+    this.gravityMultiplier = gravityMultiplier;
+    this.groundAccelerationMultiplier = groundAccelerationMultiplier;
     this.character = character;
     this.color = character.tagColor;
     this.facing = facing;
@@ -328,7 +339,7 @@ export class Player extends PhysicsEntity {
       this.velocityX = this.slipDirection * SLIP_SPEED + moveDirection * SLIP_STEER_SPEED;
       this.slipTicksRemaining--;
     } else {
-      const acceleration = this.onGround ? GROUND_ACCELERATION : AIR_ACCELERATION;
+      const acceleration = this.onGround ? GROUND_ACCELERATION * this.groundAccelerationMultiplier : AIR_ACCELERATION;
       const runSpeed = this.shoveCharging ? RUN_SPEED * SHOVE_CHARGE_WALK_MULTIPLIER : RUN_SPEED;
       this.velocityX += clamp(moveDirection * runSpeed - this.velocityX, -acceleration, acceleration);
     }
@@ -355,7 +366,7 @@ export class Player extends PhysicsEntity {
     }
     if (jumpReleased && this.velocityY < 0) this.velocityY *= JUMP_CUT_MULTIPLIER;
 
-    this.applyGravity(GRAVITY, MAX_FALL_SPEED);
+    this.applyGravity(GRAVITY * this.gravityMultiplier, MAX_FALL_SPEED);
     this.moveAndCollide(platforms);
     if (this.onGround && !wasOnGround) this.ticksSinceLanding = 0;
   }

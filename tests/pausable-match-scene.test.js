@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { KNOCKOUT_SLOWMO_TICKS } from '../src/engine/config.js';
+import { KNOCKOUT_SLOWMO_TICKS, MODIFIER_PICK_TICKS } from '../src/engine/config.js';
 import { PausableMatchScene, RESULTS_MENU_OPTIONS } from '../src/scenes/pausable-match-scene.js';
 import { PlayerSelectScene, START_COUNTDOWN_TICKS } from '../src/scenes/player-select-scene.js';
 import { TitleScene } from '../src/scenes/title-scene.js';
@@ -293,6 +293,8 @@ function sceneJustBeforeResults() {
     scene.update(neutralInputs());
     for (let tick = 0; tick < KNOCKOUT_SLOWMO_TICKS; tick++) scene.update(neutralInputs());
     if (win < 5) for (let tick = 0; tick < POINT_PAUSE_TICKS; tick++) scene.update(neutralInputs());
+    if (matchScene.phase === 'modifier')
+      for (let tick = 0; tick < MODIFIER_PICK_TICKS; tick++) scene.update(neutralInputs());
   }
   for (let tick = 0; tick < RESULTS_DELAY_TICKS - 1; tick++) scene.update(neutralInputs());
   return setup;

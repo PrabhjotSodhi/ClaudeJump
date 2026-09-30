@@ -120,3 +120,22 @@ export const AWARD_INTERVAL_TICKS = 40;
 export const AWARD_POP_TICKS = 8;
 // A round won with this many seconds or fewer left on the sudden death countdown earns Clutch survivor.
 export const CLUTCH_SECONDS = 3;
+
+// Round modifiers. Before every MODIFIER_EVERY_N_ROUNDS-th round the player with the fewest wins (ties go to the
+// first seat) picks one of two modifiers drawn by the seeded random, and it lasts that round. The pick is made
+// with left, right and jump, and the highlighted one is taken after MODIFIER_PICK_TICKS. To add a modifier, add an
+// entry here and an icon in modifier-icons.js. Each entry may set:
+// gravityMultiplier: scales player gravity.
+// groundAccelerationMultiplier: scales how fast players speed up and slow down on the ground.
+// bananaRainIntervalTicks: a banana drops on a random open platform this often, after a
+// BANANA_RAIN_WARNING_TICKS warning marker.
+// crateDelayMultiplier: scales the wait for the next crate.
+export const MODIFIER_EVERY_N_ROUNDS = 3;
+export const MODIFIER_PICK_TICKS = 600;
+export const BANANA_RAIN_WARNING_TICKS = 60;
+export const ROUND_MODIFIERS = {
+  lowGravity: { name: 'Low gravity', gravityMultiplier: 0.6 },
+  slipperyFloors: { name: 'Slippery floors', groundAccelerationMultiplier: 0.2 },
+  bananaRain: { name: 'Banana rain', bananaRainIntervalTicks: 150 },
+  fastCrates: { name: 'Fast crates', crateDelayMultiplier: 0.25 },
+};

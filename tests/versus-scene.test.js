@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { HITSTOP_TICKS, KNOCKOUT_SLOWMO_TICKS, SCREEN_WIDTH, SHOVE_WINDUP_TICKS } from '../src/engine/config.js';
+import {
+  HITSTOP_TICKS,
+  KNOCKOUT_SLOWMO_TICKS,
+  MODIFIER_PICK_TICKS,
+  SCREEN_WIDTH,
+  SHOVE_WINDUP_TICKS,
+} from '../src/engine/config.js';
 import { Crate } from '../src/entities/crate.js';
 import { Platform } from '../src/entities/platform.js';
 import { Rocket } from '../src/entities/rocket.js';
@@ -61,6 +67,7 @@ test('reaching 5 points ends the match', () => {
     if (win < 5) {
       assert.equal(scene.phase, 'point');
       advance(scene, 90); // point pause resolves back to a fresh 'ready' round
+      if (scene.phase === 'modifier') advance(scene, MODIFIER_PICK_TICKS);
     }
   }
 

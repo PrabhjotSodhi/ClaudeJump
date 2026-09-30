@@ -1,5 +1,6 @@
 import { SCREEN_HEIGHT, SCREEN_WIDTH, TICK_RATE, TIMER_URGENT_SECONDS } from '../engine/config.js';
 import { ROCKET_HEIGHT } from '../entities/rocket.js';
+import { drawModifierIcon, MODIFIER_ICON_SIZE } from './modifier-icons.js';
 import { drawPanel } from './panel.js';
 import { drawPlayerPanel, PLAYER_PANEL_BOTTOM, playerPanelBoxes } from './player-panel.js';
 import { drawKeyHints, drawMenuTitle, menuPanelSize } from './menu-kit.js';
@@ -18,6 +19,7 @@ const TIMER_URGENT_COLOR = '#e43b44';
 const TIMER_CALM = { scale: 1, height: 16, textTop: 5 };
 const TIMER_URGENT = { scale: 2, height: 24, textTop: 6 };
 const SUDDEN_DEATH_BANNER_Y = 60;
+const MODIFIER_ICON_Y = 36;
 
 function timerPanelBox({ scale, height }) {
   const width = Math.ceil((measureText(TIMER_TEXT_WIDEST) * scale + 2 * TIMER_PANEL_PADDING_X) / 2) * 2;
@@ -125,6 +127,9 @@ export function drawHud(context, scene) {
   scene.players.forEach((player, index) => drawPlayerPanel(context, scene, player, panelBoxes[index]));
 
   if (scene.phase === 'fight') drawTimerPanel(context, scene);
+  if (scene.activeModifierId && (scene.phase === 'fight' || scene.phase === 'knockout')) {
+    drawModifierIcon(context, scene.activeModifierId, (SCREEN_WIDTH - MODIFIER_ICON_SIZE) / 2, MODIFIER_ICON_Y);
+  }
 
   drawPhaseMessage(context, scene);
   drawSuddenDeathBanner(context, scene);

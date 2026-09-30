@@ -1,5 +1,6 @@
 import { ROUND_COUNTDOWN_BEAT_TICKS, ROUND_GO_TICKS, SCREEN_WIDTH } from '../engine/config.js';
-import { drawText } from './text.js';
+import { drawModifierIcon, MODIFIER_ICON_SIZE } from './modifier-icons.js';
+import { drawText, measureText, TEXT_GLYPH_HEIGHT } from './text.js';
 
 const COUNT_Y = 56;
 const COUNT_SCALES = [8, 7, 6];
@@ -8,6 +9,9 @@ const SCALE_TICKS = 2;
 const NAME_Y = 108;
 const NAME_SCALE = 2;
 const CONTROLS_Y = 166;
+const MODIFIER_Y = 140;
+const MODIFIER_ICON_SCALE = 2;
+const MODIFIER_GAP = 8;
 const MATCH_POINT_SCALE = 3;
 const MATCH_POINT_BLINK_TICKS = 8;
 const OUTLINE_COLOR = '#181425';
@@ -64,6 +68,23 @@ export function drawRoundIntro(context, scene) {
   if (display) drawCentered(context, display.text, COUNT_Y, { scale: display.scale, color: display.color });
   if (scene.phase !== 'ready') return;
 
+  if (scene.activeModifierId) {
+    const name = scene.activeModifier.name;
+    const iconSize = MODIFIER_ICON_SIZE * MODIFIER_ICON_SCALE;
+    const textWidth = measureText(name.toUpperCase()) * NAME_SCALE;
+    const left = Math.floor((SCREEN_WIDTH - iconSize - MODIFIER_GAP - textWidth) / 2);
+    drawModifierIcon(context, scene.activeModifierId, left, MODIFIER_Y, MODIFIER_ICON_SCALE);
+    drawText(
+      context,
+      name,
+      left + iconSize + MODIFIER_GAP,
+      MODIFIER_Y + (iconSize - TEXT_GLYPH_HEIGHT * NAME_SCALE) / 2,
+      {
+        scale: NAME_SCALE,
+        color: GO_COLOR,
+      },
+    );
+  }
   const firstRound = Object.values(scene.wins).every((playerWins) => playerWins === 0);
   if (firstRound) {
     drawCentered(context, scene.level.name, NAME_Y, { scale: NAME_SCALE, color: NAME_COLOR });
