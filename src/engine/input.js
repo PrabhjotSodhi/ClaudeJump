@@ -70,3 +70,8 @@ export function combineInputs(...inputByPlayerIdSources) {
   }
   return inputByPlayerId;
 }
+
+// One device plays one online player. Every local control drives that player: either keyboard side, pad 1 and touch.
+export function mergeLocalInputs(inputByPlayerId) {
+  return combineInputs({ local: {} }, ...Object.values(inputByPlayerId).map((input) => ({ local: input }))).local;
+}
