@@ -24,6 +24,8 @@ const BANNER_STRIPE_HEIGHT = 2;
 const PEDESTAL_BLOCK_SIZE = 32;
 const PEDESTAL_BLOCKS = 2;
 const PEDESTAL_WIDTH = PEDESTAL_BLOCK_SIZE * PEDESTAL_BLOCKS;
+// The white outline row of a body overlaps the top edge it stands on, so the feet read as touching.
+const CHARACTER_SINK_PIXELS = 1;
 const LOSER_GAP = 12;
 // A second player on the same side of the pedestal stands beyond the first.
 const FAR_LOSER_GAP = 4;
@@ -154,7 +156,7 @@ function drawCharacter(context, { player, box, matchScene, pose = {} }) {
     eyes: matchScene.playerEyes.eyesFor(player.id),
     eyesClosed: pose.eyes === 'closed',
     centerX: box.x + box.width / 2 + (pose.x ?? 0),
-    bottomY: box.y + box.height + (pose.y ?? 0),
+    bottomY: box.y + box.height + CHARACTER_SINK_PIXELS + (pose.y ?? 0),
     width: box.width + (pose.width ?? 0),
     height: box.height + (pose.height ?? 0),
   });
