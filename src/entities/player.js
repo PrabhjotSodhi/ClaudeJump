@@ -1,20 +1,26 @@
 import {
+  FREEZE_TICKS,
+  FROZEN_KNOCKBACK_DECAY,
   HEAT_GLOW_COLORS,
   HEAT_KNOCKBACK_MAX_MULTIPLIER,
   HEAT_KNOCKBACK_STEP,
   HITSTOP_TICKS,
+  MAGNET_TICKS,
   SCREEN_WIDTH,
   SHOVE_CHARGE_WALK_MULTIPLIER,
   SHOVE_CLASH_WINDOW_TICKS,
   SHOVE_MAX_CHARGE_TICKS,
   SHOVE_MAX_KNOCKBACK_MULTIPLIER,
   SHOVE_WINDUP_TICKS,
+  SPRING_SHOES_HEIGHT_MULTIPLIER,
+  SPRING_SHOES_JUMPS,
 } from '../engine/config.js';
 import { PICKUP_USES } from '../cards/card-definitions.js';
 import { PhysicsEntity } from '../engine/physics-entity.js';
 import { settings } from '../engine/sound-settings.js';
 import { drawCharacterBody, FRAME_SIZE } from '../vfx/character-body.js';
 import { drawShovel } from '../vfx/shovel.js';
+import { drawSpringShoes } from '../vfx/spring-shoes.js';
 
 export const PLAYER_WIDTH = 24;
 export const PLAYER_HEIGHT = 28;
@@ -34,6 +40,8 @@ const DASH_SPEED = 9;
 const DASH_TICKS = 10;
 const SLIP_SPEED = 5;
 const SLIP_STEER_SPEED = 0.5;
+const SPRING_JUMP_VELOCITY_MULTIPLIER = Math.sqrt(SPRING_SHOES_HEIGHT_MULTIPLIER);
+const FROZEN_GLOW_COLOR = '#2ce8f5';
 export const SHOVE_ACTIVE_TICKS = 6;
 export const SHOVE_COOLDOWN_TICKS = 30;
 export const SHOVE_HIT_ZONE_WIDTH = 16;
@@ -120,6 +128,10 @@ export class Player extends PhysicsEntity {
     this.shoveFullChargeTicks = 0;
     this.shoveJustFullyCharged = false;
     this.shoveCharge = 0;
+    this.magnetTicksRemaining = 0;
+    this.springJumpsRemaining = 0;
+    this.springJumped = false;
+    this.frozenTicksRemaining = 0;
     this.heatEnabled = heatEnabled;
     this.heat = 0;
     this.hitstopTicksRemaining = 0;
@@ -178,6 +190,15 @@ export class Player extends PhysicsEntity {
     return this.hitstopTicksRemaining > 0;
   }
 
+  // Frozen solid by an ice shot, not the short freeze of a hit.
+  get isIced() {
+    return this.frozenTicksRemaining > 0;
+  }
+
+  get knockbackDecay() {
+    return this.isIced ? FROZEN_KNOCKBACK_DECAY : super.knockbackDecay;
+  }
+
   get heatKnockbackMultiplier() {
     return Math.min(HEAT_KNOCKBACK_MAX_MULTIPLIER, 1 + this.heat * HEAT_KNOCKBACK_STEP);
   }
@@ -187,6 +208,11 @@ export class Player extends PhysicsEntity {
     if (this.heat === 0) return null;
     const capReached = (this.heatKnockbackMultiplier - 1) / (HEAT_KNOCKBACK_MAX_MULTIPLIER - 1);
     return HEAT_GLOW_COLORS[Math.min(HEAT_GLOW_COLORS.length - 1, Math.floor(capReached * HEAT_GLOW_COLORS.length))];
+  }
+
+  // Render only. Ice shows over heat.
+  get glowColor() {
+    return this.isIced ? FROZEN_GLOW_COLOR : this.heatGlowColor;
   }
 
   // Every hit that knocks this player back goes through here. With heat on, the knockback grows with the heat built
@@ -216,6 +242,25 @@ export class Player extends PhysicsEntity {
     this.applyKnockback(this.pendingKnockbackVelocityX, this.pendingKnockbackVelocityY);
     this.pendingKnockbackVelocityX = 0;
     this.pendingKnockbackVelocityY = 0;
+  }
+
+  // Stops the player where they are. Knockback they already had keeps carrying them.
+  freezeSolid() {
+    this.frozenTicksRemaining = FREEZE_TICKS;
+    this.velocityX = 0;
+    this.dashTicksRemaining = 0;
+    this.slipTicksRemaining = 0;
+    this.shoveCharging = false;
+  }
+
+  // Frozen solid, the player still falls and slides but ignores input, and a button held through it does not fire.
+  updateIced(input, platforms) {
+    this.frozenTicksRemaining--;
+    this.handleActionInput(input, false);
+    this.jumpHeld = input ? input.jump : false;
+    this.velocityX = 0;
+    this.applyGravity(GRAVITY * this.gravityMultiplier, MAX_FALL_SPEED);
+    this.moveAndCollide(platforms);
   }
 
   startSinking() {
@@ -287,6 +332,8 @@ export class Player extends PhysicsEntity {
     this.heldCardUsesRemaining--;
     if (this.heldCardUsesRemaining <= 0) this.heldCardName = null;
     if (this.playedCardName === 'dash') this.startDash();
+    if (this.playedCardName === 'magnet') this.magnetTicksRemaining = MAGNET_TICKS;
+    if (this.playedCardName === 'springShoes') this.springJumpsRemaining = SPRING_SHOES_JUMPS;
   }
 
   startDash() {
@@ -311,6 +358,7 @@ export class Player extends PhysicsEntity {
     this.playedCardName = null;
     this.shoveJustStarted = false;
     this.shoveJustFullyCharged = false;
+    this.springJumped = false;
     this.ticksSinceJump = Math.min(this.ticksSinceJump + 1, STRETCH_TICKS);
     this.ticksSinceLanding = Math.min(this.ticksSinceLanding + 1, SQUASH_TICKS);
     const wasOnGround = this.onGround;
@@ -320,6 +368,10 @@ export class Player extends PhysicsEntity {
     }
     if (this.isFrozen) {
       this.updateFrozen(input);
+      return;
+    }
+    if (this.isIced) {
+      this.updateIced(input, platforms);
       return;
     }
 
@@ -354,14 +406,10 @@ export class Player extends PhysicsEntity {
     this.jumpBufferTicksRemaining--;
     if (this.jumpBufferTicksRemaining > 0) {
       if (this.coyoteTicksRemaining > 0) {
-        this.velocityY = JUMP_VELOCITY;
-        this.ticksSinceJump = 0;
-        this.jumpBufferTicksRemaining = 0;
+        this.jump(JUMP_VELOCITY);
         this.coyoteTicksRemaining = 0;
       } else if (this.airJumpAvailable) {
-        this.velocityY = JUMP_VELOCITY * AIR_JUMP_MULTIPLIER;
-        this.ticksSinceJump = 0;
-        this.jumpBufferTicksRemaining = 0;
+        this.jump(JUMP_VELOCITY * AIR_JUMP_MULTIPLIER);
         this.airJumpAvailable = false;
       }
     }
@@ -370,6 +418,15 @@ export class Player extends PhysicsEntity {
     this.applyGravity(GRAVITY * this.gravityMultiplier, MAX_FALL_SPEED);
     this.moveAndCollide(platforms);
     if (this.onGround && !wasOnGround) this.ticksSinceLanding = 0;
+  }
+
+  // Spring shoes make the jump higher while they have jumps left.
+  jump(velocityY) {
+    this.springJumped = this.springJumpsRemaining > 0;
+    if (this.springJumped) this.springJumpsRemaining--;
+    this.velocityY = this.springJumped ? velocityY * SPRING_JUMP_VELOCITY_MULTIPLIER : velocityY;
+    this.ticksSinceJump = 0;
+    this.jumpBufferTicksRemaining = 0;
   }
 
   // Drawn a second time offset by a screen width while crossing an edge, so wrapping never shows a gap.
@@ -395,7 +452,7 @@ export class Player extends PhysicsEntity {
       sprite,
       flashSprite: flashing ? silhouetteOf(sprite, '#ffffff') : null,
       outlineSprite: this.outlineColor ? silhouetteOf(sprite, this.outlineColor) : null,
-      glowSprite: this.heatGlowColor && !this.inWater ? silhouetteOf(sprite, this.heatGlowColor) : null,
+      glowSprite: this.glowColor && !this.inWater ? silhouetteOf(sprite, this.glowColor) : null,
       eyeFramePositions: this.character.eyeFramePositions,
       eyes: playerEyes.eyesFor(this.id),
       eyesClosed: pose.eyes === 'closed',
@@ -405,5 +462,6 @@ export class Player extends PhysicsEntity {
       height: FRAME_SIZE + squash.height + (pose.height ?? 0),
     });
     drawShovel(context, this, drawX, drawY, sprites.props);
+    drawSpringShoes(context, this, drawX, drawY);
   }
 }

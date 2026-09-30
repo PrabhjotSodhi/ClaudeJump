@@ -856,7 +856,16 @@ test('a crate gives a pickup with 3 uses', () => {
 });
 
 test('crates only ever hold a known pickup', () => {
-  const allowedCardNames = new Set(['dash', 'rocket', 'bouncePad', 'bomb', 'banana']);
+  const allowedCardNames = new Set([
+    'dash',
+    'rocket',
+    'bouncePad',
+    'bomb',
+    'banana',
+    'magnet',
+    'springShoes',
+    'freeze',
+  ]);
   for (let seed = 1; seed <= 20; seed++) {
     const scene = new VersusScene({ level: harborLevel, seed });
     for (let tick = 0; tick < 600; tick++) {

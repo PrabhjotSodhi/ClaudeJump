@@ -21,6 +21,10 @@
   "block-broken": "block-broken",
   "trap-sprung": "trap-sprung",
   "player-slipped": "slip",
+  "magnet-pulled": "magnet",
+  "spring-jumped": "spring",
+  "player-iced": "freeze",
+  "ice-shattered": "ice-shatter",
   "player-burned": "burn",
   "player-pinched": "crab-pinch",
   "player-fell-in-water": {
