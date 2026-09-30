@@ -92,12 +92,12 @@ test('Back on the online menu returns to the title', () => {
   assert.equal(titleReturns.length, 1);
 });
 
-test('the title lists Online after Versus and Survival', () => {
+test('the title lists Online after Versus and Survival, then Settings', () => {
   const scene = new TitleScene({ sceneManager: fakeSceneManager(), levels: [harborLevel], sprites: {} });
 
   assert.deepEqual(
     scene.options.map((option) => option.label),
-    ['Versus', 'Survival', 'Online'],
+    ['Versus', 'Survival', 'Online', 'Settings'],
   );
 });
 

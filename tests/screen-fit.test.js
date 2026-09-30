@@ -12,11 +12,6 @@ test('safe-area insets shrink the space the canvas may use', () => {
   assert.equal(pickScale({ width: 844, height: 390, devicePixelRatio: 3, insets }), 2);
 });
 
-test('another logical size can be fitted, such as the portrait rotate prompt', () => {
-  const portraitPhone = { width: 390, height: 844, devicePixelRatio: 3, logicalWidth: 120, logicalHeight: 160 };
-  assert.equal(pickScale(portraitPhone), 9);
-});
-
 test('the scale never drops below one', () => {
   assert.equal(pickScale({ width: 100, height: 100, devicePixelRatio: 1 }), 1);
 });

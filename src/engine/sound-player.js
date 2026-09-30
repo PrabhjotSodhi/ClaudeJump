@@ -1,4 +1,4 @@
-import { loadSoundEnabled, saveSoundEnabled } from './sound-settings.js';
+import { loadSoundEnabled, saveSoundEnabled, settings, volumeScale } from './sound-settings.js';
 
 const MASTER_VOLUME = 0.6;
 // How far a sound pans toward its source, from 0 (centered) to 1 (fully to one side).
@@ -88,7 +88,8 @@ export class SoundPlayer {
   }
 
   play(soundName, pan = 0, charge = 0) {
-    if (!this.soundEnabled || !this.audioContext || !this.soundDefinitions[soundName]) return;
+    if (!this.soundEnabled || settings.effectsVolume === 0) return;
+    if (!this.audioContext || !this.soundDefinitions[soundName]) return;
     if (this.soundsPlayedThisTick.has(soundName)) return;
     this.soundsPlayedThisTick.add(soundName);
     try {
@@ -97,8 +98,9 @@ export class SoundPlayer {
       panner.connect(this.getMasterGain());
       const startTime = this.audioContext.currentTime;
       const pitch = 1 + (this.random() * 2 - 1) * PITCH_VARIATION;
+      const volume = volumeScale(settings.effectsVolume);
       for (const voice of this.soundDefinitions[soundName]) {
-        this.playVoice(voice, panner, startTime, pitch * (1 + (voice.chargePitch ?? 0) * charge));
+        this.playVoice(voice, panner, startTime, pitch * (1 + (voice.chargePitch ?? 0) * charge), volume);
       }
     } catch {
       // Audio must never break the game.
@@ -114,7 +116,7 @@ export class SoundPlayer {
     return this.masterGain;
   }
 
-  playVoice(voice, destination, soundStartTime, pitch) {
+  playVoice(voice, destination, soundStartTime, pitch, volume) {
     const startTime = soundStartTime + (voice.delay ?? 0);
     const endTime = startTime + voice.duration;
 
@@ -130,7 +132,7 @@ export class SoundPlayer {
       oscillator.frequency.setValueAtTime(voice.startFrequency * pitch, startTime);
       oscillator.frequency.exponentialRampToValueAtTime(voice.endFrequency * pitch, endTime);
       const oscillatorGain = this.audioContext.createGain();
-      oscillatorGain.gain.value = voice.volume;
+      oscillatorGain.gain.value = voice.volume * volume;
       oscillator.connect(oscillatorGain);
       oscillatorGain.connect(envelope);
       oscillator.start(startTime);
@@ -142,7 +144,7 @@ export class SoundPlayer {
       noise.buffer = this.getNoiseBuffer();
       noise.loop = true;
       const noiseGain = this.audioContext.createGain();
-      noiseGain.gain.value = voice.noiseVolume;
+      noiseGain.gain.value = voice.noiseVolume * volume;
       noise.connect(noiseGain);
       noiseGain.connect(envelope);
       noise.start(startTime);
