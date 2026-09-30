@@ -54,6 +54,7 @@ import { Player } from '../entities/player.js';
 import { Rocket, ROCKET_WIDTH, ROCKET_HEIGHT } from '../entities/rocket.js';
 import { knockBackShoveTarget, resolveShoveHit, resolveShoveHitOnCrate } from '../entities/shove.js';
 import { HoldTheHill } from './hold-the-hill.js';
+import { PassTheBomb } from './pass-the-bomb.js';
 import { drawArenaBackground } from '../levels/arena-backgrounds.js';
 import { createHazards } from '../levels/level-hazards.js';
 import { solidRuns } from '../levels/level-loader.js';
@@ -68,6 +69,7 @@ import { drawPlayerTags } from '../ui/player-tags.js';
 import { WinPips } from '../ui/win-pips.js';
 import { ClashSparks, drawClashSparks } from '../vfx/clash-sparks.js';
 import { knockoutZoom } from '../vfx/knockout-zoom.js';
+import { drawHeldBomb } from '../vfx/held-bomb.js';
 import { drawHillZone } from '../vfx/hill-zone.js';
 import { drawMagnetField } from '../vfx/magnet-field.js';
 import { CharacterAnimations } from '../vfx/character-animations.js';
@@ -79,6 +81,9 @@ import { SeaRipple } from '../vfx/sea-ripple.js';
 import { drawSplashes, Splashes, splashTierFor } from '../vfx/splash.js';
 import { ScreenShake } from '../vfx/screen-shake.js';
 import { drawWrapPuffs, WrapPuffTracker } from '../vfx/wrap-puff.js';
+
+// The round rules each party mode adds. Knockout has none.
+const MODE_RULES = { hill: HoldTheHill, bomb: PassTheBomb };
 
 const WINS_NEEDED = 5;
 const POINT_PAUSE_TICKS = 90;
@@ -147,7 +152,8 @@ export class VersusScene {
     this.heatEnabled = heat;
     // One of MATCH_MODES. Knockout is last standing with a rising sea; a party mode brings its own round rules.
     this.mode = mode;
-    this.modeRules = mode === 'hill' ? new HoldTheHill() : null;
+    const ModeRules = MODE_RULES[mode];
+    this.modeRules = ModeRules ? new ModeRules() : null;
     this.events = new EventEmitter();
     this.random = new SeededRandom(seed);
     this.entityGroups = new EntityGroups();
@@ -520,7 +526,7 @@ export class VersusScene {
     if (countdownTicks > 0 && countdownTicks <= TIMER_URGENT_SECONDS * TICK_RATE && countdownTicks % TICK_RATE === 0) {
       this.events.emit('timer-ticked', { secondsRemaining: countdownTicks / TICK_RATE });
     }
-    if (this.modeRules) return;
+    if (this.mode === 'hill') return;
     if (this.suddenDeathPhase === 'none' && this.fightTicks >= SUDDEN_DEATH_ROUND_TICKS) {
       this.suddenDeathPhase = 'warning';
       this.events.emit('sudden-death-started', {});
@@ -754,6 +760,16 @@ export class VersusScene {
       this.events.emit('bomb-exploded', { x: blastCenterX, y: blastCenterY, playerIds, strength: BLAST_STRENGTH });
       this.entityGroups.remove('bombs', bomb);
     }
+  }
+
+  // Pass the bomb's fuse ran out on this player: they are out, and the blast knocks back anyone near.
+  blowUpPlayer(player) {
+    player.blowUp();
+    const blastCenterX = player.x + player.width / 2;
+    const blastCenterY = player.y + player.height / 2;
+    const playerIds = this.resolveBlast(blastCenterX, blastCenterY);
+    this.events.emit('player-blown-up', { playerId: player.id });
+    this.events.emit('bomb-exploded', { x: blastCenterX, y: blastCenterY, playerIds, strength: BLAST_STRENGTH });
   }
 
   spawnIceShot(player) {
@@ -1008,7 +1024,7 @@ export class VersusScene {
   }
 
   checkRoundEnd() {
-    if (this.modeRules) {
+    if (this.mode === 'hill') {
       if (this.suddenDeathCountdownTicks === 0) this.awardRound(this.modeRules.winnerId());
       return;
     }
@@ -1069,7 +1085,7 @@ export class VersusScene {
       if (!this.brokenTiles.has(tile))
         renderer.gameContext.drawImage(this.level.tileSprites[tile.name], tile.x, tile.y);
     }
-    if (this.modeRules) drawHillZone(renderer.gameContext, this);
+    if (this.mode === 'hill') drawHillZone(renderer.gameContext, this);
     drawWrapPuffs(renderer.gameContext, this);
     this.characterAnimations.render(renderer.gameContext);
     this.entityGroups.renderAll(renderer.gameContext, {
@@ -1079,6 +1095,7 @@ export class VersusScene {
       arenaName: this.level.background,
     });
     this.crateOpenings.render(renderer.gameContext);
+    if (this.mode === 'bomb') drawHeldBomb(renderer.gameContext, this);
     drawMagnetField(renderer.gameContext, this);
     drawSplashes(renderer.gameContext, this);
     drawParticles(renderer.gameContext, this);

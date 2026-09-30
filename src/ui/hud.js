@@ -144,7 +144,7 @@ function drawHillPoints(context, scene, panelBoxes) {
 export function drawHud(context, scene) {
   const panelBoxes = playerPanelBoxes(scene.players.length);
   scene.players.forEach((player, index) => drawPlayerPanel(context, scene, player, panelBoxes[index]));
-  if (scene.modeRules && scene.phase !== 'modifier') drawHillPoints(context, scene, panelBoxes);
+  if (scene.mode === 'hill' && scene.phase !== 'modifier') drawHillPoints(context, scene, panelBoxes);
 
   if (scene.phase === 'fight') drawTimerPanel(context, scene);
   if (scene.activeModifierId && (scene.phase === 'fight' || scene.phase === 'knockout')) {

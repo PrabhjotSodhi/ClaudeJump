@@ -29,7 +29,7 @@ export function playerTagPosition(player) {
 export function drawPlayerTags(context, scene) {
   for (const player of scene.players) {
     const label = TAG_LABEL_BY_PLAYER_ID[player.id];
-    if (!label) continue;
+    if (!label || player.blownUp) continue;
 
     const { x, y } = playerTagPosition(player);
     const shapeWidth = PLAYER_SHAPE_SIZE * TAG_SCALE;

@@ -2,6 +2,7 @@
 export const MATCH_MODES = [
   { id: 'knockout', name: 'Knockout', description: 'Last one standing wins the round' },
   { id: 'hill', name: 'Hold the hill', description: 'Stand alone in the glowing zone to score' },
+  { id: 'bomb', name: 'Pass the bomb', description: 'Touch someone to pass the bomb before it blows' },
 ];
 
 export function matchModeName(modeId) {

@@ -35,7 +35,7 @@ export function drawHeldCardIcons(context, scene) {
   for (const player of scene.players) {
     const flashedCardName = tracker.flashingCardName(player.id, scene.tickCount);
     const cardName = player.heldCardName ?? flashedCardName;
-    if (!cardName) continue;
+    if (!cardName || player.blownUp) continue;
 
     const x = Math.round(player.x + player.width / 2 - CARD_ICON_WIDTH / 2);
     const y = heldCardIconSlotY(player);

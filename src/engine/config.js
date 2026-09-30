@@ -224,3 +224,9 @@ export const HILL_ZONE_MOVE_TICKS = 600;
 export const HILL_ZONE_WIDTH = 64;
 export const HILL_ZONE_HEIGHT = 40;
 export const HILL_RESPAWN_TICKS = 120;
+
+// Pass the bomb. Each lit bomb burns for a random fuse from BOMB_FUSE_MIN_TICKS to BOMB_FUSE_MAX_TICKS, never shown as a
+// number. A holder touching another player passes it, and the passer cannot take it back for BOMB_PASS_BACK_TICKS.
+export const BOMB_FUSE_MIN_TICKS = 360;
+export const BOMB_FUSE_MAX_TICKS = 720;
+export const BOMB_PASS_BACK_TICKS = 60;
