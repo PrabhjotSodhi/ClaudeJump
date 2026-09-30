@@ -14,6 +14,7 @@ import {
 } from '../ui/menu-kit.js';
 import { MENU_BACKGROUND_COLOR, NO_WATER_LINE_Y } from '../ui/menu-screen.js';
 import { drawPanel } from '../ui/panel.js';
+import { TAG_LABEL_BY_PLAYER_ID } from '../ui/player-tags.js';
 import { drawText, measureText } from '../ui/text.js';
 import { drawCharacterBody, FRAME_SIZE } from '../vfx/character-body.js';
 import { EYE_STIFFNESSES, GooglyEye } from '../vfx/googly-eyes.js';
@@ -312,7 +313,7 @@ function drawLevelSelectUi(context, scene) {
   scene.voters.forEach((spawn, voterIndex) => {
     const centerX = SCREEN_WIDTH / 2 + STATUS_OFFSETS_X[scene.voters.length][voterIndex];
     const locked = scene.lockedByPlayerId[spawn.id];
-    const prompt = locked ? 'Locked in!' : 'Press jump to vote';
+    const prompt = `${TAG_LABEL_BY_PLAYER_ID[spawn.id]} ${locked ? 'Locked in!' : 'Press jump to vote'}`;
     drawText(context, prompt, centerX - Math.floor(measureText(prompt) / 2), promptY, {
       scale: 1,
       outlineColor: null,

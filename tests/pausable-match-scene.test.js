@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { SoundPlayer } from '../src/engine/sound-player.js';
 import { PausableMatchScene } from '../src/scenes/pausable-match-scene.js';
-import { PlayerSelectScene } from '../src/scenes/player-select-scene.js';
+import { PlayerSelectScene, START_COUNTDOWN_TICKS } from '../src/scenes/player-select-scene.js';
 import { TitleScene } from '../src/scenes/title-scene.js';
 import { VersusScene } from '../src/scenes/versus-scene.js';
 import { harborLevel } from './fixtures/harbor-level.mjs';
@@ -250,6 +250,7 @@ test('Return to title, then Versus, opens a player select that can run a tick', 
     playerSelectScene.update(readyInputs());
     playerSelectScene.update(neutralInputs());
   }
+  for (let tick = 0; tick < START_COUNTDOWN_TICKS; tick++) playerSelectScene.update(neutralInputs());
   const levelSelectScene = currentScene;
   levelSelectScene.update(neutralInputs());
   levelSelectScene.update(readyInputs());

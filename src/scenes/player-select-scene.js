@@ -1,4 +1,4 @@
-import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../engine/config.js';
+import { SCREEN_HEIGHT, SCREEN_WIDTH, TICK_RATE } from '../engine/config.js';
 import { EventEmitter } from '../engine/events.js';
 import { CHARACTERS, HOVER_CHARACTER_BY_PLAYER_ID } from '../entities/characters.js';
 import { PLAYERS } from '../levels/versus-arena.js';
@@ -61,7 +61,7 @@ const KEY_HINT_ROWS = [
     hints: [
       { keys: ['A', 'D'], label: 'Pick' },
       { keys: ['W'], label: 'Join or lock in' },
-      { keys: ['S'], label: 'Leave' },
+      { keys: ['S'], label: 'Back' },
     ],
   },
   {
@@ -70,7 +70,7 @@ const KEY_HINT_ROWS = [
     hints: [
       { keys: ['Left', 'Right'], label: 'Pick' },
       { keys: ['Up'], label: 'Join or lock in' },
-      { keys: ['Down'], label: 'Leave' },
+      { keys: ['Down'], label: 'Back' },
     ],
   },
   {
@@ -79,7 +79,7 @@ const KEY_HINT_ROWS = [
     hints: [
       { keys: ['Stick'], label: 'Pick' },
       { keys: ['A'], label: 'Join or lock in' },
-      { keys: ['Down'], label: 'Leave' },
+      { keys: ['Down'], label: 'Back' },
     ],
   },
 ];
@@ -96,6 +96,11 @@ const JOIN_TEXT_BY_PLAYER_ID = {
 const NEXT_STATE = { unjoined: 'picking', picking: 'ready' };
 
 const MINIMUM_PLAYERS = 2;
+
+// Once everyone who joined is ready, this many ticks pass before the match starts, so a player still reaching for
+// their pad can join. A join or an un-ready cancels it.
+export const START_COUNTDOWN_TICKS = 120;
+const COUNTDOWN_Y = 336;
 
 // The card's rectangle. Four cards sit side by side and stay in seat order whether or not anyone has joined.
 export function playerCardBox(seatIndex) {
@@ -134,6 +139,7 @@ export class PlayerSelectScene {
     // Render only: when each player's character last changed, so the card can hop it.
     this.tickCount = 0;
     this.hopStartTickByPlayerId = {};
+    this.countdownTicksRemaining = null;
     this.stateByPlayerId = {};
     // An index into CHARACTERS: the hovered character until the player locks it in, then the chosen one.
     this.characterIndexByPlayerId = {};
@@ -159,13 +165,18 @@ export class PlayerSelectScene {
         if (input.right && !previous.right) this.changeCharacter(spawn.id, 1);
       }
       if (input.jump && !previous.jump) this.advance(spawn.id);
-      else if (input.down && !previous.down) this.leave(spawn.id);
+      else if (input.down && !previous.down) this.stepBack(spawn.id);
       this.previousInput[spawn.id] = { ...input };
     }
 
     this.advanceTappedCard(inputByPlayerId);
 
-    if (this.everyoneJoinedIsReady()) {
+    if (!this.everyoneJoinedIsReady()) {
+      this.countdownTicksRemaining = null;
+    } else {
+      this.countdownTicksRemaining = (this.countdownTicksRemaining ?? START_COUNTDOWN_TICKS) - 1;
+    }
+    if (this.countdownTicksRemaining === 0) {
       this.sceneManager.setScene(
         new LevelSelectScene({
           sceneManager: this.sceneManager,
@@ -191,10 +202,12 @@ export class PlayerSelectScene {
     if (rowIndexAt([playerCardBox(0)], tapPoint(inputByPlayerId)) === 0) this.advance(PLAYERS[0].id);
   }
 
-  // A player who joined by mistake can step back out until they lock in, so they never hold the others up.
-  leave(playerId) {
-    if (this.stateByPlayerId[playerId] !== 'picking') return;
-    this.stateByPlayerId[playerId] = 'unjoined';
+  // Down steps back: a ready player goes back to picking, and a player who joined by mistake steps out,
+  // so nobody holds the others up.
+  stepBack(playerId) {
+    const previousState = { picking: 'unjoined', ready: 'picking' }[this.stateByPlayerId[playerId]];
+    if (!previousState) return;
+    this.stateByPlayerId[playerId] = previousState;
     this.events.emit('menu-moved', { playerId });
   }
 
@@ -386,4 +399,13 @@ function drawPlayerSelectUi(context, scene) {
   drawMenuTitle(context, 'Player Select', TITLE_Y);
   for (const spawn of PLAYERS) drawPlayerCard(context, scene, spawn);
   drawKeyHintPanel(context);
+  if (scene.countdownTicksRemaining !== null) {
+    drawText(
+      context,
+      `Starting in ${Math.ceil(scene.countdownTicksRemaining / TICK_RATE)}`,
+      SCREEN_WIDTH / 2,
+      COUNTDOWN_Y,
+      { scale: 2, align: 'center', color: SELECTED_COLOR },
+    );
+  }
 }
