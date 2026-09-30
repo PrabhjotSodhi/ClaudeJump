@@ -25,6 +25,13 @@ const CRATE_FILL_COLOR = '#a0703c';
 // How many pixels the crate falls each tick. The sway is a render offset only, so it never
 // changes how long the fall takes or where the crate lands.
 const FALL_SPEED = 4;
+// A landed crate pushed sideways slides at these speeds and loses SLIDE_FRICTION of speed each tick.
+export const SHOVE_SLIDE_SPEED = 6;
+export const CHARGED_SHOVE_SLIDE_SPEED = 10;
+export const BLAST_SLIDE_SPEED = 10;
+const SLIDE_FRICTION = 0.4;
+// A crate that slides off the edge of its platform drops at this speed.
+const DROP_SPEED = 8;
 const OUTLINE_COLOR = '#3e2731';
 const CANOPY_COLOR = '#f77622';
 const CANOPY_LIGHT_COLOR = '#feae34';
@@ -55,6 +62,15 @@ export class Crate extends Entity {
     this.landed = false;
     this.landedTicks = 0;
     this.landing = null;
+    this.slideVelocityX = 0;
+    this.dropping = false;
+  }
+
+  // Pushes a landed crate sideways. Returns false when the crate is still in the air.
+  slide(velocityX) {
+    if (!this.landed) return false;
+    this.slideVelocityX = velocityX;
+    return true;
   }
 
   // Refreshes `landing`: the spot { x, y, ticks } where this crate will rest, or null over the sea.
@@ -76,8 +92,13 @@ export class Crate extends Entity {
   }
 
   update(platforms = []) {
+    if (this.dropping) {
+      this.drop(platforms);
+      return;
+    }
     if (this.landed) {
       this.landedTicks++;
+      this.slideAlongPlatform(platforms);
       return;
     }
     this.predictLanding(platforms);
@@ -91,19 +112,62 @@ export class Crate extends Entity {
     this.landed = true;
   }
 
+  moveSideways() {
+    this.x += this.slideVelocityX;
+    const speed = Math.max(0, Math.abs(this.slideVelocityX) - SLIDE_FRICTION);
+    this.slideVelocityX = Math.sign(this.slideVelocityX) * speed;
+  }
+
+  // A landed crate slides and comes to a stop with friction. With no platform left under it, it drops.
+  slideAlongPlatform(platforms) {
+    if (this.slideVelocityX === 0) return;
+    this.moveSideways();
+    const restingPlatforms = platforms.filter((platform) => platform.y === this.y + this.height);
+    if (
+      findLandingPlatform({ x: this.x, width: this.width, bottom: this.y + this.height, platforms: restingPlatforms })
+    ) {
+      return;
+    }
+    this.landed = false;
+    this.dropping = true;
+    this.landing = null;
+  }
+
+  // Falls straight down, keeping any sideways slide, and lands on the first platform it passes through.
+  drop(platforms) {
+    const previousBottom = this.y + this.height;
+    this.moveSideways();
+    this.y += DROP_SPEED;
+    const platform = findLandingPlatform({
+      x: this.x,
+      width: this.width,
+      bottom: this.y + this.height,
+      platforms: platforms.filter((candidate) => candidate.y >= previousBottom),
+    });
+    if (!platform) return;
+    this.y = platform.y - this.height;
+    this.dropping = false;
+    this.landed = true;
+  }
+
   render(context) {
     const drawX = Math.round(this.x);
     this.renderLandingSpot(context);
-    if (!this.landed && this.ticksUntilLanded >= this.fallTicks) return; // hasn't started falling yet
+    if (!this.landed && !this.dropping && this.ticksUntilLanded >= this.fallTicks) return; // hasn't started falling yet
 
     const fallenTicks = this.fallTicks - this.ticksUntilLanded;
-    const sway = this.landed ? 0 : swayOffset(fallenTicks, this.markerY - this.y);
+    const sway = this.landed || this.dropping ? 0 : swayOffset(fallenTicks, this.markerY - this.y);
     const drawY = Math.round(this.y);
-    this.renderParachute(context, drawX + sway, drawY);
-    context.fillStyle = CRATE_SHADOW_COLOR;
-    context.fillRect(drawX + sway, drawY, this.width, this.height);
-    context.fillStyle = CRATE_FILL_COLOR;
-    context.fillRect(drawX + sway + 2, drawY + 2, this.width - 4, this.height - 4);
+    const drawAt = (x) => {
+      if (!this.dropping) this.renderParachute(context, x + sway, drawY);
+      context.fillStyle = CRATE_SHADOW_COLOR;
+      context.fillRect(x + sway, drawY, this.width, this.height);
+      context.fillStyle = CRATE_FILL_COLOR;
+      context.fillRect(x + sway + 2, drawY + 2, this.width - 4, this.height - 4);
+    };
+    drawAt(drawX);
+    if (drawX < 0) drawAt(drawX + SCREEN_WIDTH);
+    else if (drawX + this.width > SCREEN_WIDTH) drawAt(drawX - SCREEN_WIDTH);
   }
 
   // The marker and the growing shadow sit on the surface the crate will land on, drawn again on the
