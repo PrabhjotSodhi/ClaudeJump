@@ -1,6 +1,13 @@
 import { SCREEN_WIDTH } from '../engine/config.js';
 import { drawCharacterBody, FRAME_SIZE } from '../vfx/character-body.js';
-import { drawKeyHints, drawMenuList, KEYCAP_HEIGHT, menuPanelSize, menuRowRectangles } from './menu-kit.js';
+import {
+  drawKeyHints,
+  drawMenuList,
+  drawWithMenuMotion,
+  KEYCAP_HEIGHT,
+  menuPanelSize,
+  menuRowRectangles,
+} from './menu-kit.js';
 import { rankPlayers } from './match-stats.js';
 import { drawMenuBackdrop } from './menu-options.js';
 import { drawPanel } from './panel.js';
@@ -175,7 +182,7 @@ export function resultsMenuRowRectangles(options) {
   );
 }
 
-export function drawResultsMenu(context, { matchScene, options, selectedIndex }) {
+export function drawResultsMenu(context, { matchScene, options, selectedIndex, motion }) {
   const winnerIndex = matchScene.players.findIndex((player) => player.id === matchScene.winnerId);
   const winner = matchScene.players[winnerIndex];
   const playerCount = matchScene.players.length;
@@ -188,21 +195,23 @@ export function drawResultsMenu(context, { matchScene, options, selectedIndex })
   const layout = resultsLayout({ winnerIndex, playerCount, menuHeight });
 
   drawMenuBackdrop(context);
-  drawBanner(context, layout.banner, winner.color);
-  drawStage(context, layout);
-  drawPedestal(context, layout.pedestal, matchScene.level.tileSprites);
-  losers.forEach(({ player }, index) => drawCharacter(context, { player, box: layout.losers[index], matchScene }));
-  drawCharacter(context, { player: winner, box: layout.winner, matchScene });
-  // Two players keep their own side. More are shown in rank order with their place named.
-  if (playerCount === 2) {
-    matchScene.players.forEach((player, index) =>
-      drawStatsPanel(context, layout.statsPanels[index], player, null, matchScene),
-    );
-  } else {
-    ranked.forEach(({ player, rank }, index) =>
-      drawStatsPanel(context, layout.statsPanels[index], player, rank, matchScene),
-    );
-  }
-  drawMenuList(context, { options, selectedIndex, topY: layout.menuTopY });
-  drawKeyHints(context, HINTS, layout.hintY);
+  drawWithMenuMotion(context, motion, () => {
+    drawBanner(context, layout.banner, winner.color);
+    drawStage(context, layout);
+    drawPedestal(context, layout.pedestal, matchScene.level.tileSprites);
+    losers.forEach(({ player }, index) => drawCharacter(context, { player, box: layout.losers[index], matchScene }));
+    drawCharacter(context, { player: winner, box: layout.winner, matchScene });
+    // Two players keep their own side. More are shown in rank order with their place named.
+    if (playerCount === 2) {
+      matchScene.players.forEach((player, index) =>
+        drawStatsPanel(context, layout.statsPanels[index], player, null, matchScene),
+      );
+    } else {
+      ranked.forEach(({ player, rank }, index) =>
+        drawStatsPanel(context, layout.statsPanels[index], player, rank, matchScene),
+      );
+    }
+    drawMenuList(context, { options, selectedIndex, topY: layout.menuTopY, motion });
+    drawKeyHints(context, HINTS, layout.hintY);
+  });
 }

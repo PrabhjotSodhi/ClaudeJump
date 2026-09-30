@@ -2,7 +2,15 @@ import { SCREEN_HEIGHT, SCREEN_WIDTH, TICK_RATE } from '../engine/config.js';
 import { EventEmitter } from '../engine/events.js';
 import { CHARACTERS, HOVER_CHARACTER_BY_PLAYER_ID } from '../entities/characters.js';
 import { PLAYERS } from '../levels/versus-arena.js';
-import { drawKeyHints, drawMenuTitle, KEYCAP_HEIGHT, rowIndexAt, tapPoint } from '../ui/menu-kit.js';
+import {
+  drawKeyHints,
+  drawMenuTitle,
+  drawWithMenuMotion,
+  KEYCAP_HEIGHT,
+  MenuMotion,
+  rowIndexAt,
+  tapPoint,
+} from '../ui/menu-kit.js';
 import { MENU_BACKGROUND_COLOR, NO_WATER_LINE_Y } from '../ui/menu-screen.js';
 import { drawPanel } from '../ui/panel.js';
 import { drawText, measureText } from '../ui/text.js';
@@ -132,6 +140,7 @@ export class PlayerSelectScene {
     this.sprites = sprites;
     this.seed = seed;
     this.waterLineY = NO_WATER_LINE_Y;
+    this.menuMotion = new MenuMotion();
     this.backgroundDrawn = false;
     // Captured from the real input on the first tick this scene runs, so a button still held from
     // the title screen's confirm press never counts as a fresh press here.
@@ -151,6 +160,7 @@ export class PlayerSelectScene {
 
   update(inputByPlayerId) {
     this.tickCount++;
+    this.menuMotion.update();
     if (!this.previousInput) {
       this.previousInput = {};
       for (const spawn of PLAYERS) this.previousInput[spawn.id] = { ...inputByPlayerId[spawn.id] };
@@ -274,7 +284,7 @@ export class PlayerSelectScene {
 
     renderer.clearGameLayer();
     renderer.clearUiLayer();
-    drawPlayerSelectUi(renderer.uiContext, this);
+    drawWithMenuMotion(renderer.uiContext, this.menuMotion, () => drawPlayerSelectUi(renderer.uiContext, this));
   }
 }
 

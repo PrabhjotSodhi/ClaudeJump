@@ -254,7 +254,7 @@ function drawStatusPanel(context, view, x) {
   });
 }
 
-// view: { code, lobby, localSeat, isHost, rows, selectedRow, sprites, levels, touchActive }.
+// view: { code, lobby, localSeat, isHost, rows, selectedRow, sprites, levels, touchActive, motion }.
 export function drawOnlineLobby(context, view) {
   drawCode(context, view.code);
   for (let seatIndex = 0; seatIndex < PLAYERS.length; seatIndex++) drawPlayerCard(context, view, seatIndex);
@@ -266,6 +266,7 @@ export function drawOnlineLobby(context, view) {
     options: labels.map((label) => ({ label })),
     selectedIndex: view.selectedRow,
     topY: MENU_TOP_Y,
+    motion: view.motion,
   });
   if (CHANGEABLE_ROWS.includes(view.rows[view.selectedRow])) {
     const row = lobbyRowRectangles(labels)[view.selectedRow];

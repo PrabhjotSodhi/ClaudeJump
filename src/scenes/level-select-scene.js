@@ -7,6 +7,8 @@ import { PLAYERS } from '../levels/versus-arena.js';
 import {
   drawKeyHints,
   drawMenuTitle,
+  drawWithMenuMotion,
+  MenuMotion,
   KEYCAP_HEIGHT,
   rowIndexAt,
   TITLE_HEIGHT,
@@ -83,9 +85,11 @@ export class LevelSelectScene {
     }
     this.pickedLevel = null;
     this.revealTicksRemaining = 0;
+    this.menuMotion = new MenuMotion();
   }
 
   update(inputByPlayerId) {
+    this.menuMotion.update();
     if (this.pickedLevel) {
       this.revealTicksRemaining--;
       if (this.revealTicksRemaining <= 0) this.startMatch();
@@ -191,7 +195,7 @@ export class LevelSelectScene {
 
     renderer.clearGameLayer();
     renderer.clearUiLayer();
-    drawLevelSelectUi(renderer.uiContext, this);
+    drawWithMenuMotion(renderer.uiContext, this.menuMotion, () => drawLevelSelectUi(renderer.uiContext, this));
   }
 }
 
