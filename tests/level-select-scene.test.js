@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
+import { readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { findCharacter } from '../src/entities/characters.js';
+import { measureText } from '../src/ui/text.js';
 import { LevelSelectScene, levelSelectLayout } from '../src/scenes/level-select-scene.js';
 import { harborLevel } from './fixtures/harbor-level.mjs';
 
@@ -157,6 +159,18 @@ test('the grid fits the screen with no overlap for 4 to 8 cards, on whole pixels
         assert.ok(apart, `${label} overlaps another card`);
       }
     });
+  }
+});
+
+test('every level name and the Random label fit under their tile', () => {
+  const levelsFolder = new URL('../data/levels/', import.meta.url);
+  const names = readdirSync(levelsFolder)
+    .filter((fileName) => fileName.endsWith('.json'))
+    .map((fileName) => JSON.parse(readFileSync(new URL(fileName, levelsFolder))).name);
+  const { bounds } = levelSelectLayout(names.length + 1);
+
+  for (const name of [...names, 'Random']) {
+    assert.ok(measureText(name) <= bounds[0].width, `${name} is wider than its tile`);
   }
 });
 
