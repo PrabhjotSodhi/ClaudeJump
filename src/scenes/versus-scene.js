@@ -350,15 +350,17 @@ export class VersusScene {
     }
   }
 
-  // Shoves clash when both are active and the players face each other with a hit zone reaching the other body. The
-  // stronger charge wins with reduced knockback. Otherwise neither lands and both players bounce apart.
+  // Shoves clash when the players face each other, one shove is active and the other is winding up or just fired, and
+  // a hit zone reaches the other body. The stronger charge wins with reduced knockback. Otherwise neither lands and
+  // both players bounce apart, which also cancels a shove still winding up.
   resolveShoveClash(playerA, playerB) {
     const pairId = [playerA.id, playerB.id].sort().join('-');
     const leftPlayer = playerA.x <= playerB.x ? playerA : playerB;
     const rightPlayer = leftPlayer === playerA ? playerB : playerA;
     const shovesAreClashing =
-      leftPlayer.isShoveActive &&
-      rightPlayer.isShoveActive &&
+      (leftPlayer.isShoveActive || rightPlayer.isShoveActive) &&
+      leftPlayer.isShoveClashable &&
+      rightPlayer.isShoveClashable &&
       !leftPlayer.inWater &&
       !rightPlayer.inWater &&
       leftPlayer.facing > 0 &&
@@ -371,9 +373,13 @@ export class VersusScene {
     if (this.shoveClashPairIds.has(pairId)) return;
 
     this.shoveClashPairIds.add(pairId);
-    this.shoveHitIdsByShoverId.get(playerA.id).add(playerB.id);
-    this.shoveHitIdsByShoverId.get(playerB.id).add(playerA.id);
-    const chargeLead = playerA.shoveCharge - playerB.shoveCharge;
+    for (const [shover, opponent] of [
+      [playerA, playerB],
+      [playerB, playerA],
+    ]) {
+      if (shover.isShoveActive) this.shoveHitIdsByShoverId.get(shover.id).add(opponent.id);
+    }
+    const chargeLead = playerA.shoveClashCharge - playerB.shoveClashCharge;
     if (Math.abs(chargeLead) >= SHOVE_CLASH_CHARGE_MARGIN) {
       const winner = chargeLead > 0 ? playerA : playerB;
       this.knockBackShoveTarget(winner, winner === playerA ? playerB : playerA, SHOVE_CLASH_WIN_KNOCKBACK_MULTIPLIER);

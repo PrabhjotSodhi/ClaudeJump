@@ -2,6 +2,7 @@ import {
   HITSTOP_TICKS,
   SCREEN_WIDTH,
   SHOVE_CHARGE_WALK_MULTIPLIER,
+  SHOVE_CLASH_WINDOW_TICKS,
   SHOVE_MAX_CHARGE_TICKS,
   SHOVE_MAX_KNOCKBACK_MULTIPLIER,
   SHOVE_WINDUP_TICKS,
@@ -123,6 +124,19 @@ export class Player extends PhysicsEntity {
   // How much of the way to a full charge the current or last shove got, from 0 to 1. A tap is 0.
   get shoveKnockbackMultiplier() {
     return 1 + (SHOVE_MAX_KNOCKBACK_MULTIPLIER - 1) * this.shoveCharge;
+  }
+
+  // Winding up or just fired. A shove held for a long charge is not in a clash until it fires.
+  get isShoveClashable() {
+    const windingUp = this.shoveCharging && this.shoveChargeTicks <= SHOVE_CLASH_WINDOW_TICKS;
+    const justFired =
+      this.isShoveActive && this.shoveActiveTicksRemaining > SHOVE_ACTIVE_TICKS - SHOVE_CLASH_WINDOW_TICKS;
+    return windingUp || justFired;
+  }
+
+  // A shove still winding up has not been charged yet, whatever the last shove was.
+  get shoveClashCharge() {
+    return this.shoveCharging ? 0 : this.shoveCharge;
   }
 
   get isShoveFullyCharged() {

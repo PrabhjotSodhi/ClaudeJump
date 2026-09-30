@@ -26,8 +26,8 @@ function find(scene, id) {
 
 // A shove fires on the tick the button is released, but never before the wind-up is done. This presses so that the
 // shove starts on FIRE_TICK whatever the hold.
-function isHolding(tick, holdTicks) {
-  const pressTick = FIRE_TICK - Math.max(holdTicks, SHOVE_WINDUP_TICKS + 1);
+function isHolding(tick, holdTicks, delayTicks) {
+  const pressTick = FIRE_TICK + delayTicks - Math.max(holdTicks, SHOVE_WINDUP_TICKS + 1);
   return tick >= pressTick && tick < pressTick + holdTicks;
 }
 
@@ -44,7 +44,14 @@ function face(leftPlayer, rightPlayer) {
 
 // Two players face each other in shove range. Each holds the action key for its own number of ticks, and the
 // shoves are timed to start on the same tick. A hold of 0 means that player does not shove.
-function clash({ leftId = 'red', rightId = 'blue', leftHoldTicks, rightHoldTicks, playerCount = 2 }) {
+function clash({
+  leftId = 'red',
+  rightId = 'blue',
+  leftHoldTicks,
+  rightHoldTicks,
+  rightDelayTicks = 0,
+  playerCount = 2,
+}) {
   const players = PLAYERS.slice(0, playerCount).map(({ id }, index) => ({ id, character: CHARACTERS[index] }));
   const scene = new VersusScene({ level: harborLevel, seed: 0, players });
   const idle = () => Object.fromEntries(scene.players.map((player) => [player.id, input()]));
@@ -60,10 +67,10 @@ function clash({ leftId = 'red', rightId = 'blue', leftHoldTicks, rightHoldTicks
   scene.events.on('player-shoved', (event) => shoves.push(event));
   const start = { leftX: left.x, rightX: right.x };
   const peakSpeed = { left: 0, right: 0 };
-  for (let tick = 0; tick < FIRE_TICK + 60; tick++) {
+  for (let tick = 0; tick < FIRE_TICK + 70; tick++) {
     const inputs = idle();
-    inputs[leftId] = input({ action: isHolding(tick, leftHoldTicks) });
-    inputs[rightId] = input({ action: isHolding(tick, rightHoldTicks) });
+    inputs[leftId] = input({ action: isHolding(tick, leftHoldTicks, 0) });
+    inputs[rightId] = input({ action: isHolding(tick, rightHoldTicks, rightDelayTicks) });
     scene.update(inputs);
     peakSpeed.left = Math.max(peakSpeed.left, Math.abs(left.knockbackVelocityX));
     peakSpeed.right = Math.max(peakSpeed.right, Math.abs(right.knockbackVelocityX));
@@ -137,4 +144,28 @@ test('the same inputs give the same clash', () => {
 
   assert.deepEqual([first.left.x, first.right.x], [second.left.x, second.right.x]);
   assert.deepEqual(first.clashes, second.clashes);
+});
+
+test('presses 2 ticks apart still clash', () => {
+  const { clashes, shoves } = clash({
+    leftHoldTicks: TAP_HOLD_TICKS,
+    rightHoldTicks: TAP_HOLD_TICKS,
+    rightDelayTicks: 2,
+  });
+
+  assert.equal(clashes.length, 1);
+  assert.equal(shoves.length, 0, 'neither shove lands');
+});
+
+test('presses 4 ticks apart are a clean hit for the first shove', () => {
+  const { clashes, shoves, right, start } = clash({
+    leftHoldTicks: TAP_HOLD_TICKS,
+    rightHoldTicks: TAP_HOLD_TICKS,
+    rightDelayTicks: 4,
+  });
+
+  assert.equal(clashes.length, 0);
+  assert.equal(shoves.length, 1);
+  assert.equal(shoves[0].shoverId, 'red');
+  assert.ok(right.x > start.rightX);
 });
