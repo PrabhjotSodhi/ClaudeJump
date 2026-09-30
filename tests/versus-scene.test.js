@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { HITSTOP_TICKS, SCREEN_WIDTH } from '../src/engine/config.js';
+import { HITSTOP_TICKS, SCREEN_WIDTH, SHOVE_WINDUP_TICKS } from '../src/engine/config.js';
 import { Crate } from '../src/entities/crate.js';
 import { Platform } from '../src/entities/platform.js';
 import { Rocket } from '../src/entities/rocket.js';
@@ -397,8 +397,9 @@ test('a shove knocks the player in front away and pops them upward', () => {
 
   scene.update({ red: noInput(), blue: noInput() }); // release the jump/action keys held from spawn
   scene.update({ red: { left: false, right: false, jump: false, action: true }, blue: noInput() });
+  for (let tick = 0; tick < SHOVE_WINDUP_TICKS + 1; tick++) scene.update({ red: noInput(), blue: noInput() });
 
-  assert.deepEqual(shoveEvents, [{ shoverId: 'red', targetId: 'blue', strength: 'light' }]);
+  assert.deepEqual(shoveEvents, [{ shoverId: 'red', targetId: 'blue', strength: 'light', charge: 0 }]);
   advance(scene, HITSTOP_TICKS.light);
   assert.ok(blue.knockbackVelocityX > 0, 'the shove knocks blue away from red');
   assert.ok(blue.velocityY < 0, 'the shove pops blue upward');

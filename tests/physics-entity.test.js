@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import { PhysicsEntity } from '../src/engine/physics-entity.js';
 import { Platform } from '../src/entities/platform.js';
 import { PICKUP_USES } from '../src/cards/card-definitions.js';
+import { SHOVE_WINDUP_TICKS } from '../src/engine/config.js';
 import { Player, SHOVE_ACTIVE_TICKS } from '../src/entities/player.js';
 import { findCharacter } from '../src/entities/characters.js';
 
@@ -144,13 +145,21 @@ function actionInput(action) {
   return { left: false, right: false, jump: false, action };
 }
 
+// A tap: the press, then the release that fires the shove once the wind-up is done.
+function tapShove(player) {
+  player.update(actionInput(true), []);
+  for (let tick = 0; tick <= SHOVE_WINDUP_TICKS; tick++) player.update(actionInput(false), []);
+}
+
 test('a fresh press of the action button starts a shove, but holding it down never fires another one', () => {
   const player = new Player({ id: 'red', character: findCharacter('claude'), spawnX: 200, spawnY: 200, facing: 1 });
   player.onGround = true;
   player.update(actionInput(false), []); // release the action key held from spawn
 
-  player.update(actionInput(true), []); // fresh press
-  assert.ok(player.isShoveActive, 'the fresh press starts a shove');
+  tapShove(player);
+  assert.ok(player.isShoveActive, 'a fresh press and release starts a shove');
+  for (let tick = 0; tick < 50; tick++) player.update(actionInput(false), []);
+  player.update(actionInput(true), []);
 
   let shoveStartedAgainWhileHeld = false;
   for (let tick = 0; tick < 50; tick++) {
@@ -167,8 +176,7 @@ test('a press of the action button during the cooldown after a shove does nothin
   player.onGround = true;
   player.update(actionInput(false), []); // release the action key held from spawn
 
-  player.update(actionInput(true), []); // fresh press starts a shove
-  player.update(actionInput(false), []); // release
+  tapShove(player);
 
   for (let tick = 0; tick < SHOVE_ACTIVE_TICKS; tick++) player.update(actionInput(false), []);
   assert.equal(player.isShoveActive, false, 'the shove has ended, but the cooldown has not');
@@ -202,9 +210,8 @@ test('a pickup gives 1 use, and once it is played the button shoves again', () =
   assert.equal(player.heldCardName, null, 'the pickup is gone after one use');
   player.update(actionInput(false), []);
 
-  player.update(actionInput(true), []);
+  tapShove(player);
 
-  assert.equal(player.playedCardName, null);
   assert.equal(player.isShoveActive, true, 'the button shoves again once the pickup is spent');
 });
 

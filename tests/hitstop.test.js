@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { HITSTOP_TICKS } from '../src/engine/config.js';
+import { HITSTOP_TICKS, SHOVE_WINDUP_TICKS } from '../src/engine/config.js';
 import { Bomb } from '../src/entities/bomb.js';
 import { Rocket } from '../src/entities/rocket.js';
 import { VersusScene } from '../src/scenes/versus-scene.js';
@@ -42,8 +42,10 @@ function shoveSetup() {
   return { scene, red, blue };
 }
 
+// A tap: the press, then the release that fires the shove once the wind-up is done. The hit lands on the last tick.
 function shove(scene) {
   scene.update({ red: input({ action: true }), blue: input() });
+  advance(scene, SHOVE_WINDUP_TICKS + 1);
 }
 
 // Ticks the player stays exactly where they were when the hit landed.
