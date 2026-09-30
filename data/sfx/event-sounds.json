@@ -1,0 +1,22 @@
+{
+  "player-jumped": "jump",
+  "player-landed": "land",
+  "player-shoved": "shove",
+  "dash-hit": "dash-hit",
+  "crab-stomped": "stomp",
+  "card-picked-up": "pickup",
+  "card-played": "card-played",
+  "bomb-exploded": "blast",
+  "rocket-exploded": "blast",
+  "block-broken": "block-broken",
+  "trap-sprung": "trap-sprung",
+  "player-slipped": "slip",
+  "player-burned": "burn",
+  "player-pinched": "crab-pinch",
+  "player-fell-in-water": "splash",
+  "round-won": "round-won",
+  "sudden-death-started": "sudden-death",
+  "new-best": "new-best",
+  "menu-moved": "menu-move",
+  "menu-selected": "menu-select"
+}
