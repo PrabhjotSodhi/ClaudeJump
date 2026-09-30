@@ -3,6 +3,12 @@ import { SeededRandom } from '../engine/seeded-random.js';
 
 const MIST_BAND_HEIGHT = 12;
 const CONTAINER_HEIGHT = 14;
+const BRIDGE_LAYERS = [
+  { color: '#8b9bb4', firstTowerX: 70, spacing: 230, top: 90, halfSpan: 12, legWidth: 5, sag: 70, density: 'quarter' },
+  { color: '#3a4466', firstTowerX: 160, spacing: 210, top: 130, halfSpan: 14, legWidth: 6, sag: 60, density: 'half' },
+  { color: '#262b44', firstTowerX: 30, spacing: 300, top: 170, halfSpan: 18, legWidth: 8, sag: 50, density: 'half' },
+];
+const BRIDGE_TOWER_BOTTOM_Y = 300;
 
 function fillRect(context, color, x, y, width, height) {
   context.fillStyle = color;
@@ -154,11 +160,46 @@ function drawServerFarm(context, random) {
   fillRect(context, '#181425', 0, 296, SCREEN_WIDTH, 1);
 }
 
+// A bridge tower is two legs joined by a crossbeam near the top and another halfway down.
+function drawBridgeTower(context, { color, density }, centerX, top, halfSpan, legWidth) {
+  const height = BRIDGE_TOWER_BOTTOM_Y - top;
+  for (const legX of [centerX - halfSpan - legWidth, centerX + halfSpan]) {
+    fillDither(context, color, legX, top, legWidth, height, density);
+  }
+  for (const beamY of [top + 12, top + Math.round(height / 2)]) {
+    fillDither(context, color, centerX - halfSpan, beamY, halfSpan * 2, 4, density);
+  }
+}
+
+// A cable sags between two tower tops, lowest halfway between them.
+function drawBridgeCable(context, color, startX, endX, top, sag) {
+  const halfWidth = (endX - startX) / 2;
+  for (let x = startX; x <= endX; x++) {
+    const offset = (x - startX - halfWidth) / halfWidth;
+    fillRect(context, color, x, top + Math.round(sag * (1 - offset * offset)), 1, 1);
+  }
+}
+
+function drawBridge(context) {
+  fillRect(context, '#5a6988', 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+  fillDither(context, '#8b9bb4', 0, 210, SCREEN_WIDTH, 90, 'quarter');
+  BRIDGE_LAYERS.forEach((layer, layerIndex) => {
+    const { color, firstTowerX, spacing, top, halfSpan, legWidth, sag } = layer;
+    for (let towerX = firstTowerX - spacing; towerX < SCREEN_WIDTH + spacing; towerX += spacing) {
+      drawBridgeTower(context, layer, towerX, top, halfSpan, legWidth);
+      drawBridgeCable(context, color, towerX, towerX + spacing, top, sag);
+    }
+    drawMistBand(context, 230 + layerIndex * 20, '#5a6988');
+  });
+  fillRect(context, '#181425', 0, BRIDGE_TOWER_BOTTOM_Y, SCREEN_WIDTH, SCREEN_HEIGHT - BRIDGE_TOWER_BOTTOM_Y);
+}
+
 const DRAW_BY_BACKGROUND_NAME = {
   harbor: drawHarbor,
   cave: drawCave,
   rooftops: drawRooftops,
   'server-farm': drawServerFarm,
+  bridge: drawBridge,
 };
 
 // Each arena draws the same picture every time, from its own fixed seed.
