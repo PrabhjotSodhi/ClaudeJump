@@ -1,4 +1,4 @@
-import { SCREEN_WIDTH } from '../engine/config.js';
+import { HITSTOP_TICKS, SCREEN_WIDTH } from '../engine/config.js';
 import { PICKUP_USES } from '../cards/card-definitions.js';
 import { PhysicsEntity } from '../engine/physics-entity.js';
 import { drawCharacterBody, FRAME_SIZE } from '../vfx/character-body.js';
@@ -62,6 +62,9 @@ export class Player extends PhysicsEntity {
     this.shoveActiveTicksRemaining = 0;
     this.shoveCooldownTicksRemaining = 0;
     this.shoveJustStarted = false;
+    this.hitstopTicksRemaining = 0;
+    this.pendingKnockbackVelocityX = 0;
+    this.pendingKnockbackVelocityY = 0;
     this.ticksSinceJump = STRETCH_TICKS;
     this.ticksSinceLanding = SQUASH_TICKS;
   }
@@ -87,6 +90,29 @@ export class Player extends PhysicsEntity {
     const x = this.facing > 0 ? this.x + this.width : this.x - SHOVE_HIT_ZONE_WIDTH;
     const y = this.y + this.height / 2 - SHOVE_HIT_ZONE_HEIGHT / 2;
     return { x, y, width: SHOVE_HIT_ZONE_WIDTH, height: SHOVE_HIT_ZONE_HEIGHT };
+  }
+
+  get isFrozen() {
+    return this.hitstopTicksRemaining > 0;
+  }
+
+  // Holds the player still for the hit's freeze, then launches them with the given knockback. The hitter
+  // freezes with no knockback. A second hit while frozen keeps the longer freeze and adds the knockbacks.
+  freeze(strength, knockbackVelocityX = 0, knockbackVelocityY = 0) {
+    this.hitstopTicksRemaining = Math.max(this.hitstopTicksRemaining, HITSTOP_TICKS[strength]);
+    this.pendingKnockbackVelocityX += knockbackVelocityX;
+    this.pendingKnockbackVelocityY += knockbackVelocityY;
+  }
+
+  // A frozen player ignores input, and a button held through the freeze does not fire when it ends.
+  updateFrozen(input) {
+    this.handleActionInput(input, false);
+    this.jumpHeld = input ? input.jump : false;
+    this.hitstopTicksRemaining--;
+    if (this.hitstopTicksRemaining > 0) return;
+    this.applyKnockback(this.pendingKnockbackVelocityX, this.pendingKnockbackVelocityY);
+    this.pendingKnockbackVelocityX = 0;
+    this.pendingKnockbackVelocityY = 0;
   }
 
   startSinking() {
@@ -152,6 +178,10 @@ export class Player extends PhysicsEntity {
     const wasOnGround = this.onGround;
     if (this.inWater) {
       this.y += SINK_SPEED;
+      return;
+    }
+    if (this.isFrozen) {
+      this.updateFrozen(input);
       return;
     }
 

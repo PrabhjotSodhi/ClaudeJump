@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { LEVEL_COLUMNS, LEVEL_ROWS } from '../src/engine/config.js';
+import { HITSTOP_TICKS, LEVEL_COLUMNS, LEVEL_ROWS } from '../src/engine/config.js';
 import { Bomb } from '../src/entities/bomb.js';
 import { BouncePad } from '../src/entities/bounce-pad.js';
 import { buildLevel } from '../src/levels/level-loader.js';
@@ -65,7 +65,7 @@ function playHeldCard(scene, cardName) {
 // Drops a bomb that touches the floor and goes off on the next tick.
 function detonateBombAt(scene, x) {
   scene.entityGroups.add('bombs', new Bomb({ x, y: FLOOR_Y + 2, facing: 1, throwerId: 'blue' }));
-  advance(scene, 1);
+  advance(scene, 1 + HITSTOP_TICKS.heavy);
 }
 
 test('a bomb blast breaks the blocks inside its radius and leaves the rest', () => {

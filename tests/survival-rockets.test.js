@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { SCREEN_WIDTH } from '../src/engine/config.js';
+import { HITSTOP_TICKS, SCREEN_WIDTH } from '../src/engine/config.js';
 import { difficultyAt } from '../src/scenes/survival-difficulty.js';
 import { spritesFor } from './fixtures/recording-context.mjs';
 import { ROCKET_MAX_OFFSET_Y, ROCKET_WARNING_TICKS, SurvivalScene } from '../src/scenes/survival-scene.js';
@@ -70,7 +70,7 @@ test('a rocket hit knocks the player back and emits rocket-exploded', () => {
   rocket.x = player.x;
   rocket.y = player.y;
   scene.seaY = Infinity;
-  scene.update(idle);
+  for (let tick = 0; tick <= HITSTOP_TICKS.heavy; tick++) scene.update(idle);
 
   assert.equal(exploded.length, 1);
   assert.deepEqual(exploded[0].playerIds, ['red']);

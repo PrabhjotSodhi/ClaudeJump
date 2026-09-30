@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { spritesFor } from './fixtures/recording-context.mjs';
 import { Crab, CRAB_HEIGHT, CRAB_SPEED, CRAB_WIDTH } from '../src/entities/crab.js';
 import { CRAB_STOMP_VELOCITY_Y, SurvivalScene } from '../src/scenes/survival-scene.js';
-import { TILE_SIZE } from '../src/engine/config.js';
+import { HITSTOP_TICKS, TILE_SIZE } from '../src/engine/config.js';
 
 const idle = { red: { left: false, right: false, jump: false } };
 
@@ -54,8 +54,29 @@ test('walking into a crab knocks the player away and emits player-pinched', () =
   player.x = crab.x - player.width + 4;
   scene.update(idle);
   assert.equal(events.length, 1);
+  for (let tick = 0; tick < HITSTOP_TICKS.light; tick++) scene.update(idle);
   assert.ok(player.knockbackVelocityX < 0);
   assert.equal(scene.entityGroups.get('crabs').length, 1);
+});
+
+test('a pinch freezes the player and the crab, then launches the player away', () => {
+  const { scene, crab } = sceneWithOneCrab();
+  const player = scene.players[0];
+  player.x = crab.x - player.width + 4;
+  scene.update(idle);
+  const frozenPlayerX = player.x;
+  const frozenCrabX = crab.x;
+
+  for (let tick = 1; tick < HITSTOP_TICKS.light; tick++) {
+    scene.update({ red: { left: false, right: true, jump: true } });
+    assert.equal(player.x, frozenPlayerX, 'the pinched player holds still');
+    assert.equal(crab.x, frozenCrabX, 'the crab holds still');
+  }
+  scene.update(idle);
+  scene.update(idle);
+
+  assert.ok(player.x < frozenPlayerX, 'the player is launched away from the crab');
+  assert.ok(crab.x > frozenCrabX, 'the crab walks on');
 });
 
 test('crabs only spawn on runs at least 4 blocks wide, never on the start floor, and leave with their run', () => {
