@@ -31,6 +31,11 @@ const WELDING_SPOTS = [
 const WELDING_CYCLE_TICKS = 140;
 const WELDING_SPARK_TICKS = 24;
 const WELDING_SPARKS_PER_SHOWER = 5;
+const FERRIS_WHEEL_CENTER_X = 520;
+const FERRIS_WHEEL_CENTER_Y = 150;
+const FERRIS_WHEEL_RADIUS = 80;
+const FERRIS_WHEEL_CARS = 10;
+const FERRIS_WHEEL_TURN_TICKS = 3600;
 
 function fillRect(context, color, x, y, width, height) {
   context.fillStyle = color;
@@ -387,6 +392,75 @@ function drawWeldingSparks(context, tick) {
   }
 }
 
+// A soft cloud: a dithered band with a smaller one on top.
+function drawCloud(context, x, y, width) {
+  fillDither(context, '#ffffff', x, y, width, 6);
+  fillDither(context, '#ffffff', x + Math.floor(width / 4), y - 4, Math.floor(width / 2), 4, 'quarter');
+}
+
+function drawPier(context, random) {
+  fillRect(context, '#c0cbdc', 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+  fillDither(context, '#8b9bb4', 0, 0, SCREEN_WIDTH, 40, 'quarter');
+  for (let index = 0; index < 6; index++) {
+    drawCloud(
+      context,
+      Math.floor(random.next() * SCREEN_WIDTH),
+      20 + Math.floor(random.next() * 70),
+      40 + Math.floor(random.next() * 40),
+    );
+  }
+  drawHill(context, '#8b9bb4', 120, 220, 200, 270, 'half');
+  drawHill(context, '#8b9bb4', 560, 160, 215, 270, 'half');
+  for (let x = 0; x < 330; x += 22 + Math.floor(random.next() * 12)) {
+    const top = 220 + Math.floor(random.next() * 30);
+    fillRect(context, '#5a6988', x, top, 18, 270 - top);
+    fillRect(context, '#feae34', x + 6, top + 6, 2, 2);
+  }
+  // The wheel's A frame. The rim, spokes and cars turn in drawFerrisWheel.
+  for (let step = 0; step < FERRIS_WHEEL_CENTER_Y; step++) {
+    const y = FERRIS_WHEEL_CENTER_Y + step;
+    if (y > 270) break;
+    fillRect(context, '#5a6988', FERRIS_WHEEL_CENTER_X - Math.floor(step * 0.4) - 2, y, 3, 1);
+    fillRect(context, '#5a6988', FERRIS_WHEEL_CENTER_X + Math.floor(step * 0.4), y, 3, 1);
+  }
+  fillRect(context, '#5a6988', 0, 270, SCREEN_WIDTH, 30);
+  fillRect(context, '#8b9bb4', 0, 270, SCREEN_WIDTH, 1);
+  // The kiosk under its roof: two posts and a striped counter.
+  for (const postX of [236, 400]) fillRect(context, '#5a6988', postX, 160, 4, 64);
+  fillRect(context, '#5a6988', 240, 200, 160, 24);
+  for (let x = 242; x < 398; x += 8) fillRect(context, '#e43b44', x, 202, 4, 4);
+  fillRect(context, '#3a4466', 0, 300, SCREEN_WIDTH, SCREEN_HEIGHT - 300);
+}
+
+// The fairground wheel turns once every FERRIS_WHEEL_TURN_TICKS. Cars hang straight down from the rim as it turns.
+function drawFerrisWheel(context, tick) {
+  const turn = (tick / FERRIS_WHEEL_TURN_TICKS) * 2 * Math.PI;
+  for (let degree = 0; degree < 360; degree += 2) {
+    const angle = (degree * Math.PI) / 180;
+    fillRect(
+      context,
+      '#5a6988',
+      Math.round(FERRIS_WHEEL_CENTER_X + Math.cos(angle) * FERRIS_WHEEL_RADIUS),
+      Math.round(FERRIS_WHEEL_CENTER_Y + Math.sin(angle) * FERRIS_WHEEL_RADIUS),
+      1,
+      1,
+    );
+  }
+  for (let spoke = 0; spoke < FERRIS_WHEEL_CARS; spoke++) {
+    const angle = turn + (spoke / FERRIS_WHEEL_CARS) * 2 * Math.PI;
+    for (let distance = 0; distance < FERRIS_WHEEL_RADIUS; distance += 2) {
+      const x = Math.round(FERRIS_WHEEL_CENTER_X + Math.cos(angle) * distance);
+      const y = Math.round(FERRIS_WHEEL_CENTER_Y + Math.sin(angle) * distance);
+      fillRect(context, '#5a6988', x, y, 1, 1);
+    }
+    const carX = Math.round(FERRIS_WHEEL_CENTER_X + Math.cos(angle) * FERRIS_WHEEL_RADIUS);
+    const carY = Math.round(FERRIS_WHEEL_CENTER_Y + Math.sin(angle) * FERRIS_WHEEL_RADIUS);
+    fillRect(context, '#5a6988', carX - 3, carY, 7, 6);
+    fillRect(context, spoke % 2 === 0 ? '#e43b44' : '#0099db', carX - 2, carY + 1, 5, 2);
+  }
+  fillRect(context, '#3a4466', FERRIS_WHEEL_CENTER_X - 2, FERRIS_WHEEL_CENTER_Y - 2, 5, 5);
+}
+
 const DRAW_BY_BACKGROUND_NAME = {
   harbor: drawHarbor,
   cave: drawCave,
@@ -397,12 +471,14 @@ const DRAW_BY_BACKGROUND_NAME = {
   quarry: drawQuarry,
   lighthouse: drawLighthouse,
   shipyard: drawShipyard,
+  pier: drawPier,
 };
 
 // Backgrounds that move are drawn again every frame over the still picture, from the tick count alone.
 const DRAW_MOTION_BY_BACKGROUND_NAME = {
   lighthouse: drawLighthouseBeam,
   shipyard: drawWeldingSparks,
+  pier: drawFerrisWheel,
 };
 
 // Each arena draws the same picture every time, from its own fixed seed.

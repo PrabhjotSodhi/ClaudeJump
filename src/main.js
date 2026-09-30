@@ -48,6 +48,7 @@ const LEVEL_FILE_NAMES = [
   'quarry',
   'lighthouse',
   'shipyard',
+  'pier',
 ];
 
 async function loadText(path) {

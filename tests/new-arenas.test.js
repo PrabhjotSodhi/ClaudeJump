@@ -5,7 +5,7 @@ import { LEVEL_COLUMNS, SCREEN_WIDTH, TILE_SIZE } from '../src/engine/config.js'
 import { drawArenaMotion } from '../src/levels/arena-backgrounds.js';
 import { arenaLevels } from './fixtures/arena-levels.mjs';
 
-const NEW_ARENAS = ['lighthouse', 'shipyard'];
+const NEW_ARENAS = ['lighthouse', 'shipyard', 'pier'];
 function recordingContext() {
   const fills = [];
   return {
