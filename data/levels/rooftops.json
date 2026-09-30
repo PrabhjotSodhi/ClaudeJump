@@ -43,6 +43,18 @@
       "x": 480,
       "y": 192,
       "facing": -1
+    },
+    {
+      "id": "green",
+      "x": 52,
+      "y": 240,
+      "facing": 1
+    },
+    {
+      "id": "yellow",
+      "x": 588,
+      "y": 240,
+      "facing": -1
     }
   ],
   "bouncePads": [

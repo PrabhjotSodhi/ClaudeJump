@@ -78,3 +78,8 @@ export function findCharacter(name) {
 }
 
 export const DEFAULT_CHARACTER_BY_PLAYER_ID = { red: findCharacter('claude'), blue: findCharacter('muse') };
+
+export const DEFAULT_JOINED_PLAYERS = Object.entries(DEFAULT_CHARACTER_BY_PLAYER_ID).map(([id, character]) => ({
+  id,
+  character,
+}));

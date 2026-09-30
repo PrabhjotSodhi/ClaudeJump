@@ -43,6 +43,18 @@
       "x": 448,
       "y": 176,
       "facing": -1
+    },
+    {
+      "id": "green",
+      "x": 80,
+      "y": 240,
+      "facing": 1
+    },
+    {
+      "id": "yellow",
+      "x": 560,
+      "y": 240,
+      "facing": -1
     }
   ],
   "waterLineY": 328,
