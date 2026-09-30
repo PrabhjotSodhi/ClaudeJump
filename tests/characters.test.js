@@ -8,7 +8,7 @@ test('every character has its tag color, and two eyes', () => {
   assert.deepEqual(tagColorByName, {
     claude: '#f77622',
     meta: '#b55088',
-    chatgpt: '#ffffff',
+    chatgpt: '#f6757a',
     gemini: '#0099db',
     grok: '#c0cbdc',
     deepseek: '#2ce8f5',

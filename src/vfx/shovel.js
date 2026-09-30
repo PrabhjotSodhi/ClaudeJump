@@ -4,15 +4,15 @@ import { chargeProgressOf } from './character-animations.js';
 // Display only: the small shovel a player swings when they shove. It reads the shove timers and never changes
 // them, so hit zones and timing stay the same with or without it.
 
-// Where the grip sits in each 16x16 frame of data/sprites/props.json, drawn facing right. The grip is held at
+// Where the grip sits in each 32x32 frame of data/sprites/props.json, drawn facing right. The grip is held at
 // the front edge of the body.
 const GRIP_BY_FRAME = {
-  'shovel-up': [2, 15],
-  'shovel-raised': [0, 11],
-  'shovel-forward': [0, 8],
-  'shovel-down': [0, 4],
+  'shovel-up': [4, 21],
+  'shovel-raised': [1, 16],
+  'shovel-forward': [1, 4],
+  'shovel-down': [1, 2],
 };
-const FRAME_SIZE = 16;
+const FRAME_SIZE = 32;
 // Ticks after firing: the blade sweeps out level, follows through low, then pulls back before it is put away.
 const SWEEP_TICKS = 2;
 const FOLLOW_THROUGH_TICKS = 6;

@@ -108,7 +108,7 @@ test('once both lock, the match waits on the picked tile, then starts with that 
   const red = matchScene.players.find((player) => player.id === 'red');
   const blue = matchScene.players.find((player) => player.id === 'blue');
   assert.deepEqual([red.character.name, red.color], ['meta', '#b55088']);
-  assert.deepEqual([blue.character.name, blue.color], ['chatgpt', '#ffffff']);
+  assert.deepEqual([blue.character.name, blue.color], ['chatgpt', '#f6757a']);
 });
 
 function pickedLevel({ seed, redPresses = [], bluePresses = [] }) {

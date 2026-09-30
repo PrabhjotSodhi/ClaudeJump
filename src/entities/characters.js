@@ -17,15 +17,15 @@ export const CHARACTERS = [
     spriteName: 'meta',
     tagColor: '#b55088',
     eyeFramePositions: [
-      [9, 5],
-      [16, 5],
+      [9, 3],
+      [16, 3],
     ],
   },
   {
     name: 'chatgpt',
     displayName: 'ChatGPT',
     spriteName: 'chatgpt',
-    tagColor: '#ffffff',
+    tagColor: '#f6757a',
     eyeFramePositions: [
       [6, 5],
       [17, 5],
