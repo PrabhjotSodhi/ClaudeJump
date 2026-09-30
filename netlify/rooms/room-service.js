@@ -117,7 +117,8 @@ export function createRoomService({ store, now = Date.now, random = randomIntege
     const playerId = randomText(HEX_DIGITS, PLAYER_ID_LENGTH, random);
     const { code, room, result } = await updateRoom(codeInput, (room) => {
       if (room.players.length >= MAX_PLAYERS) throw new RoomError('room-full', 409);
-      const slot = room.players.length;
+      let slot = 1;
+      while (room.players.some((player) => player.slot === slot)) slot++;
       room.players.push({ id: playerId, slot });
       return slot;
     });
@@ -125,6 +126,23 @@ export function createRoomService({ store, now = Date.now, random = randomIntege
     const hostId = room.players[0].id;
     await addMessage(code, hostId, playerId, { type: 'joined', slot: result });
     return { playerId, hostId, slot: result };
+  }
+
+  // A joiner leaves for themselves; the host removes a joiner whose connection closed.
+  // Their slot is free for the next join.
+  async function leave({ code: codeInput, playerId, leaverId = playerId }) {
+    const { code } = await updateRoom(codeInput, (room) => {
+      const requester = findPlayer(room, playerId);
+      const leaver = findPlayer(room, leaverId);
+      if (leaver.slot === 0 || (leaver !== requester && requester.slot !== 0)) {
+        throw new RoomError('bad-request', 400);
+      }
+      room.players = room.players.filter((player) => player !== leaver);
+    });
+    await store.delete(pollKey(code, leaverId));
+    for (const key of await store.list(mailboxPrefix(code, leaverId))) await store.delete(key);
+    await touch(code);
+    return {};
   }
 
   async function signal({ code: codeInput, from, to, payload }) {
@@ -163,5 +181,5 @@ export function createRoomService({ store, now = Date.now, random = randomIntege
     return { messages };
   }
 
-  return { create, join, signal, poll };
+  return { create, join, leave, signal, poll };
 }

@@ -76,6 +76,7 @@ class OnlineConnection {
   }
 
   close() {
+    if (!this.closed && !this.isHost) this.leaveRoom(this.playerId);
     this.closed = true;
     this.stopPolling();
     for (const peer of this.peers.values()) {
@@ -83,6 +84,12 @@ class OnlineConnection {
       peer.connection.close();
     }
     this.peers.clear();
+  }
+
+  leaveRoom(leaverId) {
+    requestRooms(this.endpoint, 'leave', {
+      body: { code: this.code, playerId: this.playerId, leaverId },
+    }).catch(() => {});
   }
 
   fail(error) {
@@ -147,7 +154,9 @@ class OnlineConnection {
     if (peer.channel) peer.channel.onclose = null;
     peer.connection.close();
     this.peers.delete(peerId);
+    this.leaveRoom(peerId);
     this.onPeerClose(peerId);
+    if (this.pollingEnabled) this.startPolling();
   }
 
   watchChannel(peerId, peer, channel) {
@@ -158,7 +167,9 @@ class OnlineConnection {
       if (!this.isWaitingForPeers()) this.stopPolling();
     };
     channel.onclose = () => {
-      if (!this.closed) this.onPeerClose(peerId);
+      if (this.closed) return;
+      if (this.isHost) this.dropPeer(peerId);
+      else this.onPeerClose(peerId);
     };
     channel.onmessage = (event) => this.onMessage(peerId, JSON.parse(event.data));
   }
@@ -208,7 +219,7 @@ function requireWebRtc() {
 }
 
 // Creates a room. Share `connection.code`. Call `connection.stopPolling()` when
-// the match starts; polling also stops once three players have joined.
+// the match starts; polling also stops while all three joiner seats are taken and resumes when one opens.
 export async function hostRoom({ endpoint = ROOMS_ENDPOINT } = {}) {
   requireWebRtc();
   const { code, hostId } = await requestRooms(endpoint, 'create', { body: {} });
