@@ -36,6 +36,19 @@
       canvas {
         display: block;
       }
+      #screen {
+        position: fixed;
+        image-rendering: pixelated;
+      }
+
+      /* The game panel art (border, fill, top highlight) drawn around the screen, one game pixel per
+         step, so it lines up with the game's own pixels. */
+      #screen {
+        box-shadow:
+          0 calc(var(--game-pixel) * -2) 0 0 #3a4466,
+          0 0 0 calc(var(--game-pixel) * 3) #262b44,
+          0 0 0 calc(var(--game-pixel) * 5) #3e2731;
+      }
       #rotate-prompt {
         display: none;
         image-rendering: pixelated;

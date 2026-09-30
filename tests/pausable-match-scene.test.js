@@ -385,3 +385,28 @@ test('confirming the Sound row flips the sound setting and stays paused', () => 
   assert.equal(scene.paused, true);
   assert.equal(scene.pauseMenuOptions[2].label, 'Sound: Off');
 });
+
+test('the pause menu offers fullscreen only where the browser supports it', () => {
+  const { scene, sceneManager } = pausedScene();
+  assert.equal(scene.pauseMenuOptions.length, 4);
+
+  sceneManager.fullscreen = { supported: false, active: false, toggle() {} };
+  assert.equal(scene.pauseMenuOptions.length, 4);
+
+  sceneManager.fullscreen = { supported: true, active: false, toggle() {} };
+  assert.equal(scene.pauseMenuOptions[4].label, 'Fullscreen: Off');
+});
+
+test('confirming the Fullscreen row toggles fullscreen and stays paused', () => {
+  const { scene, sceneManager } = pausedScene();
+  let toggleCount = 0;
+  sceneManager.fullscreen = { supported: true, active: false, toggle: () => toggleCount++ };
+  scene.update(inputsWith('red', { pause: true }));
+  scene.update(inputsWith('red', { up: true }));
+  scene.update(neutralInputs());
+
+  scene.update(inputsWith('red', { confirm: true }));
+
+  assert.equal(toggleCount, 1);
+  assert.equal(scene.paused, true);
+});

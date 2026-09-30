@@ -299,7 +299,7 @@ function drawTouchHint(context) {
 
 function drawTitleUi(context, scene, touchActive) {
   drawLogo(context);
-  drawFullscreenButton(context);
+  if (scene.sceneManager?.fullscreen?.supported) drawFullscreenButton(context);
   drawMenuList(context, { options: scene.options, selectedIndex: scene.selectedIndex, topY: MENU_TOP_Y });
   if (touchActive) drawTouchHint(context);
   else drawKeyHintPanel(context);
