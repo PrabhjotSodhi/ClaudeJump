@@ -3,7 +3,7 @@ import { drawArenaBackground } from './arena-backgrounds.js';
 
 // Each thumbnail pixel is one point sampled from a square of screen pixels this wide, so the thumbnail
 // stays pixel art made of palette colors.
-const THUMBNAIL_SCALE_DOWN = 4;
+const THUMBNAIL_SCALE_DOWN = 5;
 export const THUMBNAIL_WIDTH = SCREEN_WIDTH / THUMBNAIL_SCALE_DOWN;
 export const THUMBNAIL_HEIGHT = SCREEN_HEIGHT / THUMBNAIL_SCALE_DOWN;
 
