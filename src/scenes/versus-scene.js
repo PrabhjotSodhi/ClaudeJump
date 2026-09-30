@@ -145,6 +145,7 @@ export class VersusScene {
     heat = false,
     mode = 'knockout',
   } = {}) {
+    this.touchLayout = 'twoPlayers';
     // The joined players, each { id, character }, in seat order. Every level has a spawn for each id.
     this.joinedPlayers = players;
     this.characterByPlayerId = Object.fromEntries(players.map(({ id, character }) => [id, character]));

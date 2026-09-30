@@ -99,6 +99,7 @@ function saveBestScore(bestScore) {
 
 export class SurvivalScene {
   constructor({ sprites = {}, seed = Date.now() } = {}) {
+    this.touchLayout = 'onePlayer';
     this.sprites = sprites;
     this.seed = seed;
     this.events = new EventEmitter();

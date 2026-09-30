@@ -4,6 +4,7 @@ import {
   createTouchInput,
   mapTouchesToInput,
   TOUCH_BUTTONS,
+  touchButtonsFor,
   TWO_PLAYER_TOUCH_BUTTONS,
 } from '../src/engine/touch-input.js';
 
@@ -84,4 +85,11 @@ test('a lone touch on one side leaves the other player untouched', () => {
 
   assert.deepEqual(pressedControls(inputByPlayerId.red), []);
   assert.deepEqual(pressedControls(inputByPlayerId.blue), ['confirm', 'jump']);
+});
+
+test('only scenes where players move show touch buttons', () => {
+  assert.deepEqual(touchButtonsFor({}), []);
+  assert.equal(touchButtonsFor({ touchLayout: 'onePlayer' }), TOUCH_BUTTONS);
+  assert.equal(touchButtonsFor({ matchScene: { touchLayout: 'twoPlayers' } }), TWO_PLAYER_TOUCH_BUTTONS);
+  assert.equal(touchButtonsFor({ touchLayout: 'onePlayer', matchScene: { touchLayout: 'twoPlayers' } }), TOUCH_BUTTONS);
 });

@@ -41,6 +41,7 @@ export class OnlineMatchScene {
     onReturnToLobby = () => {},
     onPeerLeft = () => {},
   }) {
+    this.touchLayout = 'onePlayer';
     this.sceneManager = sceneManager;
     this.matchScene = matchScene;
     this.session = session;

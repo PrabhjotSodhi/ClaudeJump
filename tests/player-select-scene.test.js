@@ -375,3 +375,20 @@ test('a tap on the first card joins, a tap on its arrows changes character and a
   scene.update(tapAt(middleX));
   assert.equal(scene.stateByPlayerId.red, 'ready');
 });
+
+test('two players on one phone each join and lock in by tapping their own card', () => {
+  const { scene } = sceneWithBaseline();
+  const tapCard = (seatIndex) => {
+    const box = playerCardBox(seatIndex);
+    scene.update({ ...neutralInputs(), red: { ...noInput(), tap: { x: box.x + box.width / 2, y: box.y + 20 } } });
+  };
+
+  tapCard(0);
+  tapCard(1);
+  assert.equal(scene.stateByPlayerId.red, 'picking');
+  assert.equal(scene.stateByPlayerId.blue, 'picking');
+  tapCard(1);
+  tapCard(0);
+  assert.equal(scene.stateByPlayerId.red, 'ready');
+  assert.equal(scene.stateByPlayerId.blue, 'ready');
+});

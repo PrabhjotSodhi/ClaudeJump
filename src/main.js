@@ -13,23 +13,13 @@ import { initKeyBindings, loadKeyBindings } from './engine/key-bindings.js';
 import { loadSettings, settings } from './engine/sound-settings.js';
 import { loadCharacterPoses } from './vfx/character-animations.js';
 import { loadSpriteFile } from './engine/sprites.js';
-import {
-  createTouchInput,
-  portraitTouchButtons,
-  TOUCH_BUTTONS,
-  TWO_PLAYER_TOUCH_BUTTONS,
-} from './engine/touch-input.js';
+import { createTouchInput, portraitTouchButtons, touchButtonsFor } from './engine/touch-input.js';
 import { HOVER_CHARACTER_BY_PLAYER_ID } from './entities/characters.js';
 import { loadLevel, stoneColorOverrides } from './levels/level-loader.js';
 import { createLevelThumbnail } from './levels/level-thumbnail.js';
 import { PLAYERS } from './levels/versus-arena.js';
 import { createWindow } from './engine/window.js';
-import { LevelSelectScene } from './scenes/level-select-scene.js';
-import { OnlineLobbyScene } from './scenes/online-lobby-scene.js';
-import { OnlineMatchScene } from './scenes/online-match-scene.js';
-import { ModeSelectScene } from './scenes/mode-select-scene.js';
 import { PausableMatchScene } from './scenes/pausable-match-scene.js';
-import { PlayerSelectScene } from './scenes/player-select-scene.js';
 import { StyleTestScene } from './scenes/style-test-scene.js';
 import { FULLSCREEN_BUTTON, TitleScene } from './scenes/title-scene.js';
 import { SurvivalScene } from './scenes/survival-scene.js';
@@ -66,18 +56,6 @@ function readLocalStorage() {
 
 function isAnyControlHeld(inputByPlayerId) {
   return Object.values(inputByPlayerId).some((input) => Object.values(input).some(Boolean));
-}
-
-// Versus, from player select to the results, gives each player their own cluster. The title and Survival have one player.
-// Online scenes are played by one person on this device, so they use the one player layout.
-function touchButtonsFor(scene) {
-  if (scene instanceof OnlineLobbyScene || scene instanceof OnlineMatchScene) return TOUCH_BUTTONS;
-  const isVersus =
-    scene instanceof PlayerSelectScene ||
-    scene instanceof ModeSelectScene ||
-    scene instanceof LevelSelectScene ||
-    scene.matchScene instanceof VersusScene;
-  return isVersus ? TWO_PLAYER_TOUCH_BUTTONS : TOUCH_BUTTONS;
 }
 
 // Survival scrolls, so a player's screen position is their world position minus the camera.
