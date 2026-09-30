@@ -7,12 +7,14 @@ import { SceneManager } from './engine/scene-manager.js';
 import { loadSpriteFile } from './engine/sprites.js';
 import { loadLevel, stoneColorOverrides } from './levels/level-loader.js';
 import { createLevelThumbnail } from './levels/level-thumbnail.js';
+import { isPortraitOnTouchDevice } from './engine/screen-fit.js';
 import { createWindow } from './engine/window.js';
 import { PausableMatchScene } from './scenes/pausable-match-scene.js';
 import { StyleTestScene } from './scenes/style-test-scene.js';
 import { FULLSCREEN_BUTTON, TitleScene } from './scenes/title-scene.js';
 import { SurvivalScene } from './scenes/survival-scene.js';
 import { VersusScene } from './scenes/versus-scene.js';
+import { drawRotatePrompt } from './ui/rotate-prompt.js';
 
 // The order of the level select tiles.
 const LEVEL_FILE_NAMES = ['harbor', 'rooftops', 'cave', 'server-farm', 'cooling-towers', 'bridge', 'quarry'];
@@ -36,6 +38,7 @@ async function main() {
     deepseek,
     mistral,
     props,
+    rotateIcon,
     blocks,
     vertexShaderSource,
     fragmentShaderSource,
@@ -49,6 +52,7 @@ async function main() {
     loadSpriteFile('data/sprites/deepseek.json'),
     loadSpriteFile('data/sprites/mistral.json'),
     loadSpriteFile('data/sprites/props.json'),
+    loadSpriteFile('data/sprites/rotate-icon.json'),
     loadSpriteFile('data/sprites/blocks.json'),
     loadText('data/shaders/composite.vert'),
     loadText('data/shaders/composite.frag'),
@@ -104,10 +108,24 @@ async function main() {
     sceneManager.setScene(new TitleScene({ sceneManager, levels, sprites, seed: Date.now() }));
   }
 
+  // Dev mode never shows the rotate prompt, so scripted checks work in any window shape.
+  const coarsePointerQuery = matchMedia('(pointer: coarse)');
+  function showingRotatePrompt() {
+    return (
+      !isDevMode &&
+      isPortraitOnTouchDevice({
+        width: innerWidth,
+        height: innerHeight,
+        hasCoarsePointer: coarsePointerQuery.matches,
+      })
+    );
+  }
+
   function renderFrame(timestamp) {
     renderer.shakeOffset = { x: 0, y: 0 };
     renderer.seaRippleBytes = null;
     sceneManager.render(renderer);
+    if (showingRotatePrompt()) drawRotatePrompt(renderer.uiContext, rotateIcon.icon);
     gameWindow.render({
       backgroundCanvas: renderer.backgroundChanged ? renderer.backgroundCanvas : null,
       gameCanvas: renderer.gameCanvas,
@@ -123,6 +141,10 @@ async function main() {
   const gameLoop = createGameLoop({
     tickRate: TICK_RATE,
     update() {
+      if (showingRotatePrompt()) {
+        sceneManager.currentScene?.pauseForFocusLoss?.();
+        return;
+      }
       sceneManager.update(combineInputs(keyboardInput.sample(), gamepadInput.sample()));
     },
     render: renderFrame,
@@ -148,6 +170,8 @@ async function main() {
       // ignored
     }
   }
+
+  canvas.addEventListener('contextmenu', (event) => event.preventDefault());
 
   addEventListener('keydown', (event) => {
     if (event.code === 'KeyF') toggleFullscreen();
