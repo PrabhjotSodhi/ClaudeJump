@@ -78,9 +78,12 @@ function unlockedPlayer(audioContext = fakeAudioContext(), storage = fakeStorage
 
 test('every event that makes a sound maps to a sound definition that exists', () => {
   for (const eventName of EVENTS_THAT_MAKE_SOUNDS) {
-    const soundName = eventSounds[eventName];
-    assert.ok(soundName, `${eventName} has no sound`);
-    assert.ok(soundDefinitions[soundName]?.length > 0, `${eventName} maps to missing sound ${soundName}`);
+    const mapping = eventSounds[eventName];
+    assert.ok(mapping, `${eventName} has no sound`);
+    const { by, ...soundNamesByValue } = typeof mapping === 'string' ? { any: mapping } : mapping;
+    for (const soundName of Object.values(soundNamesByValue)) {
+      assert.ok(soundDefinitions[soundName]?.length > 0, `${eventName} maps to missing sound ${soundName}`);
+    }
   }
 });
 
@@ -92,6 +95,21 @@ test('emitting an event starts its sound', () => {
   events.emit('player-jumped', { playerId: 'red' });
 
   assert.ok(audioContext.startedSources > 0);
+});
+
+test('a fall into the sea plays the splash sound of its tier', () => {
+  const audioContext = fakeAudioContext();
+  const events = new EventEmitter();
+  unlockedPlayer(audioContext).attach(events);
+  const sourcesFor = (splashTier) => {
+    const before = audioContext.startedSources;
+    events.emit('player-fell-in-water', { playerId: 'red', splashTier });
+    return audioContext.startedSources - before;
+  };
+  const smallSources = sourcesFor('small');
+  const largeSources = sourcesFor('large');
+  assert.ok(smallSources > 0);
+  assert.ok(largeSources > smallSources, 'the large splash is layered heavier');
 });
 
 test('the mute choice survives a reload', () => {

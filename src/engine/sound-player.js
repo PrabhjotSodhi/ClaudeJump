@@ -44,8 +44,14 @@ export class SoundPlayer {
   attach(events) {
     if (!events) return;
     for (const eventName in this.eventSounds) {
-      events.on(eventName, (eventData) => this.play(this.eventSounds[eventName], panFor(eventData)));
+      events.on(eventName, (eventData) => this.play(this.soundNameFor(eventName, eventData), panFor(eventData)));
     }
+  }
+
+  // An event maps to one sound name, or to { by: 'field', <value>: soundName } to pick the sound by a field of the event.
+  soundNameFor(eventName, eventData) {
+    const mapping = this.eventSounds[eventName];
+    return typeof mapping === 'string' ? mapping : mapping[eventData?.[mapping.by]];
   }
 
   // Browsers only allow audio after a user gesture, so call this from key, touch and gamepad input.
@@ -69,7 +75,8 @@ export class SoundPlayer {
   }
 
   play(soundName, pan = 0) {
-    if (!this.soundEnabled || !this.audioContext || this.soundsPlayedThisTick.has(soundName)) return;
+    if (!this.soundEnabled || !this.audioContext || !this.soundDefinitions[soundName]) return;
+    if (this.soundsPlayedThisTick.has(soundName)) return;
     this.soundsPlayedThisTick.add(soundName);
     try {
       const panner = this.audioContext.createStereoPanner();

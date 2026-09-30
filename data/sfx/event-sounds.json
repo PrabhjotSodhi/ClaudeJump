@@ -13,7 +13,12 @@
   "player-slipped": "slip",
   "player-burned": "burn",
   "player-pinched": "crab-pinch",
-  "player-fell-in-water": "splash",
+  "player-fell-in-water": {
+    "by": "splashTier",
+    "small": "splash-small",
+    "medium": "splash-medium",
+    "large": "splash-large"
+  },
   "round-won": "round-won",
   "sudden-death-started": "sudden-death",
   "new-best": "new-best",
