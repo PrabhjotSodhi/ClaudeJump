@@ -1,7 +1,7 @@
 import { SCREEN_WIDTH } from '../engine/config.js';
-import { getInputDevice } from '../engine/input-device.js';
+import { getInputDevice, getPadType } from '../engine/input-device.js';
 import { boundCode, keyName } from '../engine/key-bindings.js';
-import { drawGlyph, GLYPH_SIZE } from './hint-glyphs.js';
+import { drawGlyph, GLYPH_SIZE, padGlyphName } from './hint-glyphs.js';
 import { drawPanel } from './panel.js';
 import { drawText, measureText } from './text.js';
 
@@ -36,6 +36,8 @@ const KEYCAP_HIGHLIGHT_COLOR = '#5a6988';
 const KEY_GAP = 2;
 const KEY_LABEL_GAP = 4;
 const HINT_GAP = 12;
+const HINT_PANEL_PADDING = 8;
+const HINT_PANEL_ROW_HEIGHT = 14;
 
 export const TITLE_HEIGHT = GLYPH_HEIGHT * TITLE_SCALE;
 export const KEYCAP_HEIGHT = GLYPH_HEIGHT + 2 * KEYCAP_PADDING_Y + 2;
@@ -214,12 +216,13 @@ function drawKeycap(context, keyName, x, y) {
   return width;
 }
 
-// What one hint shows for a device: keyboard key names as text, pad and touch as glyph names.
+// What one hint shows for a device: keyboard key names as text, pad buttons as glyph names in the
+// symbols of the pad type, and nothing for touch, which has its own buttons on screen.
 // A key is a name to show as it is, or { player, control } to show the key that player has bound.
-// A hint without `pad` shows its keys on a pad. Touch shows one tap icon unless the hint has `touch`.
-export function hintItems(hint, device) {
-  if (device === 'touch') return (hint.touch ?? ['tap']).map((glyph) => ({ glyph }));
-  if (device === 'pad' && hint.pad) return hint.pad.map((glyph) => ({ glyph }));
+// A hint without `pad` shows its keys on a pad.
+export function hintItems(hint, device, padType = 'generic') {
+  if (device === 'touch') return [];
+  if (device === 'pad' && hint.pad) return hint.pad.map((glyph) => ({ glyph: padGlyphName(glyph, padType) }));
   return hint.keys.map((key) => ({
     text: typeof key === 'string' ? key : keyName(boundCode(key.player, key.control)),
   }));
@@ -240,11 +243,12 @@ function hintWidth(items, label) {
 }
 
 // Each hint is { keys: ['Enter'], pad: ['south'], label: 'Select' }: one icon per key, then the label.
-// The keys show for the keyboard, `pad` for a gamepad and a tap icon for touch, following whichever
-// device sent input last.
+// The keys show for the keyboard and `pad` for a gamepad, following whichever device sent input
+// last. Touch shows no hints.
 export function drawKeyHints(context, hints, y) {
   const device = getInputDevice();
-  const shown = hints.map((hint) => ({ items: hintItems(hint, device), label: hint.label }));
+  if (device === 'touch') return;
+  const shown = hints.map((hint) => ({ items: hintItems(hint, device, getPadType()), label: hint.label }));
   const totalWidth =
     shown.reduce((total, { items, label }) => total + hintWidth(items, label), 0) + (shown.length - 1) * HINT_GAP;
   let x = Math.floor((SCREEN_WIDTH - totalWidth) / 2);
@@ -266,4 +270,24 @@ export function drawKeyHints(context, hints, y) {
     });
     x += measureText(label) * BODY_SCALE + HINT_GAP;
   }
+}
+
+// A panel with one row of hints per entry in `rows`, each { label, color, hints }, with the label on
+// the left. Rows with a `device` show only for that device, so touch shows no panel at all.
+export function drawKeyHintPanel(context, rows, { topY, width }) {
+  const device = getInputDevice();
+  const shownRows = device === 'touch' ? [] : rowsForDevice(rows, device);
+  if (shownRows.length === 0) return;
+  const height = (shownRows.length - 1) * HINT_PANEL_ROW_HEIGHT + KEYCAP_HEIGHT + 2 * HINT_PANEL_PADDING;
+  const left = (SCREEN_WIDTH - width) / 2;
+  drawPanel(context, left, topY, width, height);
+  shownRows.forEach(({ label, color, hints }, index) => {
+    const y = topY + HINT_PANEL_PADDING + index * HINT_PANEL_ROW_HEIGHT;
+    drawText(context, label, left + HINT_PANEL_PADDING, y + 1 + KEYCAP_PADDING_Y, {
+      scale: BODY_SCALE,
+      color,
+      outlineColor: null,
+    });
+    drawKeyHints(context, hints, y);
+  });
 }

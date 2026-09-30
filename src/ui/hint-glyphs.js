@@ -1,5 +1,6 @@
-// Pixel art icons for button hints, all 11x11. Pad glyphs show a button by its position on the
-// face cluster, never by a letter or a symbol. The pressed position is highlighted.
+// Pixel art icons for button hints, all 11x11. A face button glyph is named after its position,
+// such as 'south'. The generic set shows the position on the face cluster, highlighted. The
+// letters and shapes sets, named like 'letters-south', show the symbol printed on that button.
 export const GLYPH_SIZE = 11;
 
 const INACTIVE_COLOR = '#5a6988';
@@ -25,13 +26,68 @@ function faceButtonGlyph(activePosition) {
   return rows.map((row) => row.join(''));
 }
 
-const COLORS = { o: INACTIVE_COLOR, x: ACTIVE_COLOR, r: RING_COLOR, c: CENTER_COLOR };
+const BUTTON_FILL_COLOR = '#262b44';
+
+// Five by five symbols drawn on a round button. Each character is a key into COLORS.
+const SYMBOLS = {
+  'letters-south': ['.ggg.', 'g...g', 'ggggg', 'g...g', 'g...g'],
+  'letters-east': ['eeee.', 'e...e', 'eeee.', 'e...e', 'eeee.'],
+  'letters-west': ['b...b', '.b.b.', '..b..', '.b.b.', 'b...b'],
+  'letters-north': ['y...y', '.y.y.', '..y..', '..y..', '..y..'],
+  'shapes-south': ['b...b', '.b.b.', '..b..', '.b.b.', 'b...b'],
+  'shapes-east': ['.eee.', 'e...e', 'e...e', 'e...e', '.eee.'],
+  'shapes-west': ['ppppp', 'p...p', 'p...p', 'p...p', 'ppppp'],
+  'shapes-north': ['..g..', '.g.g.', '.g.g.', 'g...g', 'ggggg'],
+};
+
+const BUTTON_ROWS = [
+  '...rrrrr...',
+  '.rrfffffrr.',
+  '.rfffffffr.',
+  'rfffffffffr',
+  'rfffffffffr',
+  'rfffffffffr',
+  'rfffffffffr',
+  'rfffffffffr',
+  '.rfffffffr.',
+  '.rrfffffrr.',
+  '...rrrrr...',
+];
+const SYMBOL_OFFSET = 3;
+
+function symbolButtonGlyph(symbol) {
+  return BUTTON_ROWS.map((row, rowIndex) => {
+    const symbolRow = symbol[rowIndex - SYMBOL_OFFSET];
+    if (!symbolRow) return row;
+    return row.slice(0, SYMBOL_OFFSET) + symbolRow.replaceAll('.', 'f') + row.slice(SYMBOL_OFFSET + symbolRow.length);
+  });
+}
+
+const COLORS = {
+  o: INACTIVE_COLOR,
+  x: ACTIVE_COLOR,
+  r: RING_COLOR,
+  c: CENTER_COLOR,
+  f: BUTTON_FILL_COLOR,
+  g: '#63c74d',
+  e: '#e43b44',
+  b: '#0099db',
+  y: '#feae34',
+  p: '#b55088',
+};
+
+// The glyph a pad hint shows on a pad of this type. Only face buttons differ between types.
+export function padGlyphName(glyphName, padType) {
+  if (padType === 'generic' || !(glyphName in DOT_CENTERS)) return glyphName;
+  return `${padType}-${glyphName}`;
+}
 
 export const HINT_GLYPHS = {
   south: faceButtonGlyph('south'),
   east: faceButtonGlyph('east'),
   west: faceButtonGlyph('west'),
   north: faceButtonGlyph('north'),
+  ...Object.fromEntries(Object.entries(SYMBOLS).map(([name, symbol]) => [name, symbolButtonGlyph(symbol)])),
   stick: [
     '...rrrrr...',
     '..r.....r..',
@@ -56,19 +112,6 @@ export const HINT_GLYPHS = {
     '.rrrrrrrrr.',
     '...........',
     '...........',
-    '...........',
-  ],
-  tap: [
-    '...........',
-    '....rrr....',
-    '..rr...rr..',
-    '..r.....r..',
-    '.r..ccc..r.',
-    '.r..ccc..r.',
-    '.r..ccc..r.',
-    '..r.....r..',
-    '..rr...rr..',
-    '....rrr....',
     '...........',
   ],
 };

@@ -1,16 +1,12 @@
 import { SCREEN_WIDTH } from '../engine/config.js';
-import { getInputDevice } from '../engine/input-device.js';
 import { EventEmitter } from '../engine/events.js';
 import { saveKeyBindings } from '../engine/key-bindings.js';
 import { saveSettings, settings } from '../engine/sound-settings.js';
 import { drawArenaBackground } from '../levels/arena-backgrounds.js';
-import { PLAYERS } from '../levels/versus-arena.js';
 import {
   drawKeyHints,
-  rowsForDevice,
   drawMenuList,
   drawWithMenuMotion,
-  KEYCAP_HEIGHT,
   MenuMotion,
   menuRowRectangles,
   rowIndexAt,
@@ -18,7 +14,6 @@ import {
 } from '../ui/menu-kit.js';
 import { SettingsMenu } from '../ui/settings-menu.js';
 import { NO_WATER_LINE_Y } from '../ui/menu-screen.js';
-import { drawPanel } from '../ui/panel.js';
 import { drawText } from '../ui/text.js';
 import { openOnlineMenu } from './online-flow.js';
 import { PlayerSelectScene } from './player-select-scene.js';
@@ -40,64 +35,11 @@ const MENU_TOP_Y = 168;
 const TOUCH_HINT_TEXT = 'Tap a mode to play';
 const TOUCH_HINT_Y = 246;
 
-const HINTS_PANEL_WIDTH = 300;
-const HINTS_PANEL_TOP_Y = 250;
-const HINTS_PANEL_PADDING = 8;
-const HINTS_ROW_HEIGHT = 14;
 const HINTS_LABEL_COLOR = '#c0cbdc';
-const RED_COLOR = PLAYERS.find((spawn) => spawn.id === 'red').color;
-const BLUE_COLOR = PLAYERS.find((spawn) => spawn.id === 'blue').color;
-const KEY_HINT_ROWS = [
-  {
-    label: 'Red',
-    device: 'keyboard',
-    color: RED_COLOR,
-    hints: [
-      {
-        keys: [
-          { player: 'red', control: 'left' },
-          { player: 'red', control: 'right' },
-        ],
-        label: 'Move',
-      },
-      { keys: [{ player: 'red', control: 'jump' }], label: 'Jump' },
-      { keys: [{ player: 'red', control: 'action' }], label: 'Shove' },
-    ],
-  },
-  {
-    label: 'Blue',
-    device: 'keyboard',
-    color: BLUE_COLOR,
-    hints: [
-      {
-        keys: [
-          { player: 'blue', control: 'left' },
-          { player: 'blue', control: 'right' },
-        ],
-        label: 'Move',
-      },
-      { keys: [{ player: 'blue', control: 'jump' }], label: 'Jump' },
-      { keys: [{ player: 'blue', control: 'action' }], label: 'Shove' },
-    ],
-  },
-  {
-    label: 'Pad',
-    device: 'pad',
-    color: HINTS_LABEL_COLOR,
-    hints: [
-      { keys: ['Stick'], pad: ['stick'], label: 'Move' },
-      { keys: ['A'], pad: ['south'], label: 'Jump' },
-      { keys: ['B'], pad: ['east'], label: 'Shove' },
-    ],
-  },
-  {
-    label: 'Menu',
-    color: HINTS_LABEL_COLOR,
-    hints: [
-      { keys: ['Up', 'Down'], pad: ['stick'], label: 'Choose' },
-      { keys: ['Enter'], pad: ['south'], label: 'Select' },
-    ],
-  },
+const HINTS_Y = 250;
+const MENU_HINTS = [
+  { keys: ['Up', 'Down'], pad: ['stick'], label: 'Choose' },
+  { keys: ['Enter'], pad: ['south'], label: 'Select' },
 ];
 
 const FULLSCREEN_BUTTON_SIZE = 28;
@@ -284,19 +226,6 @@ function drawLogo(context) {
   drawText(context, LOGO_TEXT, SCREEN_WIDTH / 2, y, { ...options, outlineColor: LOGO_OUTLINE_COLOR });
 }
 
-function drawKeyHintPanel(context) {
-  const rows = rowsForDevice(KEY_HINT_ROWS, getInputDevice());
-  if (rows.length === 0) return;
-  const height = (rows.length - 1) * HINTS_ROW_HEIGHT + KEYCAP_HEIGHT + 2 * HINTS_PANEL_PADDING;
-  const left = (SCREEN_WIDTH - HINTS_PANEL_WIDTH) / 2;
-  drawPanel(context, left, HINTS_PANEL_TOP_Y, HINTS_PANEL_WIDTH, height);
-  rows.forEach(({ label, color, hints }, index) => {
-    const y = HINTS_PANEL_TOP_Y + HINTS_PANEL_PADDING + index * HINTS_ROW_HEIGHT;
-    drawText(context, label, left + HINTS_PANEL_PADDING, y + 3, { scale: 1, color, outlineColor: null });
-    drawKeyHints(context, hints, y);
-  });
-}
-
 function drawTouchHint(context) {
   drawText(context, TOUCH_HINT_TEXT, SCREEN_WIDTH / 2, TOUCH_HINT_Y, {
     scale: 1,
@@ -318,6 +247,6 @@ function drawTitleUi(context, scene, touchActive) {
       motion: scene.menuMotion,
     });
     if (touchActive) drawTouchHint(context);
-    else drawKeyHintPanel(context);
+    else drawKeyHints(context, MENU_HINTS, HINTS_Y);
   });
 }
