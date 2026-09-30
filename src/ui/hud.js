@@ -1,11 +1,19 @@
 import { SCREEN_HEIGHT, SCREEN_WIDTH, TICK_RATE } from '../engine/config.js';
 import { ROCKET_HEIGHT } from '../entities/rocket.js';
+import { drawPanel } from './panel.js';
+import { drawPlayerPanel, PLAYER_PANEL_BOTTOM } from './player-panel.js';
 import { drawText } from './text.js';
 
 const WARNING_MARKER_FLASH_TICKS = 20;
 const WARNING_MARKER_SIZE = 12;
 const WARNING_MARKER_GAP = 32;
 const WARNING_MARKER_COLOR = '#fee761';
+const TIMER_PANEL_WIDTH = 44;
+const TIMER_PANEL_HEIGHT = 16;
+const TIMER_PANEL_Y = 8;
+const TIMER_TEXT_TOP = 5;
+const TIMER_COLOR = '#ffffff';
+const TIMER_SUDDEN_DEATH_COLOR = '#e43b44';
 
 function displayName(scene, playerId) {
   return scene.players.find((player) => player.id === playerId).character.displayName;
@@ -42,6 +50,7 @@ function drawSuddenDeathWarning(context, scene) {
 
   context.fillStyle = WARNING_MARKER_COLOR;
   for (let y = 0; y < SCREEN_HEIGHT; y += WARNING_MARKER_GAP) {
+    if (y < PLAYER_PANEL_BOTTOM) continue;
     context.fillRect(0, y, WARNING_MARKER_SIZE, WARNING_MARKER_SIZE);
     context.fillRect(SCREEN_WIDTH - WARNING_MARKER_SIZE, y, WARNING_MARKER_SIZE, WARNING_MARKER_SIZE);
   }
@@ -53,12 +62,30 @@ export function drawPhaseMessage(context, scene) {
   if (subtitle) drawText(context, subtitle, SCREEN_WIDTH / 2, 96, { align: 'center' });
 }
 
-export function drawHud(context, scene) {
-  drawText(context, `${displayName(scene, 'red')} Wins: ${scene.wins.red}`, 8, 8);
-  drawText(context, `${displayName(scene, 'blue')} Wins: ${scene.wins.blue}`, SCREEN_WIDTH - 8, 8, { align: 'right' });
+function drawTimerPanel(context, scene) {
+  const x = (SCREEN_WIDTH - TIMER_PANEL_WIDTH) / 2;
+  drawPanel(context, x, TIMER_PANEL_Y, TIMER_PANEL_WIDTH, TIMER_PANEL_HEIGHT);
+  drawText(
+    context,
+    formatCountdown(scene.suddenDeathCountdownTicks),
+    SCREEN_WIDTH / 2,
+    TIMER_PANEL_Y + TIMER_TEXT_TOP,
+    {
+      scale: 1,
+      align: 'center',
+      color: scene.suddenDeathPhase === 'none' ? TIMER_COLOR : TIMER_SUDDEN_DEATH_COLOR,
+      outlineColor: null,
+    },
+  );
+}
 
-  if (scene.phase === 'fight')
-    drawText(context, formatCountdown(scene.suddenDeathCountdownTicks), SCREEN_WIDTH / 2, 8, { align: 'center' });
+export function drawHud(context, scene) {
+  for (const player of scene.players) {
+    if (player.id === 'red') drawPlayerPanel(context, scene, player, 'left');
+    if (player.id === 'blue') drawPlayerPanel(context, scene, player, 'right');
+  }
+
+  if (scene.phase === 'fight') drawTimerPanel(context, scene);
 
   drawPhaseMessage(context, scene);
 
