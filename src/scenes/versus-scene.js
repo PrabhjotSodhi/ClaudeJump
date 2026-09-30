@@ -425,6 +425,8 @@ export class VersusScene {
     this.events.emit('player-shoved', {
       shoverId: shover.id,
       targetId: opponent.id,
+      directionX: shover.facing,
+      directionY: 0,
       strength,
       charge: shover.shoveCharge,
     });
@@ -542,7 +544,13 @@ export class VersusScene {
       const awayFromCenterDirection = player.x + player.width / 2 < bouncePad.x + bouncePad.width / 2 ? -1 : 1;
       const flingDirection = movingDirection === 0 ? awayFromCenterDirection : -movingDirection;
       player.freeze('light', BOUNCE_PAD_FLING_VELOCITY_X * flingDirection, BOUNCE_PAD_FLING_VELOCITY_Y);
-      this.events.emit('trap-sprung', { ownerId: bouncePad.ownerId, targetId: player.id, strength: 'light' });
+      this.events.emit('trap-sprung', {
+        ownerId: bouncePad.ownerId,
+        targetId: player.id,
+        directionX: 0,
+        directionY: -1,
+        strength: 'light',
+      });
       this.entityGroups.remove('bouncePads', bouncePad);
       return;
     }
@@ -625,7 +633,13 @@ export class VersusScene {
         this.dashHitPairIds.add(pairId);
         leftPlayer.freeze('medium', -DASH_KNOCKBACK_VELOCITY_X, 0);
         rightPlayer.freeze('medium', DASH_KNOCKBACK_VELOCITY_X, 0);
-        this.events.emit('dash-hit', { playerIds: [playerA.id, playerB.id], strength: 'medium' });
+        const dasher = playerA.dashTicksRemaining > 0 ? playerA : playerB;
+        this.events.emit('dash-hit', {
+          playerIds: [playerA.id, playerB.id],
+          directionX: dasher.facing,
+          directionY: 0,
+          strength: 'medium',
+        });
       }
     }
 
