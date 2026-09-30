@@ -131,3 +131,54 @@ test('tapping a menu row selects and confirms it', () => {
 
   assert.equal(scene.confirmed, 2);
 });
+
+function playersAfter(seed, tickCount) {
+  const scene = new TitleScene({ seed });
+  for (let tick = 0; tick < tickCount; tick++) scene.update(neutralInputs());
+  return scene.brawl.players.map((player) => ({ id: player.id, x: player.x, y: player.y }));
+}
+
+test('the same seed puts the title characters in the same places after the same ticks', () => {
+  assert.deepEqual(playersAfter(7, 900), playersAfter(7, 900));
+});
+
+test('different seeds play out differently', () => {
+  assert.notDeepEqual(playersAfter(1, 900), playersAfter(2, 900));
+});
+
+test('the title characters fight: they shove each other and get knocked out and respawn', () => {
+  const scene = new TitleScene({ seed: 3 });
+  let shoves = 0;
+  scene.brawl.events.on('player-shoved', () => shoves++);
+
+  for (let tick = 0; tick < 3600; tick++) scene.update(neutralInputs());
+
+  assert.ok(shoves > 0);
+  assert.ok(scene.brawl.respawnCount > 0);
+});
+
+test('a title character that falls off the ledge comes back on it', () => {
+  const scene = new TitleScene({ seed: 0 });
+  const [red] = scene.brawl.players;
+  red.y = 400;
+
+  scene.update(neutralInputs());
+
+  const returned = scene.brawl.players.find((player) => player.id === 'red');
+  assert.notEqual(returned, red);
+  assert.ok(returned.y < 200);
+});
+
+test('title characters stay above the menu and logo', () => {
+  const scene = new TitleScene({ seed: 5 });
+  const logoBottomY = 58;
+  const menuTopY = 176;
+
+  for (let tick = 0; tick < 3600; tick++) {
+    scene.update(neutralInputs());
+    for (const player of scene.brawl.players) {
+      assert.ok(player.y > logoBottomY, `top ${player.y} at tick ${tick}`);
+      assert.ok(player.y + player.height < menuTopY, `bottom ${player.y + player.height} at tick ${tick}`);
+    }
+  }
+});
