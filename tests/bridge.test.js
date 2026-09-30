@@ -76,7 +76,7 @@ test('a player can run across the seam along the deck without falling', () => {
 test('spawns are mirror images and start on stone piers', () => {
   const [red, blue] = level.spawns;
   assert.equal(red.x, SCREEN_WIDTH - blue.x);
-  for (const spawn of level.spawns) {
+  for (const spawn of [red, blue]) {
     const pier = level.blocks.find(
       (block) => block.y === spawn.y && block.x <= spawn.x - 12 && spawn.x + 12 <= block.x + block.size,
     );

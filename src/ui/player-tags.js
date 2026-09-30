@@ -10,7 +10,7 @@ const GAP_ABOVE_ICON = 4;
 // launched off the top edge by a bounce pad or a double jump still shows a findable tag.
 const TOP_EDGE_MARGIN = 2;
 
-const TAG_LABEL_BY_PLAYER_ID = { red: 'P1', blue: 'P2' };
+const TAG_LABEL_BY_PLAYER_ID = { red: 'P1', blue: 'P2', green: 'P3', yellow: 'P4' };
 
 // Pure so the pinning behavior can be tested without a canvas.
 export function playerTagPosition(player) {

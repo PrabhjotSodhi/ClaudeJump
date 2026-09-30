@@ -1,7 +1,7 @@
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../engine/config.js';
 import { EventEmitter } from '../engine/events.js';
 import { CHARACTERS, DEFAULT_CHARACTER_BY_PLAYER_ID } from '../entities/characters.js';
-import { PLAYERS } from '../levels/versus-arena.js';
+import { MENU_PLAYERS } from '../levels/versus-arena.js';
 import { drawKeyHints, drawMenuTitle, KEYCAP_HEIGHT } from '../ui/menu-kit.js';
 import { MENU_BACKGROUND_COLOR, NO_WATER_LINE_Y } from '../ui/menu-screen.js';
 import { drawPanel } from '../ui/panel.js';
@@ -53,7 +53,7 @@ const HINTS_ROW_HEIGHT = 14;
 const KEY_HINT_ROWS = [
   {
     label: 'Red',
-    color: PLAYERS.find((spawn) => spawn.id === 'red').color,
+    color: MENU_PLAYERS.find((spawn) => spawn.id === 'red').color,
     hints: [
       { keys: ['A', 'D'], label: 'Pick' },
       { keys: ['W'], label: 'Join or lock in' },
@@ -61,7 +61,7 @@ const KEY_HINT_ROWS = [
   },
   {
     label: 'Blue',
-    color: PLAYERS.find((spawn) => spawn.id === 'blue').color,
+    color: MENU_PLAYERS.find((spawn) => spawn.id === 'blue').color,
     hints: [
       { keys: ['Left', 'Right'], label: 'Pick' },
       { keys: ['Up'], label: 'Join or lock in' },
@@ -110,7 +110,7 @@ export class PlayerSelectScene {
     this.stateByPlayerId = {};
     // An index into CHARACTERS: the hovered character until the player locks it in, then the chosen one.
     this.characterIndexByPlayerId = {};
-    for (const spawn of PLAYERS) {
+    for (const spawn of MENU_PLAYERS) {
       this.stateByPlayerId[spawn.id] = 'unjoined';
       this.characterIndexByPlayerId[spawn.id] = CHARACTERS.indexOf(DEFAULT_CHARACTER_BY_PLAYER_ID[spawn.id]);
     }
@@ -120,11 +120,11 @@ export class PlayerSelectScene {
     this.tickCount++;
     if (!this.previousInput) {
       this.previousInput = {};
-      for (const spawn of PLAYERS) this.previousInput[spawn.id] = { ...inputByPlayerId[spawn.id] };
+      for (const spawn of MENU_PLAYERS) this.previousInput[spawn.id] = { ...inputByPlayerId[spawn.id] };
       return;
     }
 
-    for (const spawn of PLAYERS) {
+    for (const spawn of MENU_PLAYERS) {
       const input = inputByPlayerId[spawn.id] ?? {};
       const previous = this.previousInput[spawn.id];
       if (this.stateByPlayerId[spawn.id] === 'picking') {
@@ -160,7 +160,7 @@ export class PlayerSelectScene {
   }
 
   isLockedByOther(playerId, characterIndex) {
-    return PLAYERS.some(
+    return MENU_PLAYERS.some(
       (spawn) =>
         spawn.id !== playerId &&
         this.stateByPlayerId[spawn.id] === 'ready' &&
@@ -185,7 +185,7 @@ export class PlayerSelectScene {
 
   // Anyone still hovering on the character that was just locked in moves on to the next free one.
   moveHoveringPlayersOff(lockedPlayerId) {
-    for (const spawn of PLAYERS) {
+    for (const spawn of MENU_PLAYERS) {
       if (spawn.id === lockedPlayerId || this.stateByPlayerId[spawn.id] === 'ready') continue;
       if (this.characterIndexByPlayerId[spawn.id] === this.characterIndexByPlayerId[lockedPlayerId]) {
         this.changeCharacter(spawn.id, 1);
@@ -195,7 +195,8 @@ export class PlayerSelectScene {
 
   pickedCharacters() {
     const characterByPlayerId = {};
-    for (const spawn of PLAYERS) characterByPlayerId[spawn.id] = CHARACTERS[this.characterIndexByPlayerId[spawn.id]];
+    for (const spawn of MENU_PLAYERS)
+      characterByPlayerId[spawn.id] = CHARACTERS[this.characterIndexByPlayerId[spawn.id]];
     return characterByPlayerId;
   }
 
@@ -227,7 +228,7 @@ function drawFrame(context, x, y, width, height, color) {
 function drawPlayerCard(context, scene, spawn) {
   const state = scene.stateByPlayerId[spawn.id];
   const character = CHARACTERS[scene.characterIndexByPlayerId[spawn.id]];
-  const centerX = SCREEN_WIDTH / 2 + (PLAYERS.indexOf(spawn) === 0 ? -CARD_OFFSET_X : CARD_OFFSET_X);
+  const centerX = SCREEN_WIDTH / 2 + (MENU_PLAYERS.indexOf(spawn) === 0 ? -CARD_OFFSET_X : CARD_OFFSET_X);
   const cardX = centerX - CARD_WIDTH / 2;
 
   drawPanel(context, cardX, CARD_TOP_Y, CARD_WIDTH, CARD_HEIGHT);
@@ -334,6 +335,6 @@ function drawKeyHintPanel(context) {
 
 function drawPlayerSelectUi(context, scene) {
   drawMenuTitle(context, 'Player Select', TITLE_Y);
-  for (const spawn of PLAYERS) drawPlayerCard(context, scene, spawn);
+  for (const spawn of MENU_PLAYERS) drawPlayerCard(context, scene, spawn);
   drawKeyHintPanel(context);
 }

@@ -15,7 +15,7 @@ import {
   BOUNCE_PAD_FLING_VELOCITY_X,
   BOUNCE_PAD_FLING_VELOCITY_Y,
 } from '../entities/bounce-pad.js';
-import { DEFAULT_CHARACTER_BY_PLAYER_ID } from '../entities/characters.js';
+import { DEFAULT_JOINED_PLAYERS } from '../entities/characters.js';
 import { Crate, CRATE_WIDTH, CRATE_HEIGHT, CRATE_WARNING_TICKS } from '../entities/crate.js';
 import { Platform } from '../entities/platform.js';
 import { Player, SHOVE_KNOCKBACK_VELOCITY_X, SHOVE_KNOCKBACK_VELOCITY_Y } from '../entities/player.js';
@@ -85,11 +85,13 @@ export class VersusScene {
     level,
     startInFightPhase = false,
     seed = Date.now(),
-    characterByPlayerId = DEFAULT_CHARACTER_BY_PLAYER_ID,
+    players = DEFAULT_JOINED_PLAYERS,
     sprites = {},
     levels = [],
   } = {}) {
-    this.characterByPlayerId = characterByPlayerId;
+    // The joined players, each { id, character }, in seat order. Every level has a spawn for each id.
+    this.joinedPlayers = players;
+    this.characterByPlayerId = Object.fromEntries(players.map(({ id, character }) => [id, character]));
     this.sprites = sprites;
     this.levels = levels;
     this.events = new EventEmitter();
@@ -102,7 +104,7 @@ export class VersusScene {
     this.backgroundDrawn = false;
     this.winsNeeded = WINS_NEEDED;
     this.wins = {};
-    for (const spawn of level.spawns) this.wins[spawn.id] = 0;
+    for (const { id } of players) this.wins[id] = 0;
     this.skipNextReadyPhase = startInFightPhase;
     this.dashHitPairIds = new Set();
     // Which opponents each shover has already hit this shove, so one shove lands at most one hit
@@ -163,11 +165,9 @@ export class VersusScene {
     for (const { x, y } of this.level.bouncePads) {
       this.entityGroups.add('bouncePads', new BouncePad({ x, y, lifetimeTicks: Infinity }));
     }
-    for (const { id, x, y, facing } of this.level.spawns) {
-      this.entityGroups.add(
-        'players',
-        new Player({ id, character: this.characterByPlayerId[id], spawnX: x, spawnY: y, facing }),
-      );
+    for (const { id, character } of this.joinedPlayers) {
+      const { x, y, facing } = this.level.spawns.find((spawn) => spawn.id === id);
+      this.entityGroups.add('players', new Player({ id, character, spawnX: x, spawnY: y, facing }));
     }
     this.ticksUntilCrateSpawn = CRATE_SPAWN_DELAY_TICKS;
     if (this.skipNextReadyPhase) {
@@ -345,7 +345,7 @@ export class VersusScene {
     this.resolvePlayerCollisions();
   }
 
-  // The first opponent touching the shover's hit zone gets knocked away, once per shove. The pop
+  // Every other player touching the shover's hit zone gets knocked away, once per shove. The pop
   // upward lets air knockback decay carry the hit, so a shove near the edge can end a round.
   resolveShoveHit(shover) {
     const hitZone = shover.shoveHitZone;
@@ -358,7 +358,6 @@ export class VersusScene {
       opponent.applyKnockback(SHOVE_KNOCKBACK_VELOCITY_X * shover.facing, SHOVE_KNOCKBACK_VELOCITY_Y);
       this.requestHitPause(SHOVE_HIT_PAUSE_TICKS);
       this.events.emit('player-shoved', { shoverId: shover.id, targetId: opponent.id });
-      return;
     }
   }
 
@@ -582,11 +581,11 @@ export class VersusScene {
 
   checkRoundEnd() {
     const standingPlayers = this.players.filter((player) => !player.inWater);
-    if (standingPlayers.length === this.players.length) return;
+    if (standingPlayers.length > 1) return;
 
     this.phase = 'point';
     this.ticksRemaining = POINT_PAUSE_TICKS;
-    if (standingPlayers.length !== 1) return;
+    if (standingPlayers.length === 0) return;
 
     this.winnerId = standingPlayers[0].id;
     this.wins[this.winnerId]++;
