@@ -1,43 +1,92 @@
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../engine/config.js';
 import { CHARACTERS, DEFAULT_CHARACTER_BY_PLAYER_ID } from '../entities/characters.js';
 import { PLAYERS } from '../levels/versus-arena.js';
+import { drawKeyHints, drawMenuTitle, KEYCAP_HEIGHT } from '../ui/menu-kit.js';
 import { MENU_BACKGROUND_COLOR, NO_WATER_LINE_Y } from '../ui/menu-screen.js';
-import { drawText, measureText, TEXT_GLYPH_HEIGHT } from '../ui/text.js';
+import { drawPanel } from '../ui/panel.js';
+import { drawText, measureText } from '../ui/text.js';
 import { drawCharacterBody, FRAME_SIZE } from '../vfx/character-body.js';
 import { EYE_STIFFNESSES, GooglyEye } from '../vfx/googly-eyes.js';
 import { LevelSelectScene } from './level-select-scene.js';
 
-const TITLE_Y = 60;
-const TITLE_SCALE = 6;
+const TITLE_Y = 24;
 
-const CARD_TOP_Y = 110;
-const CARD_WIDTH = 168;
-const CARD_HEIGHT = 210;
-const CARD_OFFSET_X = 148;
-const CARD_LABEL_Y = CARD_TOP_Y + 16;
-const PORTRAIT_SCALE = 3;
-const PORTRAIT_TOP_Y = CARD_TOP_Y + 34;
-const CHARACTER_NAME_Y = PORTRAIT_TOP_Y + FRAME_SIZE * PORTRAIT_SCALE + 8;
-// Clear space between the character name and the status, so the two read as separate lines.
-const NAME_TO_STATUS_GAP = 18;
-const STATUS_TEXT_TOP_Y = CHARACTER_NAME_Y + TEXT_GLYPH_HEIGHT + NAME_TO_STATUS_GAP;
-const STATUS_LINE_HEIGHT = 20;
-const TEXT_SCALE = 2;
-// Each arrow is a triangle this many pixels deep and twice that minus one tall, about the height of the text.
-const ARROW_DEPTH = 5;
-const ARROW_GAP = 8;
+const CARD_TOP_Y = 56;
+const CARD_WIDTH = 280;
+const CARD_HEIGHT = 172;
+const CARD_OFFSET_X = 145;
+const CARD_LABEL_Y = CARD_TOP_Y + 12;
+const CARD_FRAME_INSET = 3;
 
-const READY_COLOR = '#fee761';
+const PEDESTAL_BLOCK_SIZE = 32;
+const PEDESTAL_BLOCKS = 2;
+const PEDESTAL_TOP_Y = CARD_TOP_Y + 92;
+// The white outline row of the body overlaps the top edge of the pedestal so the feet read as touching.
+const CHARACTER_SINK_PIXELS = 1;
+const HOP_TICKS = 24;
+const HOP_HEIGHT = 10;
 
-// Each status is split across lines short enough to fit inside CARD_WIDTH with margin to spare.
-const STATUS_LABEL = {
-  unjoined: ['Press jump', 'to join'],
-  picking: ['Press jump', 'to lock in'],
-  ready: ['READY!'],
-};
+const CHIP_WIDTH = 176;
+const CHIP_HEIGHT = 24;
+const CHIP_TOP_Y = CARD_TOP_Y + 136;
+const TEXT_HEIGHT = 5;
+const ARROW_DEPTH = 3;
+const ARROW_GAP = 6;
+
+const ROSTER_TOP_Y = CARD_TOP_Y + CARD_HEIGHT + 12;
+const HEAD_SIZE = 24;
+const HEAD_OUTER_SIZE = HEAD_SIZE + 2;
+const HEAD_GAP = 4;
+// The sprite frame hangs this many rows below the tile's bottom edge, so the tile shows head and shoulders.
+const HEAD_CROP_ROWS = 8;
+const HEAD_BORDER_COLOR = '#181425';
+const HEAD_FILL_COLOR = '#3a4466';
+
+const SELECTED_COLOR = '#feae34';
+const UNJOINED_COLOR = '#c0cbdc';
+
+const HINTS_PANEL_WIDTH = 300;
+const HINTS_PANEL_TOP_Y = ROSTER_TOP_Y + HEAD_OUTER_SIZE + 16;
+const HINTS_PANEL_PADDING = 8;
+const HINTS_ROW_HEIGHT = 14;
+const KEY_HINT_ROWS = [
+  {
+    label: 'Red',
+    color: PLAYERS.find((spawn) => spawn.id === 'red').color,
+    hints: [
+      { keys: ['A', 'D'], label: 'Pick' },
+      { keys: ['W'], label: 'Join or lock in' },
+    ],
+  },
+  {
+    label: 'Blue',
+    color: PLAYERS.find((spawn) => spawn.id === 'blue').color,
+    hints: [
+      { keys: ['Left', 'Right'], label: 'Pick' },
+      { keys: ['Up'], label: 'Join or lock in' },
+    ],
+  },
+  {
+    label: 'Pad',
+    color: UNJOINED_COLOR,
+    hints: [
+      { keys: ['Stick'], label: 'Pick' },
+      { keys: ['A'], label: 'Join or lock in' },
+    ],
+  },
+];
+
+const CHIP_TEXT = { unjoined: 'Press jump to join', ready: 'READY!' };
 
 // Each card goes through these states in order, one jump press apart.
 const NEXT_STATE = { unjoined: 'picking', picking: 'ready' };
+
+// How many pixels above the pedestal a character is this many ticks after a hop starts: a parabola that
+// leaves the pedestal at 0, peaks at HOP_HEIGHT and lands at HOP_TICKS.
+export function hopOffsetY(ticksSinceHop) {
+  if (ticksSinceHop < 0 || ticksSinceHop >= HOP_TICKS) return 0;
+  return Math.round((HOP_HEIGHT * 4 * ticksSinceHop * (HOP_TICKS - ticksSinceHop)) / (HOP_TICKS * HOP_TICKS));
+}
 
 // Every card shows the same eyes at rest.
 const PORTRAIT_EYES = EYE_STIFFNESSES.map((stiffness) => new GooglyEye(stiffness));
@@ -53,6 +102,9 @@ export class PlayerSelectScene {
     // Captured from the real input on the first tick this scene runs, so a button still held from
     // the title screen's confirm press never counts as a fresh press here.
     this.previousInput = null;
+    // Render only: when each player's character last changed, so the card can hop it.
+    this.tickCount = 0;
+    this.hopStartTickByPlayerId = {};
     this.stateByPlayerId = {};
     // An index into CHARACTERS: the hovered character until the player locks it in, then the chosen one.
     this.characterIndexByPlayerId = {};
@@ -63,6 +115,7 @@ export class PlayerSelectScene {
   }
 
   update(inputByPlayerId) {
+    this.tickCount++;
     if (!this.previousInput) {
       this.previousInput = {};
       for (const spawn of PLAYERS) this.previousInput[spawn.id] = { ...inputByPlayerId[spawn.id] };
@@ -97,7 +150,10 @@ export class PlayerSelectScene {
     const state = this.stateByPlayerId[playerId];
     if (!(state in NEXT_STATE)) return;
     this.stateByPlayerId[playerId] = NEXT_STATE[state];
-    if (this.stateByPlayerId[playerId] === 'ready') this.moveHoveringPlayersOff(playerId);
+    if (this.stateByPlayerId[playerId] === 'ready') {
+      this.hopStartTickByPlayerId[playerId] = this.tickCount;
+      this.moveHoveringPlayersOff(playerId);
+    }
   }
 
   isLockedByOther(playerId, characterIndex) {
@@ -120,6 +176,7 @@ export class PlayerSelectScene {
 
   changeCharacter(playerId, direction) {
     this.characterIndexByPlayerId[playerId] = this.nextFreeCharacterIndex(playerId, direction);
+    this.hopStartTickByPlayerId[playerId] = this.tickCount;
   }
 
   // Anyone still hovering on the character that was just locked in moves on to the next free one.
@@ -155,31 +212,69 @@ function drawPlayerSelectBackground(context) {
   context.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 }
 
-function drawPlayerCard(context, spawn, state, character, sprites) {
-  const columnIndex = PLAYERS.indexOf(spawn);
-  const centerX = SCREEN_WIDTH / 2 + (columnIndex === 0 ? -CARD_OFFSET_X : CARD_OFFSET_X);
-  const cardX = Math.round(centerX - CARD_WIDTH / 2);
-  const joined = state !== 'unjoined';
-  const color = joined ? character.tagColor : spawn.color;
+function drawFrame(context, x, y, width, height, color) {
+  context.fillStyle = color;
+  context.fillRect(x, y, width, 1);
+  context.fillRect(x, y + height - 1, width, 1);
+  context.fillRect(x, y + 1, 1, height - 2);
+  context.fillRect(x + width - 1, y + 1, 1, height - 2);
+}
 
-  context.strokeStyle = color;
-  context.lineWidth = 2;
-  context.strokeRect(cardX + 1, CARD_TOP_Y + 1, CARD_WIDTH - 2, CARD_HEIGHT - 2);
+function drawPlayerCard(context, scene, spawn) {
+  const state = scene.stateByPlayerId[spawn.id];
+  const character = CHARACTERS[scene.characterIndexByPlayerId[spawn.id]];
+  const centerX = SCREEN_WIDTH / 2 + (PLAYERS.indexOf(spawn) === 0 ? -CARD_OFFSET_X : CARD_OFFSET_X);
+  const cardX = centerX - CARD_WIDTH / 2;
 
+  drawPanel(context, cardX, CARD_TOP_Y, CARD_WIDTH, CARD_HEIGHT);
+  drawFrame(
+    context,
+    cardX + CARD_FRAME_INSET,
+    CARD_TOP_Y + CARD_FRAME_INSET,
+    CARD_WIDTH - 2 * CARD_FRAME_INSET,
+    CARD_HEIGHT - 2 * CARD_FRAME_INSET,
+    spawn.color,
+  );
   drawText(context, `${spawn.id[0].toUpperCase()}${spawn.id.slice(1)}`, centerX, CARD_LABEL_Y, {
+    scale: 1,
     align: 'center',
     color: spawn.color,
+    outlineColor: null,
   });
 
-  if (joined) {
-    drawPortrait(context, character, sprites, centerX);
-    drawText(context, character.displayName, centerX, CHARACTER_NAME_Y, { align: 'center', color });
+  for (let block = 0; block < PEDESTAL_BLOCKS; block++) {
+    const blockX = centerX - (PEDESTAL_BLOCKS * PEDESTAL_BLOCK_SIZE) / 2 + block * PEDESTAL_BLOCK_SIZE;
+    context.drawImage(scene.sprites.stoneBlocks[`block-big-${block % 2}`], blockX, PEDESTAL_TOP_Y);
   }
-  if (state === 'picking') {
-    drawArrows(context, centerX, measureText(character.displayName) * TEXT_SCALE, CHARACTER_NAME_Y, color);
+  if (state !== 'unjoined') {
+    const hopY = hopOffsetY(scene.tickCount - (scene.hopStartTickByPlayerId[spawn.id] ?? -HOP_TICKS));
+    drawCharacter(context, character, scene.sprites, centerX, PEDESTAL_TOP_Y + CHARACTER_SINK_PIXELS - hopY);
   }
 
-  drawStatus(context, STATUS_LABEL[state], centerX, state === 'ready' ? READY_COLOR : color);
+  drawChip(context, state, character, centerX);
+  drawRoster(context, scene, spawn, centerX);
+}
+
+function drawCharacter(context, character, sprites, centerX, bottomY) {
+  drawCharacterBody(context, {
+    sprite: sprites[character.spriteName].body,
+    eyeFramePositions: character.eyeFramePositions,
+    eyes: PORTRAIT_EYES,
+    centerX,
+    bottomY,
+    width: FRAME_SIZE,
+    height: FRAME_SIZE,
+  });
+}
+
+// The chip reads the state: how to join, then the pickable name between arrows, then READY!.
+function drawChip(context, state, character, centerX) {
+  drawPanel(context, centerX - CHIP_WIDTH / 2, CHIP_TOP_Y, CHIP_WIDTH, CHIP_HEIGHT);
+  const textY = CHIP_TOP_Y + Math.floor((CHIP_HEIGHT - TEXT_HEIGHT) / 2);
+  const text = state === 'picking' ? character.displayName : CHIP_TEXT[state];
+  const color = { unjoined: UNJOINED_COLOR, picking: character.tagColor, ready: SELECTED_COLOR }[state];
+  drawText(context, text, centerX, textY, { scale: 1, align: 'center', color, outlineColor: null });
+  if (state === 'picking') drawArrows(context, centerX, measureText(text), textY, color);
 }
 
 // Arrows either side of a line of text while it can still change, so players know left and right change it.
@@ -195,36 +290,46 @@ function drawArrows(context, centerX, labelWidth, topY, color) {
   }
 }
 
-// Centers a single line in the two-line status slot, so READY! sits level with a wrapped status.
-function drawStatus(context, lines, centerX, color) {
-  const topY = lines.length === 1 ? STATUS_TEXT_TOP_Y + STATUS_LINE_HEIGHT / 2 : STATUS_TEXT_TOP_Y;
-  lines.forEach((line, index) => {
-    drawText(context, line, centerX, topY + index * STATUS_LINE_HEIGHT, { align: 'center', color });
+// One small head per character under the card, the current pick outlined once the player has joined.
+function drawRoster(context, scene, spawn, centerX) {
+  const rosterWidth = CHARACTERS.length * HEAD_OUTER_SIZE + (CHARACTERS.length - 1) * HEAD_GAP;
+  const leftX = centerX - rosterWidth / 2;
+  const joined = scene.stateByPlayerId[spawn.id] !== 'unjoined';
+  CHARACTERS.forEach((character, index) => {
+    const x = leftX + index * (HEAD_OUTER_SIZE + HEAD_GAP);
+    const isPick = joined && index === scene.characterIndexByPlayerId[spawn.id];
+    context.fillStyle = isPick ? SELECTED_COLOR : HEAD_BORDER_COLOR;
+    context.fillRect(x, ROSTER_TOP_Y, HEAD_OUTER_SIZE, HEAD_OUTER_SIZE);
+    context.fillStyle = HEAD_FILL_COLOR;
+    context.fillRect(x + 1, ROSTER_TOP_Y + 1, HEAD_SIZE, HEAD_SIZE);
+    context.save();
+    context.beginPath();
+    context.rect(x + 1, ROSTER_TOP_Y + 1, HEAD_SIZE, HEAD_SIZE);
+    context.clip();
+    drawCharacter(
+      context,
+      character,
+      scene.sprites,
+      x + 1 + HEAD_SIZE / 2,
+      ROSTER_TOP_Y + 1 + HEAD_SIZE + HEAD_CROP_ROWS,
+    );
+    context.restore();
   });
 }
 
-// The same drawing a match uses, magnified so it reads clearly on the card.
-function drawPortrait(context, character, sprites, centerX) {
-  context.save();
-  context.translate(Math.round(centerX), PORTRAIT_TOP_Y);
-  context.scale(PORTRAIT_SCALE, PORTRAIT_SCALE);
-  drawCharacterBody(context, {
-    sprite: sprites[character.spriteName].body,
-    eyeFramePositions: character.eyeFramePositions,
-    eyes: PORTRAIT_EYES,
-    centerX: 0,
-    bottomY: FRAME_SIZE,
-    width: FRAME_SIZE,
-    height: FRAME_SIZE,
+function drawKeyHintPanel(context) {
+  const height = (KEY_HINT_ROWS.length - 1) * HINTS_ROW_HEIGHT + KEYCAP_HEIGHT + 2 * HINTS_PANEL_PADDING;
+  const left = (SCREEN_WIDTH - HINTS_PANEL_WIDTH) / 2;
+  drawPanel(context, left, HINTS_PANEL_TOP_Y, HINTS_PANEL_WIDTH, height);
+  KEY_HINT_ROWS.forEach(({ label, color, hints }, index) => {
+    const y = HINTS_PANEL_TOP_Y + HINTS_PANEL_PADDING + index * HINTS_ROW_HEIGHT;
+    drawText(context, label, left + HINTS_PANEL_PADDING, y + 3, { scale: 1, color, outlineColor: null });
+    drawKeyHints(context, hints, y);
   });
-  context.restore();
 }
 
 function drawPlayerSelectUi(context, scene) {
-  drawText(context, 'Player Select', SCREEN_WIDTH / 2, TITLE_Y, { scale: TITLE_SCALE, align: 'center' });
-
-  for (const spawn of PLAYERS) {
-    const character = CHARACTERS[scene.characterIndexByPlayerId[spawn.id]];
-    drawPlayerCard(context, spawn, scene.stateByPlayerId[spawn.id], character, scene.sprites);
-  }
+  drawMenuTitle(context, 'Player Select', TITLE_Y);
+  for (const spawn of PLAYERS) drawPlayerCard(context, scene, spawn);
+  drawKeyHintPanel(context);
 }
