@@ -6,6 +6,7 @@ import { drawText } from './text.js';
 import { PIP_SIZE } from './win-pips.js';
 
 const PANEL_MARGIN = 8;
+const PANEL_GAP = 4;
 const PANEL_WIDTH = 92;
 const PANEL_HEIGHT = 34;
 const PANEL_PADDING = 4;
@@ -69,10 +70,23 @@ function drawPip(context, centerX, centerY, size, outlineColor, fillColor) {
   context.fillRect(left + 1, top + 1, size - 2, size - 2);
 }
 
-// The red player's panel sits in the top left corner and the blue player's in the top right, mirrored.
-export function drawPlayerPanel(context, scene, player, side) {
+// One panel per player along the top edge, first player leftmost. Two players take the two corners. More fill in
+// beside them, and the timer's gap in the middle stays clear. Panels on the right are mirrored.
+export function playerPanelBoxes(playerCount) {
+  const leftEdge = { x: PANEL_MARGIN, side: 'left' };
+  const leftInner = { x: PANEL_MARGIN + PANEL_WIDTH + PANEL_GAP, side: 'left' };
+  const rightInner = { x: SCREEN_WIDTH - PANEL_MARGIN - 2 * PANEL_WIDTH - PANEL_GAP, side: 'right' };
+  const rightEdge = { x: SCREEN_WIDTH - PANEL_MARGIN - PANEL_WIDTH, side: 'right' };
+  const slots = {
+    2: [leftEdge, rightEdge],
+    3: [leftEdge, leftInner, rightEdge],
+    4: [leftEdge, leftInner, rightInner, rightEdge],
+  }[playerCount];
+  return slots.map((slot) => ({ ...slot, y: PANEL_MARGIN, width: PANEL_WIDTH, height: PANEL_HEIGHT }));
+}
+
+export function drawPlayerPanel(context, scene, player, { x: panelX, side }) {
   const isLeft = side === 'left';
-  const panelX = isLeft ? PANEL_MARGIN : SCREEN_WIDTH - PANEL_MARGIN - PANEL_WIDTH;
   const portraitX = isLeft ? panelX + PANEL_PADDING : panelX + PANEL_WIDTH - PANEL_PADDING - PORTRAIT_OUTER_SIZE;
   const contentX = isLeft ? portraitX + PORTRAIT_OUTER_SIZE + NAME_GAP : panelX + PANEL_PADDING;
 

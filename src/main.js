@@ -8,8 +8,10 @@ import { MusicPlayer } from './engine/music-player.js';
 import { SoundPlayer } from './engine/sound-player.js';
 import { loadSpriteFile } from './engine/sprites.js';
 import { createTouchInput, TOUCH_BUTTONS, TWO_PLAYER_TOUCH_BUTTONS } from './engine/touch-input.js';
+import { HOVER_CHARACTER_BY_PLAYER_ID } from './entities/characters.js';
 import { loadLevel, stoneColorOverrides } from './levels/level-loader.js';
 import { createLevelThumbnail } from './levels/level-thumbnail.js';
+import { PLAYERS } from './levels/versus-arena.js';
 import { isPortraitOnTouchDevice, pickScale } from './engine/screen-fit.js';
 import { createWindow, readSafeAreaInsets } from './engine/window.js';
 import { LevelSelectScene } from './scenes/level-select-scene.js';
@@ -114,7 +116,8 @@ async function main() {
   }
   const renderer = new Renderer();
   const keyboardInput = createKeyboardInput(keyMappings);
-  const gamepadInput = createGamepadInput(keyMappings.map((mapping) => mapping.id));
+  // Gamepad slots follow seat order, so pads 3 and 4 drive green and yellow, which have no keyboard keys.
+  const gamepadInput = createGamepadInput(PLAYERS.map((player) => player.id));
   const touchInput = createTouchInput(
     canvas,
     keyMappings.map((mapping) => mapping.id),
@@ -146,6 +149,8 @@ async function main() {
     sceneManager.setScene(new SurvivalScene({ sprites, seed: 0 }));
   } else if (isDevMode) {
     // ?dev&level=cave starts on that level file. Harbor is the default.
+    // ?dev&players=4 seats that many players, 2 to 4.
+    const playerCount = Math.min(PLAYERS.length, Math.max(2, Number(searchParameters.get('players')) || 2));
     const levelIndex = Math.max(0, LEVEL_FILE_NAMES.indexOf(searchParameters.get('level')));
     sceneManager.setScene(
       new PausableMatchScene({
@@ -154,6 +159,7 @@ async function main() {
           level: levels[levelIndex],
           startInFightPhase: true,
           seed: 0,
+          players: PLAYERS.slice(0, playerCount).map(({ id }) => ({ id, character: HOVER_CHARACTER_BY_PLAYER_ID[id] })),
           sprites,
           levels,
         }),

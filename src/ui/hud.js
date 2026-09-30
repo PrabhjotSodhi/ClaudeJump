@@ -1,7 +1,7 @@
 import { SCREEN_HEIGHT, SCREEN_WIDTH, TICK_RATE } from '../engine/config.js';
 import { ROCKET_HEIGHT } from '../entities/rocket.js';
 import { drawPanel } from './panel.js';
-import { drawPlayerPanel, PLAYER_PANEL_BOTTOM } from './player-panel.js';
+import { drawPlayerPanel, PLAYER_PANEL_BOTTOM, playerPanelBoxes } from './player-panel.js';
 import { drawKeyHints, drawMenuTitle, menuPanelSize } from './menu-kit.js';
 import { drawMenuBackdrop } from './menu-options.js';
 import { drawText, measureText } from './text.js';
@@ -13,6 +13,12 @@ const WARNING_MARKER_COLOR = '#fee761';
 const TIMER_PANEL_WIDTH = 44;
 const TIMER_PANEL_HEIGHT = 16;
 const TIMER_PANEL_Y = 8;
+export const TIMER_PANEL = {
+  x: (SCREEN_WIDTH - TIMER_PANEL_WIDTH) / 2,
+  y: TIMER_PANEL_Y,
+  width: TIMER_PANEL_WIDTH,
+  height: TIMER_PANEL_HEIGHT,
+};
 const TIMER_TEXT_TOP = 5;
 const TIMER_COLOR = '#ffffff';
 const TIMER_SUDDEN_DEATH_COLOR = '#e43b44';
@@ -43,6 +49,13 @@ const OVER_ROW_HEIGHT = 14;
 const OVER_ROW_COLOR = '#c0cbdc';
 const OVER_HINT_GAP = 12;
 
+const CONTROLS_LABEL_BY_PLAYER_ID = {
+  red: 'Red: WASD',
+  blue: 'Blue: Arrows',
+  green: 'Green: Pad 3',
+  yellow: 'Yellow: Pad 4',
+};
+
 function displayName(scene, playerId) {
   return scene.players.find((player) => player.id === playerId).character.displayName;
 }
@@ -59,7 +72,8 @@ function phaseMessages(scene) {
   switch (scene.phase) {
     case 'ready': {
       const totalWins = Object.values(scene.wins).reduce((sum, wins) => sum + wins, 0);
-      return ['Ready...', totalWins === 0 ? 'Red: WASD    Blue: Arrows' : ''];
+      const controls = scene.players.map((player) => CONTROLS_LABEL_BY_PLAYER_ID[player.id]).join('    ');
+      return ['Ready...', totalWins === 0 ? controls : ''];
     }
     case 'fight':
       return [scene.ticksRemaining > 0 ? 'Go!' : '', ''];
@@ -91,8 +105,7 @@ export function drawPhaseMessage(context, scene) {
 }
 
 function drawTimerPanel(context, scene) {
-  const x = (SCREEN_WIDTH - TIMER_PANEL_WIDTH) / 2;
-  drawPanel(context, x, TIMER_PANEL_Y, TIMER_PANEL_WIDTH, TIMER_PANEL_HEIGHT);
+  drawPanel(context, TIMER_PANEL.x, TIMER_PANEL_Y, TIMER_PANEL_WIDTH, TIMER_PANEL_HEIGHT);
   drawText(
     context,
     formatCountdown(scene.suddenDeathCountdownTicks),
@@ -108,10 +121,8 @@ function drawTimerPanel(context, scene) {
 }
 
 export function drawHud(context, scene) {
-  for (const player of scene.players) {
-    if (player.id === 'red') drawPlayerPanel(context, scene, player, 'left');
-    if (player.id === 'blue') drawPlayerPanel(context, scene, player, 'right');
-  }
+  const panelBoxes = playerPanelBoxes(scene.players.length);
+  scene.players.forEach((player, index) => drawPlayerPanel(context, scene, player, panelBoxes[index]));
 
   if (scene.phase === 'fight') drawTimerPanel(context, scene);
 

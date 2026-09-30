@@ -79,6 +79,13 @@ export function findCharacter(name) {
 
 export const DEFAULT_CHARACTER_BY_PLAYER_ID = { red: findCharacter('claude'), blue: findCharacter('muse') };
 
+// The character each seat hovers on when player select opens.
+export const HOVER_CHARACTER_BY_PLAYER_ID = {
+  ...DEFAULT_CHARACTER_BY_PLAYER_ID,
+  green: findCharacter('chatgpt'),
+  yellow: findCharacter('mistral'),
+};
+
 export const DEFAULT_JOINED_PLAYERS = Object.entries(DEFAULT_CHARACTER_BY_PLAYER_ID).map(([id, character]) => ({
   id,
   character,

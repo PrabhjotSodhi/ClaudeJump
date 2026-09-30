@@ -208,3 +208,83 @@ test('left and right stay inside their row, including a shorter last row', () =>
   press(scene, 'blue', 'down');
   assert.equal(scene.cursorByPlayerId.blue, 3, 'a column with no card in the last row stays in the first row');
 });
+
+const ALL_PLAYER_IDS = ['red', 'blue', 'green', 'yellow'];
+const threeLevels = [harborLevel, otherLevel, { ...harborLevel, name: 'Yard' }];
+
+function voteWith({ seed, playerIds, votes, levels = threeLevels }) {
+  const scenes = [];
+  const sceneManager = { setScene: (nextScene) => scenes.push(nextScene) };
+  const characterByPlayerId = Object.fromEntries(playerIds.map((id) => [id, findCharacter('muse')]));
+  const scene = new LevelSelectScene({ sceneManager, levels, characterByPlayerId, seed });
+  const idle = () => Object.fromEntries(ALL_PLAYER_IDS.map((id) => [id, noInput()]));
+  scene.update(idle());
+  playerIds.forEach((playerId, index) => {
+    // Every cursor starts on Random, so a press left or right picks a level relative to it.
+    for (const button of votes[index]) {
+      scene.update({ ...idle(), [playerId]: { ...noInput(), [button]: true } });
+      scene.update(idle());
+    }
+    scene.update({ ...idle(), [playerId]: { ...noInput(), jump: true } });
+    scene.update(idle());
+  });
+  for (let tick = 0; scenes.length === 0 && tick < MOST_TICKS_BEFORE_MATCH; tick++) scene.update(idle());
+  return scenes[0]?.matchScene;
+}
+
+// From the Random tile, one left is the last level and right wraps to the first.
+const YARD = ['left'];
+const HARBOR = ['right'];
+const DOCK = ['right', 'right'];
+const RANDOM = [];
+
+test('with three or four players, the level with the most votes always wins', () => {
+  for (let seed = 0; seed < 30; seed++) {
+    const threeVoters = voteWith({ seed, playerIds: ['red', 'green', 'yellow'], votes: [DOCK, YARD, DOCK] });
+    assert.equal(threeVoters.level, otherLevel, 'two of three voted Dock');
+    const fourVoters = voteWith({ seed, playerIds: ALL_PLAYER_IDS, votes: [HARBOR, YARD, YARD, YARD] });
+    assert.equal(fourVoters.level, threeLevels[2], 'three of four voted Yard');
+  }
+});
+
+test('a Random vote can never beat two votes for the same level', () => {
+  for (let seed = 0; seed < 30; seed++) {
+    const matchScene = voteWith({ seed, playerIds: ['blue', 'green', 'yellow'], votes: [YARD, RANDOM, YARD] });
+    assert.equal(matchScene.level, threeLevels[2]);
+  }
+});
+
+test('a tie is broken by the seed between the tied levels only', () => {
+  const picked = new Set();
+  for (let seed = 0; seed < 60; seed++) {
+    const first = voteWith({ seed, playerIds: ALL_PLAYER_IDS, votes: [HARBOR, DOCK, HARBOR, DOCK] });
+    const second = voteWith({ seed, playerIds: ALL_PLAYER_IDS, votes: [HARBOR, DOCK, HARBOR, DOCK] });
+    assert.equal(first.level, second.level, 'the same seed breaks the tie the same way');
+    picked.add(first.level.name);
+  }
+
+  assert.deepEqual([...picked].sort(), ['Dock', 'Harbor'], 'both tied levels can win and the third never does');
+});
+
+test('the match starts with exactly the players who joined', () => {
+  const matchScene = voteWith({ seed: 0, playerIds: ['blue', 'yellow'], votes: [HARBOR, HARBOR] });
+
+  assert.deepEqual(
+    matchScene.players.map((player) => player.id),
+    ['blue', 'yellow'],
+  );
+});
+
+test('voting waits for every joined player and no one else', () => {
+  const scenes = [];
+  const sceneManager = { setScene: (nextScene) => scenes.push(nextScene) };
+  const characterByPlayerId = { red: findCharacter('muse'), green: findCharacter('grok') };
+  const scene = new LevelSelectScene({ sceneManager, levels: twoLevels, characterByPlayerId, seed: 0 });
+  scene.update(neutralInputs());
+
+  press(scene, 'red', 'jump');
+  assert.equal(scene.pickedLevel, null, 'green has not voted yet');
+  press(scene, 'green', 'jump');
+
+  assert.notEqual(scene.pickedLevel, null, 'blue and yellow never joined, so they are not waited for');
+});

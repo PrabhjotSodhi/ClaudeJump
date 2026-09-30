@@ -1,6 +1,7 @@
 import { SCREEN_WIDTH } from '../engine/config.js';
 import { drawCharacterBody, FRAME_SIZE } from '../vfx/character-body.js';
 import { drawKeyHints, drawMenuList, KEYCAP_HEIGHT, menuPanelSize, menuRowRectangles } from './menu-kit.js';
+import { rankPlayers } from './match-stats.js';
 import { drawMenuBackdrop } from './menu-options.js';
 import { drawPanel } from './panel.js';
 import { drawText, measureText } from './text.js';
@@ -17,8 +18,11 @@ const PEDESTAL_BLOCK_SIZE = 32;
 const PEDESTAL_BLOCKS = 2;
 const PEDESTAL_WIDTH = PEDESTAL_BLOCK_SIZE * PEDESTAL_BLOCKS;
 const LOSER_GAP = 12;
+// A second player on the same side of the pedestal stands beyond the first.
+const FAR_LOSER_GAP = 4;
 
-const STAGE_WIDTH = 192;
+// Four players need a wider stage to stand on.
+const STAGE_WIDTH_BY_PLAYER_COUNT = { 2: 192, 3: 192, 4: 256 };
 const STAGE_TOP_Y = 48;
 const STAGE_HEIGHT = 92;
 const FLOOR_HEIGHT = 12;
@@ -29,6 +33,9 @@ const STATS_PANEL_WIDTH = 128;
 const STATS_PANEL_HEIGHT = 64;
 const STATS_PANEL_MARGIN_X = 48;
 const STATS_PANEL_TOP_Y = 64;
+// With more than two players the panels sit two to a row, so they start higher.
+const STATS_GRID_TOP_Y = 48;
+const STATS_GRID_GAP = 8;
 const STATS_ACCENT_HEIGHT = 3;
 const STATS_TEXT_INSET = 12;
 const STATS_ROW_HEIGHT = 14;
@@ -39,14 +46,39 @@ const MENU_TOP_Y = 172;
 const HINT_GAP = 14;
 const HINTS = [{ keys: ['Enter', 'A'], label: 'Select' }];
 
-// Every rectangle of the results screen, in whole pixels. The winner stands on the pedestal in the middle,
-// the loser stands beside it, and each player's stats panel sits at their own side of the screen.
-export function resultsLayout({ winnerIndex, menuHeight }) {
-  const stage = { x: (SCREEN_WIDTH - STAGE_WIDTH) / 2, y: STAGE_TOP_Y, width: STAGE_WIDTH, height: STAGE_HEIGHT };
+// The stats panel positions. Two players each get their own side of the screen. More players fill rows of two,
+// left then right, in the order the panels are given.
+function statsPanelBoxes(playerCount) {
+  const columnXs = [STATS_PANEL_MARGIN_X, SCREEN_WIDTH - STATS_PANEL_MARGIN_X - STATS_PANEL_WIDTH];
+  return Array.from({ length: playerCount }, (_, index) => {
+    const row = playerCount === 2 ? 0 : Math.floor(index / 2);
+    const topY = playerCount === 2 ? STATS_PANEL_TOP_Y : STATS_GRID_TOP_Y;
+    return {
+      x: columnXs[index % 2],
+      y: topY + row * (STATS_PANEL_HEIGHT + STATS_GRID_GAP),
+      width: STATS_PANEL_WIDTH,
+      height: STATS_PANEL_HEIGHT,
+    };
+  });
+}
+
+// Every rectangle of the results screen, in whole pixels. The winner stands on the pedestal in the middle and
+// the others stand beside it in rank order, alternating sides, the second place first on the side away from
+// the winner's seat. Stats panels sit at the sides of the screen.
+export function resultsLayout({ winnerIndex, playerCount, menuHeight }) {
+  const stageWidth = STAGE_WIDTH_BY_PLAYER_COUNT[playerCount];
+  const stage = { x: (SCREEN_WIDTH - stageWidth) / 2, y: STAGE_TOP_Y, width: stageWidth, height: STAGE_HEIGHT };
   const floorY = stage.y + stage.height - 2 - FLOOR_HEIGHT;
   const pedestalTopY = floorY - PEDESTAL_BLOCK_SIZE;
   const pedestalX = (SCREEN_WIDTH - PEDESTAL_WIDTH) / 2;
-  const loserX = winnerIndex === 0 ? pedestalX + PEDESTAL_WIDTH + LOSER_GAP : pedestalX - LOSER_GAP - FRAME_SIZE;
+  const sides = winnerIndex === 0 ? ['right', 'left', 'right'] : ['left', 'right', 'left'];
+  const placedBySide = { left: 0, right: 0 };
+  const losers = sides.slice(0, playerCount - 1).map((side) => {
+    const step = placedBySide[side]++ * (FRAME_SIZE + FAR_LOSER_GAP);
+    const x =
+      side === 'right' ? pedestalX + PEDESTAL_WIDTH + LOSER_GAP + step : pedestalX - LOSER_GAP - FRAME_SIZE - step;
+    return { x, y: floorY - FRAME_SIZE, width: FRAME_SIZE, height: FRAME_SIZE };
+  });
   const bannerWidth = measureText(BANNER_TEXT) * BANNER_TEXT_SCALE + 2 * BANNER_PADDING_X;
   const menuBottomY = MENU_TOP_Y + menuHeight;
   return {
@@ -65,13 +97,8 @@ export function resultsLayout({ winnerIndex, menuHeight }) {
       height: FRAME_SIZE,
     },
     pedestal: { x: pedestalX, y: pedestalTopY, width: PEDESTAL_WIDTH, height: PEDESTAL_BLOCK_SIZE },
-    loser: { x: loserX, y: floorY - FRAME_SIZE, width: FRAME_SIZE, height: FRAME_SIZE },
-    statsPanels: [STATS_PANEL_MARGIN_X, SCREEN_WIDTH - STATS_PANEL_MARGIN_X - STATS_PANEL_WIDTH].map((x) => ({
-      x,
-      y: STATS_PANEL_TOP_Y,
-      width: STATS_PANEL_WIDTH,
-      height: STATS_PANEL_HEIGHT,
-    })),
+    losers,
+    statsPanels: statsPanelBoxes(playerCount),
     menuTopY: MENU_TOP_Y,
     hintY: menuBottomY + HINT_GAP,
     hintBottomY: menuBottomY + HINT_GAP + KEYCAP_HEIGHT,
@@ -121,7 +148,10 @@ function drawCharacter(context, { player, box, matchScene }) {
   });
 }
 
-function drawStatsPanel(context, panel, player, matchScene) {
+const ORDINALS = ['1st', '2nd', '3rd', '4th'];
+
+// rank is null when the screen does not show one.
+function drawStatsPanel(context, panel, player, rank, matchScene) {
   drawPanel(context, panel.x, panel.y, panel.width, panel.height);
   context.fillStyle = player.color;
   context.fillRect(panel.x + 2, panel.y + 2, panel.width - 4, STATS_ACCENT_HEIGHT);
@@ -129,7 +159,7 @@ function drawStatsPanel(context, panel, player, matchScene) {
   const textX = panel.x + STATS_TEXT_INSET;
   const firstRowY = panel.y + STATS_FIRST_ROW_Y + STATS_ACCENT_HEIGHT;
   const rows = [
-    [player.character.displayName, player.color],
+    [rank ? `${ORDINALS[rank - 1]} ${player.character.displayName}` : player.character.displayName, player.color],
     [`Rounds won ${matchScene.wins[player.id]}`, STATS_LABEL_COLOR],
     [`Falls ${matchScene.matchStats.fallsIn[player.id]}`, STATS_LABEL_COLOR],
   ];
@@ -148,17 +178,31 @@ export function resultsMenuRowRectangles(options) {
 export function drawResultsMenu(context, { matchScene, options, selectedIndex }) {
   const winnerIndex = matchScene.players.findIndex((player) => player.id === matchScene.winnerId);
   const winner = matchScene.players[winnerIndex];
-  const loser = matchScene.players[1 - winnerIndex];
+  const playerCount = matchScene.players.length;
+  const ranked = rankPlayers(
+    matchScene.players.map((player) => player.id),
+    matchScene.wins,
+  ).map(({ playerId, rank }) => ({ player: matchScene.players.find((player) => player.id === playerId), rank }));
+  const losers = ranked.filter(({ player }) => player !== winner);
   const menuHeight = menuPanelSize(options.map((option) => option.label)).height;
-  const layout = resultsLayout({ winnerIndex, menuHeight });
+  const layout = resultsLayout({ winnerIndex, playerCount, menuHeight });
 
   drawMenuBackdrop(context);
   drawBanner(context, layout.banner, winner.color);
   drawStage(context, layout);
   drawPedestal(context, layout.pedestal, matchScene.level.tileSprites);
-  drawCharacter(context, { player: loser, box: layout.loser, matchScene });
+  losers.forEach(({ player }, index) => drawCharacter(context, { player, box: layout.losers[index], matchScene }));
   drawCharacter(context, { player: winner, box: layout.winner, matchScene });
-  matchScene.players.forEach((player, index) => drawStatsPanel(context, layout.statsPanels[index], player, matchScene));
+  // Two players keep their own side. More are shown in rank order with their place named.
+  if (playerCount === 2) {
+    matchScene.players.forEach((player, index) =>
+      drawStatsPanel(context, layout.statsPanels[index], player, null, matchScene),
+    );
+  } else {
+    ranked.forEach(({ player, rank }, index) =>
+      drawStatsPanel(context, layout.statsPanels[index], player, rank, matchScene),
+    );
+  }
   drawMenuList(context, { options, selectedIndex, topY: layout.menuTopY });
   drawKeyHints(context, HINTS, layout.hintY);
 }
