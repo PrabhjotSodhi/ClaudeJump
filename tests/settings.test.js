@@ -7,7 +7,6 @@ import { defaultSettings, loadSettings, saveSettings, settings } from '../src/en
 import { PausableMatchScene } from '../src/scenes/pausable-match-scene.js';
 import { TitleScene } from '../src/scenes/title-scene.js';
 import { changeSetting } from '../src/ui/settings-menu.js';
-import { drawCharacterBody } from '../src/vfx/character-body.js';
 import { ClashSparks, drawClashSparks } from '../src/vfx/clash-sparks.js';
 import { ScreenShake } from '../src/vfx/screen-shake.js';
 
@@ -143,34 +142,6 @@ test('reduce flashes softens the clash flash', () => {
 
   assert.equal(firstFlashAlpha(false), 1);
   assert.ok(firstFlashAlpha(true) < 1);
-});
-
-test('reduce flashes softens the full charge white flash on a character', () => {
-  function flashAlpha(reduceFlashes) {
-    let alpha;
-    withSettings({ reduceFlashes }, () => {
-      const context = recordingContext();
-      const sprite = {};
-      const flashSprite = {};
-      context.drawImage = function drawImage(image) {
-        if (image === flashSprite) alpha = this.globalAlpha;
-      };
-      drawCharacterBody(context, {
-        sprite,
-        flashSprite,
-        eyeFramePositions: [],
-        eyes: [],
-        centerX: 32,
-        bottomY: 32,
-        width: 32,
-        height: 32,
-      });
-    });
-    return alpha;
-  }
-
-  assert.equal(flashAlpha(false), 1);
-  assert.ok(flashAlpha(true) < 1);
 });
 
 // Records the gain every sound voice is given.

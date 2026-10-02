@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { Player } from '../src/entities/player.js';
-import { SCREEN_WIDTH } from '../src/engine/config.js';
+import { SCREEN_WIDTH, SHOVE_MAX_CHARGE_TICKS } from '../src/engine/config.js';
 import { findCharacter } from '../src/entities/characters.js';
 import { PlayerEyes } from '../src/vfx/player-eyes.js';
-import { recordingContext, spritesFor } from './fixtures/recording-context.mjs';
+import { BODY_SPRITE, recordingContext, spritesFor } from './fixtures/recording-context.mjs';
 
 const wideGround = [{ x: -5000, y: 200, width: 10000, height: 16 }];
 
@@ -108,4 +108,45 @@ test('a player takes its color from its character', () => {
   assert.equal(player.color, '#0099db');
   assert.equal(player.character.displayName, 'Gemini');
   assert.equal(player.id, 'blue');
+});
+
+function chargedPlayerDraws(player) {
+  const drawnImages = [];
+  const context = {
+    ...recordingContext(),
+    save() {},
+    restore() {},
+    translate() {},
+    scale() {},
+    drawImage(image, x, y, width, height) {
+      drawnImages.push({ image, x, y, width, height });
+    },
+  };
+  const props = { 'shovel-up': { name: 'shovel' }, 'shovel-raised': { name: 'shovel' } };
+  player.render(context, { sprites: { ...spritesFor('claude'), props }, playerEyes: new PlayerEyes() });
+  return drawnImages;
+}
+
+test('a fully charged player is drawn once with no overlay and shakes side to side instead', () => {
+  const player = groundedPlayer();
+  player.x = 200;
+  const holdAction = { ...idleInput(), action: true };
+  for (let tick = 0; tick <= SHOVE_MAX_CHARGE_TICKS; tick++) player.update(holdAction, wideGround);
+  assert.ok(player.isShoveFullyCharged);
+
+  const bodyXs = new Set();
+  for (let tick = 0; tick < 8; tick++) {
+    player.update(holdAction, wideGround);
+    const draws = chargedPlayerDraws(player);
+    const bodies = draws.filter((draw) => draw.image === BODY_SPRITE);
+    assert.equal(bodies.length, 1);
+    const [body] = bodies;
+    const overlays = draws.filter(
+      (draw) => draw.image !== BODY_SPRITE && draw.x === body.x && draw.y === body.y && draw.width === body.width,
+    );
+    assert.deepEqual(overlays, [], 'nothing is drawn over the body');
+    assert.ok(Math.abs(body.x + body.width / 2 - (Math.round(player.x) + player.width / 2)) <= 1);
+    bodyXs.add(body.x);
+  }
+  assert.equal(bodyXs.size, 2, 'the body moves between two positions');
 });
