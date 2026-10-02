@@ -2,7 +2,7 @@ import { CALLOUT_TICKS, CLUTCH_SECONDS, SCREEN_HEIGHT, SCREEN_WIDTH } from '../e
 import { drawText, measureText } from './text.js';
 
 const CALLOUT_HEIGHT_ABOVE_WATER = 100;
-const POP_SCALES = [5, 4, 3];
+const POP_SCALES = [6, 3];
 const POP_TICKS_PER_SCALE = 3;
 const EDGE_MARGIN = 8;
 const OUTLINE_COLOR = '#181425';

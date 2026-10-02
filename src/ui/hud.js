@@ -3,7 +3,7 @@ import { ROCKET_HEIGHT } from '../entities/rocket.js';
 import { drawModifierIcon, MODIFIER_ICON_SIZE } from './modifier-icons.js';
 import { drawPanel } from './panel.js';
 import { drawPlayerPanel, PLAYER_PANEL_BOTTOM, playerPanelBoxes } from './player-panel.js';
-import { drawKeyHints, drawMenuTitle, menuPanelSize } from './menu-kit.js';
+import { BACK_HINT, drawKeyHints, drawMenuTitle, menuPanelSize } from './menu-kit.js';
 import { drawMenuBackdrop } from './menu-options.js';
 import { drawPlayHints, playHintRows } from './play-hints.js';
 import { drawText, measureText } from './text.js';
@@ -97,7 +97,7 @@ function drawSuddenDeathWarning(context, scene) {
 
 export function drawPhaseMessage(context, scene) {
   const [title, subtitle] = phaseMessages(scene);
-  if (title) drawText(context, title, SCREEN_WIDTH / 2, 60, { scale: 4, align: 'center' });
+  if (title) drawText(context, title, SCREEN_WIDTH / 2, 60, { scale: 3, align: 'center' });
   if (subtitle) drawText(context, subtitle, SCREEN_WIDTH / 2, 96, { align: 'center' });
 }
 
@@ -234,7 +234,7 @@ function drawRunOver(context, scene) {
   });
   drawKeyHints(
     context,
-    [{ keys: [{ player: 'red', control: 'jump' }], pad: ['south'], label: 'Retry' }],
+    [{ keys: [{ player: 'red', control: 'jump' }], pad: ['south'], label: 'Retry' }, BACK_HINT],
     OVER_PANEL_Y + height + OVER_HINT_GAP,
   );
 }

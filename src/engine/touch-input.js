@@ -55,14 +55,16 @@ export const TWO_PLAYER_TOUCH_BUTTONS = [
   PAUSE_BUTTON,
 ];
 
-// The buttons a scene shows. Only scenes where players move need them: a scene sets `touchLayout` to 'onePlayer' or
-// 'twoPlayers', or wraps a match scene that does. Menus leave it unset, show no buttons and are driven by taps on
-// what they draw.
+// Menus use the one player buttons without pause: left and right move, jump selects and shove goes back.
+export const MENU_TOUCH_BUTTONS = TOUCH_BUTTONS.filter((button) => button.id !== 'pause');
+
+// The buttons a scene shows. A scene where players move sets `touchLayout` to 'onePlayer' or 'twoPlayers', or wraps a
+// match scene that does. Every other scene is a menu and shows the menu buttons.
 export function touchButtonsFor(scene) {
   const layout = scene.touchLayout ?? scene.matchScene?.touchLayout;
   if (layout === 'twoPlayers') return TWO_PLAYER_TOUCH_BUTTONS;
   if (layout === 'onePlayer') return TOUCH_BUTTONS;
-  return [];
+  return MENU_TOUCH_BUTTONS;
 }
 
 // The portrait controls panel sits below the game and has its own pixels. One player, like the
@@ -111,8 +113,7 @@ export function pressedButtons(points, buttons = TOUCH_BUTTONS) {
 }
 
 // Points are in game pixels. Every finger counts, so running and jumping at once works.
-// A tap is where a finger last went down, for menus that select what was touched.
-export function mapTouchesToInput(points, tap = null, buttons = TOUCH_BUTTONS) {
+export function mapTouchesToInput(points, buttons = TOUCH_BUTTONS) {
   const pressed = pressedButtons(points, buttons).map((button) => button.id);
   return {
     left: pressed.includes('left'),
@@ -123,17 +124,15 @@ export function mapTouchesToInput(points, tap = null, buttons = TOUCH_BUTTONS) {
     action: pressed.includes('action'),
     confirm: pressed.includes('jump'),
     pause: pressed.includes('pause'),
-    tap,
   };
 }
 
-// Touch state only. A button with a playerId fills that player's record. Buttons without one, and
-// the tap, fill the first player's. The game canvas gives points in game pixels and the tap. The
+// Touch state only. A button with a playerId fills that player's record. Buttons without one fill the first
+// player's. The game canvas gives points in game pixels. The
 // optional controls canvas, the portrait panel below the game, gives points in its own pixels.
 // sample and pressedButtons read the game points by default and the panel's when area is 'controls'.
 export function createTouchInput(canvas, playerIds, controlsCanvas = null) {
   const pointsByArea = { game: [], controls: [] };
-  let tap = null;
   let visible = false;
 
   function toPoint(touch, area) {
@@ -162,9 +161,6 @@ export function createTouchInput(canvas, playerIds, controlsCanvas = null) {
 
   function onTouchStart(event) {
     visible = true;
-    if (canvas.getBoundingClientRect().width > 0 && event.target !== controlsCanvas) {
-      tap = toPoint(event.changedTouches[0], 'game');
-    }
     updatePoints(event);
   }
 
@@ -188,11 +184,10 @@ export function createTouchInput(canvas, playerIds, controlsCanvas = null) {
     },
     sample(buttons = TOUCH_BUTTONS, area = 'game') {
       const inputByPlayerId = {};
-      playerIds.forEach((playerId, index) => {
+      for (const playerId of playerIds) {
         const playerButtons = buttons.filter((button) => (button.playerId ?? playerIds[0]) === playerId);
-        inputByPlayerId[playerId] = mapTouchesToInput(pointsByArea[area], index === 0 ? tap : null, playerButtons);
-      });
-      tap = null;
+        inputByPlayerId[playerId] = mapTouchesToInput(pointsByArea[area], playerButtons);
+      }
       return inputByPlayerId;
     },
   };

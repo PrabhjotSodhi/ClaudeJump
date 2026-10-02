@@ -10,7 +10,7 @@ export const JOIN_ITEM = 'join';
 export const BACK_ITEM = 'back';
 export const GRID_ITEMS = [...CODE_LETTERS, DELETE_ITEM, JOIN_ITEM, BACK_ITEM];
 
-// Typing a room code with a cursor over a grid of letters, so a pad, keys or a finger all work.
+// Typing a room code with a cursor over a grid of letters, so a pad, keys or the touch buttons all work.
 // `press()` returns 'join' when a full code is sent and 'back' when the player leaves, otherwise null.
 export class RoomCodeEntry {
   constructor() {
@@ -26,11 +26,9 @@ export class RoomCodeEntry {
     return this.code.length === CODE_LENGTH;
   }
 
-  // Left and right wrap inside the cursor's row, which may be a short last row.
+  // Left and right step through every item in reading order and wrap, so the whole grid is reachable with them alone.
   moveAcross(direction) {
-    const rowStart = this.cursorIndex - (this.cursorIndex % GRID_COLUMNS);
-    const rowLength = Math.min(GRID_COLUMNS, GRID_ITEMS.length - rowStart);
-    this.cursorIndex = rowStart + wrapMenuIndex(this.cursorIndex - rowStart, direction, rowLength);
+    this.cursorIndex = wrapMenuIndex(this.cursorIndex, direction, GRID_ITEMS.length);
   }
 
   // Up and down keep the column and wrap. A column the short last row lacks lands on its last item.
@@ -54,8 +52,10 @@ export class RoomCodeEntry {
     return null;
   }
 
-  pressItem(itemIndex) {
-    this.cursorIndex = itemIndex;
-    return this.press();
+  // Back deletes the last letter, and with no letters left it leaves: 'back', otherwise null.
+  back() {
+    if (this.code.length === 0) return 'back';
+    this.code = this.code.slice(0, -1);
+    return null;
   }
 }

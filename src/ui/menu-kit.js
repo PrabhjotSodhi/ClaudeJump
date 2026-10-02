@@ -2,24 +2,22 @@ import { SCREEN_WIDTH } from '../engine/config.js';
 import { getInputDevice, getPadType } from '../engine/input-device.js';
 import { boundCode, keyName } from '../engine/key-bindings.js';
 import { drawGlyph, GLYPH_SIZE, padGlyphName } from './hint-glyphs.js';
-import { drawPanel } from './panel.js';
 import { drawText, measureText } from './text.js';
 
-const TITLE_SCALE = 2;
+const TITLE_SCALE = 3;
 const BODY_SCALE = 1;
 const GLYPH_HEIGHT = 5;
 const ROW_HEIGHT = 14;
 const PANEL_PADDING_X = 16;
 const PANEL_PADDING_Y = 8;
-const MARKER_WIDTH = 3;
-const MARKER_GAP = 4;
+const OPTION_SCALE = 2;
+const SELECTED_OPTION_SCALE = 3;
+export const MENU_ROW_HEIGHT = 24;
+const POINTER_GAP = 6;
+const SCROLL_MARK_SIZE = 3;
 const SELECTED_COLOR = '#feae34';
 const UNSELECTED_COLOR = '#c0cbdc';
-
-const PLATE_COLOR = '#3a4466';
-const PLATE_MARGIN = 2;
-const PLATE_GROW_PIXELS = 2;
-const PLATE_INSET_Y = 1;
+const OPTION_OUTLINE_COLOR = '#3e2731';
 
 // Tune numbers for menu motion, all in ticks and whole pixels.
 export const MENU_SLIDE_TICKS = 10;
@@ -36,10 +34,22 @@ const KEYCAP_HIGHLIGHT_COLOR = '#5a6988';
 const KEY_GAP = 2;
 const KEY_LABEL_GAP = 4;
 const HINT_GAP = 12;
-const HINT_PANEL_PADDING = 8;
-const HINT_PANEL_ROW_HEIGHT = 14;
+const HINT_ROW_HEIGHT = 14;
 
 export const TITLE_HEIGHT = GLYPH_HEIGHT * TITLE_SCALE;
+
+// The hints every menu shows, built from the same three: move, select and back.
+export const MOVE_HINT = {
+  keys: [
+    { player: 'red', control: 'left' },
+    { player: 'red', control: 'right' },
+  ],
+  pad: ['stick'],
+  label: 'Move',
+};
+export const SELECT_HINT = { keys: [{ player: 'red', control: 'jump' }, 'Enter'], pad: ['south'], label: 'Select' };
+export const BACK_HINT = { keys: [{ player: 'red', control: 'action' }, 'Esc'], pad: ['east'], label: 'Back' };
+export const MENU_HINTS = [MOVE_HINT, SELECT_HINT, BACK_HINT];
 export const KEYCAP_HEIGHT = GLYPH_HEIGHT + 2 * KEYCAP_PADDING_Y + 2;
 
 // The panel fits its widest row plus padding on both sides. Its width is kept even so the text
@@ -50,32 +60,9 @@ export function menuPanelSize(labels) {
   return { width, height: labels.length * ROW_HEIGHT + 2 * PANEL_PADDING_Y };
 }
 
-// One rectangle per option, spanning the panel, for tapping a row.
-export function menuRowRectangles(labels, topY) {
-  const { width } = menuPanelSize(labels);
-  return labels.map((label, index) => ({
-    x: (SCREEN_WIDTH - width) / 2,
-    y: topY + PANEL_PADDING_Y + index * ROW_HEIGHT,
-    width,
-    height: ROW_HEIGHT,
-  }));
-}
-
-// The row index at a point, or -1.
-export function rowIndexAt(rectangles, point) {
-  if (!point) return -1;
-  return rectangles.findIndex(
-    (rectangle) =>
-      point.x >= rectangle.x &&
-      point.x < rectangle.x + rectangle.width &&
-      point.y >= rectangle.y &&
-      point.y < rectangle.y + rectangle.height,
-  );
-}
-
-// The tap of whichever player touched this tick, or null.
-export function tapPoint(inputByPlayerId) {
-  return Object.values(inputByPlayerId).find((input) => input.tap)?.tap ?? null;
+// How tall a menu list of this many options is, showing at most maxRows of them.
+export function menuListHeight(optionCount, maxRows = optionCount) {
+  return Math.min(optionCount, maxRows) * MENU_ROW_HEIGHT;
 }
 
 // Panels slide up into place over MENU_SLIDE_TICKS, easing out, and slide back down when closed.
@@ -152,48 +139,58 @@ export function drawMenuTitle(context, title, y) {
   drawText(context, title, SCREEN_WIDTH / 2, y, { scale: TITLE_SCALE, align: 'center' });
 }
 
-function drawSelectionMarker(context, x, y, color) {
-  context.fillStyle = color;
-  for (let column = 0; column < MARKER_WIDTH; column++) {
-    context.fillRect(x + column, y + column, 1, GLYPH_HEIGHT - 2 * column);
+// A right pointing triangle as tall as text at this scale, with an outline like the text's. Returns its width.
+export function drawPointer(context, x, y, scale, color) {
+  const height = GLYPH_HEIGHT * scale;
+  const width = Math.ceil(height / 2);
+  for (const [fillColor, grow] of [
+    [OPTION_OUTLINE_COLOR, 1],
+    [color, 0],
+  ]) {
+    context.fillStyle = fillColor;
+    for (let column = 0; column < width; column++) {
+      context.fillRect(x + column - grow, y + column - grow, 1 + 2 * grow, height - 2 * column + 2 * grow);
+    }
+  }
+  return width;
+}
+
+// A small triangle above or below a list that has more options out of view that way.
+function drawScrollMark(context, centerX, y, pointingUp) {
+  context.fillStyle = UNSELECTED_COLOR;
+  for (let row = 0; row < SCROLL_MARK_SIZE; row++) {
+    const halfWidth = pointingUp ? row : SCROLL_MARK_SIZE - 1 - row;
+    context.fillRect(centerX - halfWidth - 1, y + row, halfWidth * 2 + 2, 1);
   }
 }
 
-// The selected row sits on a plate that is one step wider than its text. A press squashes it.
-function drawSelectedPlate(context, { left, right, rowY, squashPixels }) {
-  const x = left - PLATE_GROW_PIXELS - squashPixels;
-  const width = right - left + 2 * (PLATE_GROW_PIXELS + squashPixels);
-  const y = rowY + PLATE_INSET_Y + squashPixels;
-  const height = ROW_HEIGHT - 2 * (PLATE_INSET_Y + squashPixels);
-  context.fillStyle = PLATE_COLOR;
-  context.fillRect(x, y, width, height);
-}
-
-// Draws a centered panel with one row per option, and returns the panel's bottom edge.
-export function drawMenuList(context, { options, selectedIndex, topY, motion }) {
-  const { width, height } = menuPanelSize(options.map((option) => option.label));
-  drawPanel(context, (SCREEN_WIDTH - width) / 2, topY, width, height);
-
-  options.forEach((option, index) => {
+// Draws one centered row per option as outlined text straight on the scene, and returns the list's bottom edge. The
+// selected option is bigger, in the selected color, with a pointer, and bobs; a press nudges its pointer. With fewer
+// maxRows than options, the rows shown scroll to keep the selection in view.
+export function drawMenuList(context, { options, selectedIndex, topY, motion, maxRows = options.length }) {
+  const rowCount = Math.min(options.length, maxRows);
+  const firstIndex = Math.max(0, Math.min(selectedIndex - Math.floor(rowCount / 2), options.length - rowCount));
+  for (let row = 0; row < rowCount; row++) {
+    const index = firstIndex + row;
     const isSelected = index === selectedIndex;
+    const scale = isSelected ? SELECTED_OPTION_SCALE : OPTION_SCALE;
     const color = isSelected ? SELECTED_COLOR : UNSELECTED_COLOR;
-    const rowY = topY + PANEL_PADDING_Y + index * ROW_HEIGHT;
-    const textWidth = measureText(option.label) * BODY_SCALE;
+    const label = options[index].label;
+    const textWidth = measureText(label) * scale;
     const textX = Math.floor((SCREEN_WIDTH - textWidth) / 2);
-    if (isSelected) {
-      drawSelectedPlate(context, {
-        left: textX - MARKER_GAP - MARKER_WIDTH - PLATE_MARGIN,
-        right: textX + textWidth + PLATE_MARGIN,
-        rowY,
-        squashPixels: motion.squashPixels,
-      });
-    }
     const bob = isSelected ? bobOffset(motion.tick) : 0;
-    const rowTextY = rowY + Math.floor((ROW_HEIGHT - GLYPH_HEIGHT) / 2) + bob;
-    drawText(context, option.label, textX, rowTextY, { scale: BODY_SCALE, color, outlineColor: null });
-    if (isSelected) drawSelectionMarker(context, textX - MARKER_GAP - MARKER_WIDTH, rowTextY, color);
-  });
-  return topY + height;
+    const textY = topY + row * MENU_ROW_HEIGHT + Math.floor((MENU_ROW_HEIGHT - GLYPH_HEIGHT * scale) / 2) + bob;
+    drawText(context, label, textX, textY, { scale, color, outlineColor: OPTION_OUTLINE_COLOR });
+    if (isSelected) {
+      const pointerWidth = Math.ceil((GLYPH_HEIGHT * scale) / 2);
+      drawPointer(context, textX - POINTER_GAP - pointerWidth + motion.squashPixels, textY, scale, color);
+    }
+  }
+  if (firstIndex > 0) drawScrollMark(context, SCREEN_WIDTH / 2, topY - SCROLL_MARK_SIZE - 1, true);
+  if (firstIndex + rowCount < options.length) {
+    drawScrollMark(context, SCREEN_WIDTH / 2, topY + rowCount * MENU_ROW_HEIGHT + 1, false);
+  }
+  return topY + rowCount * MENU_ROW_HEIGHT;
 }
 
 function keycapWidth(keyName) {
@@ -272,22 +269,15 @@ export function drawKeyHints(context, hints, y) {
   }
 }
 
-// A panel with one row of hints per entry in `rows`, each { label, color, hints }, with the label on
-// the left. Rows with a `device` show only for that device, so touch shows no panel at all.
-export function drawKeyHintPanel(context, rows, { topY, width }) {
+// One row of hints per entry in `rows`, each { label, color, hints }, with the label on the left, straight on the
+// scene. Rows with a `device` show only for that device, so touch shows none.
+export function drawKeyHintRows(context, rows, { topY, width }) {
   const device = getInputDevice();
   const shownRows = device === 'touch' ? [] : rowsForDevice(rows, device);
-  if (shownRows.length === 0) return;
-  const height = (shownRows.length - 1) * HINT_PANEL_ROW_HEIGHT + KEYCAP_HEIGHT + 2 * HINT_PANEL_PADDING;
   const left = (SCREEN_WIDTH - width) / 2;
-  drawPanel(context, left, topY, width, height);
   shownRows.forEach(({ label, color, hints }, index) => {
-    const y = topY + HINT_PANEL_PADDING + index * HINT_PANEL_ROW_HEIGHT;
-    drawText(context, label, left + HINT_PANEL_PADDING, y + 1 + KEYCAP_PADDING_Y, {
-      scale: BODY_SCALE,
-      color,
-      outlineColor: null,
-    });
+    const y = topY + index * HINT_ROW_HEIGHT;
+    drawText(context, label, left, y + 1 + KEYCAP_PADDING_Y, { scale: BODY_SCALE, color, outlineColor: null });
     drawKeyHints(context, hints, y);
   });
 }

@@ -223,14 +223,20 @@ test('up moves the pause selection up with wrapping, and down moves it down', ()
   assert.equal(scene.selectedIndex, 0, 'down from the last option wraps to the first');
 });
 
-test('jump does not select in the pause menu', () => {
-  const { scene, scenes } = pausedScene();
+test('jump selects in the pause menu, and shove resumes like Escape', () => {
+  const { scene } = pausedScene();
   scene.update(inputsWith('red', { pause: true }));
+  scene.update(neutralInputs());
 
   scene.update(inputsWith('red', { jump: true }));
+  assert.equal(scene.paused, false, 'jump chose Resume');
 
+  scene.update(neutralInputs());
+  scene.update(inputsWith('blue', { pause: true }));
+  scene.update(neutralInputs());
   assert.equal(scene.paused, true);
-  assert.equal(scenes.length, 0);
+  scene.update(inputsWith('blue', { action: true }));
+  assert.equal(scene.paused, false, 'shove went back to the match');
 });
 
 test('resuming with up, action and confirm held keeps them out of the match until released', () => {

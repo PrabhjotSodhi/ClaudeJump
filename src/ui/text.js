@@ -45,6 +45,8 @@ const GLYPHS = {
 const SPACE_WIDTH = 3;
 const GLYPH_GAP = 1;
 export const TEXT_GLYPH_HEIGHT = 10;
+// The only scales text is drawn at anywhere in the game: hints, menu options, titles and the countdown.
+export const TEXT_SCALES = [1, 2, 3, 6];
 // drawText outlines each glyph by one glyph pixel on every side, including above and below. At 1x that is one
 // screen pixel; from 2x up it stays 2, so bigger text keeps the same outline weight.
 export function textOutlineMargin(scale) {

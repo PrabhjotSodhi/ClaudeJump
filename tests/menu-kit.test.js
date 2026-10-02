@@ -8,9 +8,7 @@ import {
   MENU_SLIDE_TICKS,
   MenuMotion,
   menuPanelSize,
-  menuRowRectangles,
   pressSquashPixels,
-  rowIndexAt,
   wrapMenuIndex,
 } from '../src/ui/menu-kit.js';
 import { TitleScene } from '../src/scenes/title-scene.js';
@@ -34,14 +32,6 @@ test('selection wraps past both ends', () => {
   assert.equal(wrapMenuIndex(1, 1, 2), 0);
   assert.equal(wrapMenuIndex(0, -1, 2), 1);
   assert.equal(wrapMenuIndex(0, 1, 3), 1);
-});
-
-test('rowIndexAt finds the tapped menu row', () => {
-  const rows = menuRowRectangles(['Versus', 'Survival'], 100);
-
-  assert.equal(rowIndexAt(rows, { x: 320, y: rows[1].y + 2 }), 1);
-  assert.equal(rowIndexAt(rows, { x: 320, y: 10 }), -1);
-  assert.equal(rowIndexAt(rows, null), -1);
 });
 
 function slideOffsets(motion, ticks) {

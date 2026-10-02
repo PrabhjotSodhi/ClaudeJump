@@ -1,19 +1,20 @@
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../engine/config.js';
 import { EventEmitter } from '../engine/events.js';
-import { mergeLocalInputs } from '../engine/input.js';
 import {
   drawKeyHints,
   drawMenuList,
   drawMenuTitle,
   drawWithMenuMotion,
-  MenuMotion,
   KEYCAP_HEIGHT,
-  menuPanelSize,
-  menuRowRectangles,
-  rowIndexAt,
+  MENU_HINTS,
+  menuListHeight,
+  MenuMotion,
+  MOVE_HINT,
+  SELECT_HINT,
   TITLE_HEIGHT,
   wrapMenuIndex,
 } from '../ui/menu-kit.js';
+import { MenuInput, menuStep } from '../ui/menu-input.js';
 import { MENU_BACKGROUND_COLOR, NO_WATER_LINE_Y } from '../ui/menu-screen.js';
 import { drawText } from '../ui/text.js';
 
@@ -22,14 +23,10 @@ const LINE_HEIGHT = 12;
 const LINES_GAP = 14;
 const HINT_GAP = 14;
 const LINE_COLOR = '#c0cbdc';
-const HINTS = [
-  { keys: ['Up', 'Down'], pad: ['stick'], label: 'Choose' },
-  { keys: ['Enter'], pad: ['south'], label: 'Select' },
-];
 
 // The stack of title, lines, options and key hints is centered on the screen as one block.
 export function onlineMenuLayout({ lines, options }) {
-  const panelHeight = menuPanelSize(options.map((option) => option.label)).height;
+  const panelHeight = menuListHeight(options.length);
   const linesHeight = lines.length * LINE_HEIGHT;
   const stackHeight =
     TITLE_HEIGHT + TITLE_GAP + linesHeight + (lines.length ? LINES_GAP : 0) + panelHeight + HINT_GAP + KEYCAP_HEIGHT;
@@ -40,7 +37,7 @@ export function onlineMenuLayout({ lines, options }) {
 }
 
 // A titled message over a short list of options. Each option is { label, onSelect }.
-// The online menu, the connecting screen and every error screen are all this scene.
+// The online menu, the connecting screen and every error screen are all this scene. Back picks the option named Back.
 export class OnlineMenuScene {
   constructor({ title, lines = [], options }) {
     this.events = new EventEmitter();
@@ -52,32 +49,31 @@ export class OnlineMenuScene {
     this.selectedIndex = 0;
     this.menuMotion = new MenuMotion();
     this.backgroundDrawn = false;
-    // Captured on the first tick, so a press still held from the screen before never counts here.
-    this.previousInput = null;
+    // Seeded on the first tick, so a press still held from the screen before never counts here.
+    this.menuInput = null;
+  }
+
+  get backOption() {
+    return this.options.find((option) => option.label === 'Back') ?? null;
   }
 
   update(inputByPlayerId) {
     this.menuMotion.update();
-    const input = mergeLocalInputs(inputByPlayerId);
-    if (!this.previousInput) {
-      this.previousInput = input;
+    if (!this.menuInput) {
+      this.menuInput = new MenuInput(inputByPlayerId);
       return;
     }
-    const previous = this.previousInput;
-    const isFresh = (control) => input[control] && !previous[control];
-    this.previousInput = input;
-
-    const optionCount = this.options.length;
-    if (isFresh('down')) this.selectedIndex = wrapMenuIndex(this.selectedIndex, 1, optionCount);
-    if (isFresh('up')) this.selectedIndex = wrapMenuIndex(this.selectedIndex, -1, optionCount);
-    if (isFresh('down') || isFresh('up')) this.events.emit('menu-moved', {});
-    const labels = this.options.map((option) => option.label);
-    const tappedIndex = rowIndexAt(menuRowRectangles(labels, onlineMenuLayout(this).menuTopY), input.tap);
-    if (tappedIndex >= 0) this.selectedIndex = tappedIndex;
-    if (isFresh('confirm') || tappedIndex >= 0) {
+    const presses = this.menuInput.presses(inputByPlayerId);
+    const step = menuStep(presses);
+    if (step !== 0) {
+      this.selectedIndex = wrapMenuIndex(this.selectedIndex, step, this.options.length);
+      this.events.emit('menu-moved', {});
+    }
+    const option = presses.back ? this.backOption : presses.confirm ? this.options[this.selectedIndex] : null;
+    if (option) {
       this.events.emit('menu-selected', {});
       this.menuMotion.press();
-      this.options[this.selectedIndex].onSelect(inputByPlayerId);
+      option.onSelect(inputByPlayerId);
     }
   }
 
@@ -109,7 +105,7 @@ export class OnlineMenuScene {
         topY: menuTopY,
         motion: this.menuMotion,
       });
-      if (!renderer.touchActive) drawKeyHints(context, HINTS, hintY);
+      drawKeyHints(context, this.backOption ? MENU_HINTS : [MOVE_HINT, SELECT_HINT], hintY);
     });
   }
 }

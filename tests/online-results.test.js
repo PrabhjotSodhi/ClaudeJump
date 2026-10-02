@@ -6,15 +6,8 @@ import { CHARACTERS } from '../src/entities/characters.js';
 import { OnlineMatchScene } from '../src/scenes/online-match-scene.js';
 import { TitleScene } from '../src/scenes/title-scene.js';
 import { VersusScene } from '../src/scenes/versus-scene.js';
-import { resultsMenuRowRectangles } from '../src/ui/results-menu.js';
 import { harborLevel } from './fixtures/harbor-level.mjs';
-import {
-  FakeOnlineConnection,
-  fakeSceneManager,
-  idleInput,
-  pressOnce,
-  tapAt,
-} from './fixtures/fake-online-connection.mjs';
+import { FakeOnlineConnection, fakeSceneManager, idleInput, pressOnce } from './fixtures/fake-online-connection.mjs';
 
 function startMatch({ isHost }) {
   const connection = new FakeOnlineConnection({ peerIds: ['peer'] });
@@ -123,11 +116,10 @@ test('Leave closes the connection and returns to the title', () => {
   assert.ok(sceneManager.currentScene instanceof TitleScene);
 });
 
-test('tapping Leave works too', () => {
+test('shove leaves too', () => {
   const { scene, sceneManager } = startResults({ isHost: false });
-  const [leaveRow] = resultsMenuRowRectangles(scene.resultsOptions);
 
-  tapAt(scene, leaveRow.x + 10, leaveRow.y + 4);
+  pressOnce(scene, { action: true });
 
   assert.ok(sceneManager.currentScene instanceof TitleScene);
 });

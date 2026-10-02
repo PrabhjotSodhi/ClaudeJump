@@ -1,12 +1,11 @@
-import { ROUND_COUNTDOWN_BEAT_TICKS, ROUND_GO_TICKS, SCREEN_WIDTH } from '../engine/config.js';
+import { ROUND_COUNTDOWN_BEAT_TICKS, SCREEN_WIDTH } from '../engine/config.js';
 import { drawPlayHints, playHintRows } from './play-hints.js';
 import { drawModifierIcon, MODIFIER_ICON_SIZE } from './modifier-icons.js';
 import { drawText, measureText, TEXT_GLYPH_HEIGHT } from './text.js';
 
 const COUNT_Y = 56;
-const COUNT_SCALES = [8, 7, 6];
-const GO_SCALES = [12, 9, 8, 7];
-const SCALE_TICKS = 2;
+// The countdown and GO! use the largest of the game's four text sizes.
+const COUNT_SCALE = 6;
 const NAME_Y = 108;
 const NAME_SCALE = 2;
 const CONTROLS_Y = 172;
@@ -27,27 +26,17 @@ export function isMatchPoint(wins, winsNeeded) {
   return Object.values(wins).some((playerWins) => playerWins === winsNeeded - 1);
 }
 
-// A number or GO! slams in big and settles to its size in whole steps, so it stays a crisp pixel block.
-function slamScale(scales, ticksSinceShown) {
-  return scales[Math.min(scales.length - 1, Math.floor(ticksSinceShown / SCALE_TICKS))];
-}
-
 // What the countdown shows right now, or null when there is nothing to show. Reads the scene's tick counters only.
 export function roundIntroDisplay(scene) {
   if (scene.phase === 'ready') {
-    const beatTicksLeft = ((scene.ticksRemaining - 1) % ROUND_COUNTDOWN_BEAT_TICKS) + 1;
     return {
       text: String(Math.ceil(scene.ticksRemaining / ROUND_COUNTDOWN_BEAT_TICKS)),
-      scale: slamScale(COUNT_SCALES, ROUND_COUNTDOWN_BEAT_TICKS - beatTicksLeft),
+      scale: COUNT_SCALE,
       color: COUNT_COLOR,
     };
   }
   if (scene.phase === 'fight' && scene.ticksRemaining > 0) {
-    return {
-      text: 'GO!',
-      scale: slamScale(GO_SCALES, ROUND_GO_TICKS - scene.ticksRemaining),
-      color: GO_COLOR,
-    };
+    return { text: 'GO!', scale: COUNT_SCALE, color: GO_COLOR };
   }
   return null;
 }

@@ -6,24 +6,18 @@ import {
   drawMenuTitle,
   drawWithMenuMotion,
   KEYCAP_HEIGHT,
+  MENU_HINTS,
+  menuListHeight,
   MenuMotion,
-  menuPanelSize,
-  menuRowRectangles,
-  rowIndexAt,
-  tapPoint,
   TITLE_HEIGHT,
   wrapMenuIndex,
 } from './menu-kit.js';
+import { MenuInput, menuStep } from './menu-input.js';
 import { ControlsMenu } from './controls-menu.js';
 import { drawMenuBackdrop } from './menu-options.js';
 
 const TITLE_GAP = 14;
 const HINT_GAP = 14;
-const HINTS = [
-  { keys: ['Left', 'Right'], label: 'Change' },
-  { keys: ['Esc', 'Start'], label: 'Back' },
-];
-const CONTROLS = ['up', 'down', 'left', 'right', 'confirm', 'pause'];
 
 function capitalized(word) {
   return word[0].toUpperCase() + word.slice(1);
@@ -40,11 +34,10 @@ export function settingsMenuOptions(settings) {
   ];
 }
 
-// Moves one setting a step forward (1) or back (-1). Volumes stop at 0 and VOLUME_STEPS, so a confirm or tap on a
-// full volume never mutes it. Other settings wrap at the ends.
+// Moves one setting a step forward (1) or back (-1), wrapping at the ends, so a confirm on a full volume mutes it.
 export function changeSetting(settings, settingId, step) {
   if (settingId === 'musicVolume' || settingId === 'effectsVolume') {
-    settings[settingId] = Math.max(0, Math.min(VOLUME_STEPS, settings[settingId] + step));
+    settings[settingId] = wrapMenuIndex(settings[settingId], step, VOLUME_STEPS + 1);
   } else if (settingId === 'screenShake') {
     const index = SCREEN_SHAKE_LEVELS.indexOf(settings.screenShake);
     settings.screenShake = SCREEN_SHAKE_LEVELS[wrapMenuIndex(index, step, SCREEN_SHAKE_LEVELS.length)];
@@ -54,16 +47,16 @@ export function changeSetting(settings, settingId, step) {
 }
 
 function settingsLayout(options) {
-  const panelHeight = menuPanelSize(options.map((option) => option.label)).height;
+  const panelHeight = menuListHeight(options.length);
   const stackHeight = TITLE_HEIGHT + TITLE_GAP + panelHeight + HINT_GAP + KEYCAP_HEIGHT;
   const titleY = Math.floor((SCREEN_HEIGHT - stackHeight) / 2);
   return { titleY, menuTopY: titleY + TITLE_HEIGHT + TITLE_GAP };
 }
 
-// The Settings screen, shown over a title or pause menu. It changes the settings object it is given
-// and calls onChange after each change so the caller can save. Left and right change a row, confirm
-// or a tap steps it forward (or opens Controls), and pause or the Back row closes it. `initialInput` seeds the held-key
-// baseline so the press that opened the screen does not act inside it.
+// The Settings screen, shown over a title or pause menu. It changes the settings object it is given and calls onChange
+// after each change so the caller can save. Confirm steps the selected row forward (or opens Controls), and back or the
+// Back row closes it. `initialInput` seeds the held-key baseline so the press that opened the screen does not act
+// inside it.
 export class SettingsMenu {
   constructor({ settings, events, onChange, initialInput = {} }) {
     this.settings = settings;
@@ -72,11 +65,7 @@ export class SettingsMenu {
     this.selectedIndex = 0;
     this.controlsMenu = null;
     this.motion = new MenuMotion();
-    this.previous = {};
-    for (const control of CONTROLS) {
-      this.previous[control] = {};
-      for (const playerId in initialInput) this.previous[control][playerId] = !!initialInput[playerId][control];
-    }
+    this.menuInput = new MenuInput(initialInput);
   }
 
   get options() {
@@ -86,57 +75,38 @@ export class SettingsMenu {
   // Returns true on the tick the screen closes.
   update(inputByPlayerId) {
     this.motion.update();
-    const pressed = {};
-    for (const control of CONTROLS) pressed[control] = this.consumeFreshPress(inputByPlayerId, control);
     if (this.controlsMenu) {
-      if (this.controlsMenu.update(inputByPlayerId)) this.controlsMenu = null;
+      if (this.controlsMenu.update(inputByPlayerId)) {
+        this.controlsMenu = null;
+        this.menuInput.hold(inputByPlayerId);
+      }
       return false;
     }
 
+    const presses = this.menuInput.presses(inputByPlayerId);
     const options = this.options;
-    const moved = (pressed.down ? 1 : 0) - (pressed.up ? 1 : 0);
-    if (moved !== 0) {
-      this.selectedIndex = wrapMenuIndex(this.selectedIndex, moved, options.length);
+    const step = menuStep(presses);
+    if (step !== 0) {
+      this.selectedIndex = wrapMenuIndex(this.selectedIndex, step, options.length);
       this.events?.emit('menu-moved', {});
     }
-    const tappedIndex = rowIndexAt(
-      menuRowRectangles(
-        options.map((option) => option.label),
-        settingsLayout(options).menuTopY,
-      ),
-      tapPoint(inputByPlayerId),
-    );
-    if (tappedIndex >= 0) this.selectedIndex = tappedIndex;
-
-    if (pressed.pause) return true;
-    const step = (pressed.right ? 1 : 0) - (pressed.left ? 1 : 0) || (pressed.confirm || tappedIndex >= 0 ? 1 : 0);
-    if (step === 0) return false;
+    if (presses.back) return true;
+    if (!presses.confirm) return false;
     const settingId = options[this.selectedIndex].id;
-    if (settingId === 'back') return pressed.confirm || tappedIndex >= 0;
+    if (settingId === 'back') return true;
+    this.events?.emit('menu-selected', {});
+    this.motion.press();
     if (settingId === 'controls') {
       this.controlsMenu = new ControlsMenu({
         events: this.events,
         onChange: this.onChange,
         initialInput: inputByPlayerId,
       });
-      this.events?.emit('menu-selected', {});
       return false;
     }
-    changeSetting(this.settings, settingId, step);
+    changeSetting(this.settings, settingId, 1);
     this.onChange?.();
-    this.events?.emit('menu-selected', {});
-    this.motion.press();
     return false;
-  }
-
-  consumeFreshPress(inputByPlayerId, controlName) {
-    let pressed = false;
-    for (const playerId in inputByPlayerId) {
-      const isDown = !!inputByPlayerId[playerId][controlName];
-      if (isDown && !this.previous[controlName][playerId]) pressed = true;
-      this.previous[controlName][playerId] = isDown;
-    }
-    return pressed;
   }
 
   render(context) {
@@ -155,7 +125,7 @@ export class SettingsMenu {
         topY: menuTopY,
         motion: this.motion,
       });
-      drawKeyHints(context, HINTS, panelBottomY + HINT_GAP);
+      drawKeyHints(context, MENU_HINTS, panelBottomY + HINT_GAP);
     });
   }
 }

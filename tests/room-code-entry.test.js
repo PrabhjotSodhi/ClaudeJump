@@ -14,8 +14,13 @@ function moveTo(entry, item) {
   entry.cursorIndex = GRID_ITEMS.indexOf(item);
 }
 
+function pressItem(entry, itemIndex) {
+  entry.cursorIndex = itemIndex;
+  return entry.press();
+}
+
 function typeLetters(entry, letters) {
-  for (const letter of letters) entry.pressItem(GRID_ITEMS.indexOf(letter));
+  for (const letter of letters) pressItem(entry, GRID_ITEMS.indexOf(letter));
 }
 
 test('pressing letters builds the code in order', () => {
@@ -49,10 +54,10 @@ test('Delete removes the last letter and does nothing on an empty code', () => {
   const entry = new RoomCodeEntry();
   typeLetters(entry, 'AB');
 
-  entry.pressItem(GRID_ITEMS.indexOf(DELETE_ITEM));
+  pressItem(entry, GRID_ITEMS.indexOf(DELETE_ITEM));
   assert.equal(entry.code, 'A');
-  entry.pressItem(GRID_ITEMS.indexOf(DELETE_ITEM));
-  entry.pressItem(GRID_ITEMS.indexOf(DELETE_ITEM));
+  pressItem(entry, GRID_ITEMS.indexOf(DELETE_ITEM));
+  pressItem(entry, GRID_ITEMS.indexOf(DELETE_ITEM));
 
   assert.equal(entry.code, '');
 });
@@ -61,7 +66,7 @@ test('Join does nothing until all four letters are in, then sends the code', () 
   const entry = new RoomCodeEntry();
   typeLetters(entry, 'ABC');
 
-  assert.equal(entry.pressItem(GRID_ITEMS.indexOf(JOIN_ITEM)), null);
+  assert.equal(pressItem(entry, GRID_ITEMS.indexOf(JOIN_ITEM)), null);
 
   typeLetters(entry, 'D');
   assert.equal(entry.press(), 'join');
@@ -72,7 +77,7 @@ test('Back leaves and keeps the code', () => {
   const entry = new RoomCodeEntry();
   typeLetters(entry, 'AB');
 
-  assert.equal(entry.pressItem(GRID_ITEMS.indexOf(BACK_ITEM)), 'back');
+  assert.equal(pressItem(entry, GRID_ITEMS.indexOf(BACK_ITEM)), 'back');
   assert.equal(entry.code, 'AB');
 });
 
@@ -82,22 +87,26 @@ test('the letters are the ones the rooms function makes codes from', () => {
   assert.ok(!GRID_ITEMS.slice(0, CODE_LETTERS.length).some((item) => 'ILO'.includes(item)));
 });
 
-test('moving right wraps inside the row', () => {
+test('moving left and right steps through every item in order and wraps at both ends', () => {
   const entry = new RoomCodeEntry();
 
   entry.moveAcross(-1);
-  assert.equal(entry.selectedItem, GRID_ITEMS[8]);
+  assert.equal(entry.selectedItem, BACK_ITEM);
   entry.moveAcross(1);
   assert.equal(entry.selectedItem, 'A');
+  moveTo(entry, GRID_ITEMS[8]);
+  entry.moveAcross(1);
+  assert.equal(entry.selectedItem, GRID_ITEMS[9], 'right from the end of a row goes on to the next row');
 });
 
-test('moving right in the short last row wraps inside that row', () => {
+test('back deletes the last letter, then leaves once the code is empty', () => {
   const entry = new RoomCodeEntry();
-  moveTo(entry, BACK_ITEM);
+  typeLetters(entry, 'AB');
 
-  entry.moveAcross(1);
-
-  assert.equal(entry.selectedItem, GRID_ITEMS[18]);
+  assert.equal(entry.back(), null);
+  assert.equal(entry.code, 'A');
+  assert.equal(entry.back(), null);
+  assert.equal(entry.back(), 'back');
 });
 
 test('moving down keeps the column and wraps from the last row to the first', () => {

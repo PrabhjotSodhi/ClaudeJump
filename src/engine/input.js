@@ -69,14 +69,14 @@ export function createKeyboardInput(playerKeyMappings) {
 
 const CONTROLS = ['left', 'right', 'jump', 'up', 'down', 'action', 'confirm', 'pause'];
 
-// A control counts as pressed if any source pressed it. A tap is the first source's tap point.
+// A control counts as pressed if any source pressed it.
 // A player that only some sources know, such as a gamepad-only seat, is still combined.
 export function combineInputs(...inputByPlayerIdSources) {
   const playerIds = new Set(inputByPlayerIdSources.flatMap((source) => Object.keys(source)));
   const inputByPlayerId = {};
   for (const playerId of playerIds) {
     const inputs = inputByPlayerIdSources.map((source) => source[playerId] ?? {});
-    inputByPlayerId[playerId] = { tap: inputs.find((input) => input.tap)?.tap ?? null };
+    inputByPlayerId[playerId] = {};
     for (const control of CONTROLS) inputByPlayerId[playerId][control] = inputs.some((input) => !!input[control]);
   }
   return inputByPlayerId;

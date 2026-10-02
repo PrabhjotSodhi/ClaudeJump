@@ -2,10 +2,11 @@ import { saveKeyBindings } from '../engine/key-bindings.js';
 import { saveSettings, settings } from '../engine/sound-settings.js';
 import { AwardReveal } from '../ui/award-reveal.js';
 import { pickAwards } from '../ui/match-stats.js';
-import { MenuMotion, rowIndexAt, tapPoint, wrapMenuIndex } from '../ui/menu-kit.js';
-import { drawPauseMenu, pauseMenuRowRectangles } from '../ui/pause-menu.js';
+import { MenuMotion, wrapMenuIndex } from '../ui/menu-kit.js';
+import { MenuInput, menuStep } from '../ui/menu-input.js';
+import { drawPauseMenu } from '../ui/pause-menu.js';
 import { SettingsMenu } from '../ui/settings-menu.js';
-import { drawResultsMenu, resultsMenuRowRectangles } from '../ui/results-menu.js';
+import { drawResultsMenu } from '../ui/results-menu.js';
 import { LevelSelectScene } from './level-select-scene.js';
 import { PlayerSelectScene } from './player-select-scene.js';
 import { TitleScene } from './title-scene.js';
@@ -46,7 +47,7 @@ export class PausableMatchScene {
     this.paused = false;
     this.selectedIndex = 0;
     this.previousPauseByPlayerId = {};
-    this.previousMenuControls = { up: {}, down: {}, confirm: {}, jump: {} };
+    this.menuInput = new MenuInput();
     this.resultsMenuOpen = false;
     this.resultsSelectedIndex = 0;
     this.awardReveal = null;
@@ -83,12 +84,8 @@ export class PausableMatchScene {
       if (this.settingsMenu) {
         if (this.settingsMenu.update(inputByPlayerId)) {
           this.settingsMenu = null;
-          this.seedMenuBaseline(inputByPlayerId);
+          this.menuInput.hold(inputByPlayerId);
         }
-        return;
-      }
-      if (pausePressed) {
-        this.resume(inputByPlayerId);
         return;
       }
       this.updateMenu(inputByPlayerId);
@@ -103,18 +100,19 @@ export class PausableMatchScene {
     this.matchScene.update(this.maskHeldOnResume(inputByPlayerId));
   }
 
+  // Back resumes, like the pause button that opened the menu.
   updateMenu(inputByPlayerId) {
-    const upPressed = this.consumeFreshPress(inputByPlayerId, 'up', this.previousMenuControls.up);
-    const downPressed = this.consumeFreshPress(inputByPlayerId, 'down', this.previousMenuControls.down);
-    const confirmPressed = this.consumeFreshPress(inputByPlayerId, 'confirm', this.previousMenuControls.confirm);
-
-    const optionCount = this.pauseMenuOptions.length;
-    if (downPressed) this.selectedIndex = wrapMenuIndex(this.selectedIndex, 1, optionCount);
-    if (upPressed) this.selectedIndex = wrapMenuIndex(this.selectedIndex, -1, optionCount);
-    if (downPressed || upPressed) this.events.emit('menu-moved', {});
-    const tappedIndex = rowIndexAt(pauseMenuRowRectangles(this.pauseMenuOptions), tapPoint(inputByPlayerId));
-    if (tappedIndex >= 0) this.selectedIndex = tappedIndex;
-    if (confirmPressed || tappedIndex >= 0) {
+    const presses = this.menuInput.presses(inputByPlayerId);
+    if (presses.back) {
+      this.resume(inputByPlayerId);
+      return;
+    }
+    const step = menuStep(presses);
+    if (step !== 0) {
+      this.selectedIndex = wrapMenuIndex(this.selectedIndex, step, this.pauseMenuOptions.length);
+      this.events.emit('menu-moved', {});
+    }
+    if (presses.confirm) {
       this.events.emit('menu-selected', {});
       this.pauseMotion.press();
       this.confirmSelection(inputByPlayerId);
@@ -135,23 +133,18 @@ export class PausableMatchScene {
         ),
         this.events,
       );
-      this.seedMenuBaseline(inputByPlayerId);
+      this.menuInput.hold(inputByPlayerId);
       return;
     }
     this.awardReveal.update();
 
-    const upPressed = this.consumeFreshPress(inputByPlayerId, 'up', this.previousMenuControls.up);
-    const downPressed = this.consumeFreshPress(inputByPlayerId, 'down', this.previousMenuControls.down);
-    const confirmPressed = this.consumeFreshPress(inputByPlayerId, 'confirm', this.previousMenuControls.confirm);
-    const jumpPressed = this.consumeFreshPress(inputByPlayerId, 'jump', this.previousMenuControls.jump);
-
-    const optionCount = RESULTS_MENU_OPTIONS.length;
-    if (downPressed) this.resultsSelectedIndex = (this.resultsSelectedIndex + 1) % optionCount;
-    if (upPressed) this.resultsSelectedIndex = (this.resultsSelectedIndex + optionCount - 1) % optionCount;
-    if (downPressed || upPressed) this.events.emit('menu-moved', {});
-    const tappedIndex = rowIndexAt(resultsMenuRowRectangles(RESULTS_MENU_OPTIONS), tapPoint(inputByPlayerId));
-    if (tappedIndex >= 0) this.resultsSelectedIndex = tappedIndex;
-    if (confirmPressed || jumpPressed || tappedIndex >= 0) {
+    const presses = this.menuInput.presses(inputByPlayerId);
+    const step = menuStep(presses);
+    if (step !== 0) {
+      this.resultsSelectedIndex = wrapMenuIndex(this.resultsSelectedIndex, step, RESULTS_MENU_OPTIONS.length);
+      this.events.emit('menu-moved', {});
+    }
+    if (presses.confirm) {
       this.events.emit('menu-selected', {});
       this.resultsMotion.press();
       this.confirmResultsOption(inputByPlayerId);
@@ -190,7 +183,7 @@ export class PausableMatchScene {
   }
 
   // A control counts as freshly pressed the tick it goes from not held by any player to held by
-  // at least one, so either player can drive the menu and a tap shorter than a tick still lands.
+  // at least one, so either player can open the menu.
   consumeFreshPress(inputByPlayerId, controlName, previousByPlayerId) {
     let pressed = false;
     for (const playerId in inputByPlayerId) {
@@ -201,22 +194,13 @@ export class PausableMatchScene {
     return pressed;
   }
 
-  // Seeds the menu's held-key baseline from whatever is held right now, so an up, down or confirm press
-  // still held from the match does not immediately move the selection or confirm an option.
+  // Seeds the menu's held-key baseline from whatever is held right now, so a press still held from the match, like
+  // the pause press itself, does not immediately act on the menu.
   openMenu(inputByPlayerId) {
     this.paused = true;
     this.selectedIndex = 0;
     this.pauseMotion = new MenuMotion();
-    this.seedMenuBaseline(inputByPlayerId);
-  }
-
-  seedMenuBaseline(inputByPlayerId) {
-    for (const control in this.previousMenuControls) {
-      this.previousMenuControls[control] = {};
-      for (const playerId in inputByPlayerId) {
-        this.previousMenuControls[control][playerId] = !!inputByPlayerId[playerId][control];
-      }
-    }
+    this.menuInput.hold(inputByPlayerId);
   }
 
   // Losing window focus pauses the match the same way a fresh pause press does.

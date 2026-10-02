@@ -2,15 +2,8 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { OnlineLobbyScene } from '../src/scenes/online-lobby-scene.js';
 import { OnlineMatchScene } from '../src/scenes/online-match-scene.js';
-import { lobbyRowLabels, lobbyRowRectangles } from '../src/ui/online-lobby-view.js';
 import { harborLevel } from './fixtures/harbor-level.mjs';
-import {
-  FakeOnlineConnection,
-  fakeSceneManager,
-  idleInput,
-  pressOnce,
-  tapAt,
-} from './fixtures/fake-online-connection.mjs';
+import { FakeOnlineConnection, fakeSceneManager, idleInput, pressOnce } from './fixtures/fake-online-connection.mjs';
 
 const LEVELS = [harborLevel, { ...harborLevel, name: 'cave' }];
 const ROW_READY = 1;
@@ -100,13 +93,13 @@ test('a joiner can never change the level', () => {
   assert.equal(lobby.scene.lobby.levelName, 'random');
 });
 
-test('the host picks the level with left and right on the level row', () => {
+test('the host steps the level with jump on the level row', () => {
   const lobby = startLobby({ isHost: true });
   lobby.connection.onPeerOpen('guest');
   lobby.connection.sent.length = 0;
 
   selectRow(lobby.scene, 2);
-  pressOnce(lobby.scene, { right: true });
+  pressOnce(lobby.scene, { jump: true });
 
   assert.equal(lobby.scene.lobby.levelName, harborLevel.name);
   assert.equal(lobby.connection.sentOfType('lobby-state').at(-1).data.snapshot.levelName, harborLevel.name);
@@ -308,27 +301,26 @@ test('a connection error while in the lobby is reported with its code', () => {
   assert.deepEqual(lobby.calls.errors, ['connection-failed']);
 });
 
-test('tapping the left or right side of the character row picks the previous or next character', () => {
+test('jump on the character row picks the next character', () => {
   const lobby = startLobby({ isHost: true });
   const startingName = lobby.scene.lobby.snapshot().seats[0].characterName;
-  const [characterRow] = lobbyRowRectangles(lobbyRowLabels(lobby.scene));
 
-  tapAt(lobby.scene, characterRow.x + 4, characterRow.y + 4);
-  const afterLeftTap = lobby.scene.lobby.snapshot().seats[0].characterName;
-  tapAt(lobby.scene, characterRow.x + characterRow.width - 4, characterRow.y + 4);
+  pressOnce(lobby.scene, { jump: true });
 
-  assert.notEqual(afterLeftTap, startingName);
-  assert.equal(lobby.scene.lobby.snapshot().seats[0].characterName, startingName);
+  assert.notEqual(lobby.scene.lobby.snapshot().seats[0].characterName, startingName);
 });
 
-test('tapping the ready row toggles ready and tapping leave leaves', () => {
+test('shove takes a ready back first, then leaves the room', () => {
   const lobby = startLobby({ isHost: true });
-  const rows = lobbyRowRectangles(lobbyRowLabels(lobby.scene));
-
-  tapAt(lobby.scene, rows[ROW_READY].x + 10, rows[ROW_READY].y + 4);
+  lobby.scene.selectedRow = ROW_READY;
+  pressOnce(lobby.scene, { jump: true });
   assert.equal(lobby.scene.lobby.seats[0].ready, true);
 
-  tapAt(lobby.scene, rows[ROW_LEAVE].x + 10, rows[ROW_LEAVE].y + 4);
+  pressOnce(lobby.scene, { action: true });
+  assert.equal(lobby.scene.lobby.seats[0].ready, false);
+  assert.equal(lobby.calls.left, 0);
+
+  pressOnce(lobby.scene, { action: true });
   assert.equal(lobby.calls.left, 1);
 });
 

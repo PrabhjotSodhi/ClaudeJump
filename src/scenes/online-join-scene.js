@@ -1,15 +1,17 @@
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../engine/config.js';
 import { EventEmitter } from '../engine/events.js';
-import { mergeLocalInputs } from '../engine/input.js';
 import {
+  BACK_HINT,
   drawKeyHints,
   drawMenuTitle,
   drawWithMenuMotion,
   KEYCAP_HEIGHT,
   MenuMotion,
-  rowIndexAt,
+  MOVE_HINT,
+  SELECT_HINT,
   TITLE_HEIGHT,
 } from '../ui/menu-kit.js';
+import { MenuInput } from '../ui/menu-input.js';
 import { MENU_BACKGROUND_COLOR, NO_WATER_LINE_Y } from '../ui/menu-screen.js';
 import { drawPanel } from '../ui/panel.js';
 import { drawText } from '../ui/text.js';
@@ -28,7 +30,7 @@ const SLOT_WIDTH = 36;
 const SLOT_HEIGHT = 44;
 const SLOT_GAP = 8;
 const SLOTS_GAP = 16;
-const LETTER_SCALE = 4;
+const LETTER_SCALE = 6;
 const GLYPH_HEIGHT = 5;
 const CURSOR_BAR_WIDTH = 16;
 const TILE_WIDTH = 34;
@@ -39,14 +41,12 @@ const SELECTED_COLOR = '#feae34';
 const LETTER_COLOR = '#c0cbdc';
 const DISABLED_COLOR = '#5a6988';
 const EMPTY_BAR_COLOR = '#3a4466';
-const HINTS = [
-  { keys: ['Left', 'Right', 'Up', 'Down'], pad: ['stick'], label: 'Move' },
-  { keys: ['Enter'], pad: ['south'], label: 'Choose' },
-];
+const OUTLINE_COLOR = '#3e2731';
+const HINTS = [MOVE_HINT, SELECT_HINT, { ...BACK_HINT, label: 'Delete' }];
 const TILE_LABELS = { [DELETE_ITEM]: 'Del', [JOIN_ITEM]: 'Join', [BACK_ITEM]: 'Back' };
 
 // Every rectangle of the screen, in whole pixels. The title, the four code slots, the letter grid and the hints
-// are centered on the screen as one block. `tiles` is in GRID_ITEMS order, for drawing and for taps.
+// are centered on the screen as one block. `tiles` is in GRID_ITEMS order.
 export function joinLayout() {
   const rowCount = Math.ceil(GRID_ITEMS.length / GRID_COLUMNS);
   const slotsWidth = CODE_LENGTH * SLOT_WIDTH + (CODE_LENGTH - 1) * SLOT_GAP;
@@ -71,7 +71,8 @@ export function joinLayout() {
   return { titleY, slots, tiles, hintY: gridY + gridHeight + HINT_GAP };
 }
 
-// Typing the room code to join. `onJoin(code)` gets the four letters and `onBack()` leaves.
+// Typing the room code to join. `onJoin(code)` gets the four letters and `onBack()` leaves. Back deletes a letter,
+// and leaves once the code is empty.
 export class OnlineJoinScene {
   constructor({ onJoin, onBack }) {
     this.events = new EventEmitter();
@@ -82,30 +83,26 @@ export class OnlineJoinScene {
     this.entry = new RoomCodeEntry();
     this.menuMotion = new MenuMotion();
     this.backgroundDrawn = false;
-    // Captured on the first tick, so a press still held from the screen before never counts here.
-    this.previousInput = null;
+    // Seeded on the first tick, so a press still held from the screen before never counts here.
+    this.menuInput = null;
   }
 
   update(inputByPlayerId) {
     this.menuMotion.update();
-    const input = mergeLocalInputs(inputByPlayerId);
-    if (!this.previousInput) {
-      this.previousInput = input;
+    if (!this.menuInput) {
+      this.menuInput = new MenuInput(inputByPlayerId);
       return;
     }
-    const previous = this.previousInput;
-    const isFresh = (control) => input[control] && !previous[control];
-    this.previousInput = input;
+    const presses = this.menuInput.presses(inputByPlayerId);
 
     let outcome = null;
-    if (isFresh('left')) this.entry.moveAcross(-1);
-    if (isFresh('right')) this.entry.moveAcross(1);
-    if (isFresh('up')) this.entry.moveDown(-1);
-    if (isFresh('down')) this.entry.moveDown(1);
-    if (isFresh('left') || isFresh('right') || isFresh('up') || isFresh('down')) this.events.emit('menu-moved', {});
-    if (isFresh('confirm')) outcome = this.press(() => this.entry.press());
-    const tappedIndex = rowIndexAt(joinLayout().tiles, input.tap);
-    if (tappedIndex >= 0) outcome = this.press(() => this.entry.pressItem(tappedIndex));
+    if (presses.left) this.entry.moveAcross(-1);
+    if (presses.right) this.entry.moveAcross(1);
+    if (presses.up) this.entry.moveDown(-1);
+    if (presses.down) this.entry.moveDown(1);
+    if (presses.left || presses.right || presses.up || presses.down) this.events.emit('menu-moved', {});
+    if (presses.confirm) outcome = this.press(() => this.entry.press());
+    else if (presses.back) outcome = this.press(() => this.entry.back());
 
     if (outcome === 'join') this.onJoin(this.entry.code);
     if (outcome === 'back') this.onBack();
@@ -126,9 +123,7 @@ export class OnlineJoinScene {
     }
     renderer.clearGameLayer();
     renderer.clearUiLayer();
-    drawWithMenuMotion(renderer.uiContext, this.menuMotion, () =>
-      drawJoinUi(renderer.uiContext, this, renderer.touchActive),
-    );
+    drawWithMenuMotion(renderer.uiContext, this.menuMotion, () => drawJoinUi(renderer.uiContext, this));
   }
 }
 
@@ -147,32 +142,22 @@ function drawSlot(context, slot, letter, isNext) {
   context.fillRect(slot.x + (slot.width - CURSOR_BAR_WIDTH) / 2, slot.y + slot.height - 12, CURSOR_BAR_WIDTH, 2);
 }
 
+// Each grid item is outlined text straight on the scene. The selected one is bigger and in the selected color. The
+// word items are a size smaller so they fit their tile.
 function drawTile(context, tile, item, { isSelected, isDisabled }) {
-  drawPanel(context, tile.x, tile.y, tile.width, tile.height);
-  if (isSelected) {
-    context.fillStyle = SELECTED_COLOR;
-    context.fillRect(tile.x + 1, tile.y, tile.width - 2, 1);
-    context.fillRect(tile.x + 1, tile.y + tile.height - 1, tile.width - 2, 1);
-    context.fillRect(tile.x, tile.y + 1, 1, tile.height - 2);
-    context.fillRect(tile.x + tile.width - 1, tile.y + 1, 1, tile.height - 2);
-  }
+  const scale = (isSelected ? 3 : 2) - (item in TILE_LABELS ? 1 : 0);
   let color = isSelected ? SELECTED_COLOR : LETTER_COLOR;
   if (isDisabled) color = DISABLED_COLOR;
-  drawText(
-    context,
-    TILE_LABELS[item] ?? item,
-    tile.x + tile.width / 2,
-    tile.y + Math.floor((tile.height - GLYPH_HEIGHT) / 2),
-    {
-      scale: 1,
-      align: 'center',
-      color,
-      outlineColor: null,
-    },
-  );
+  const label = TILE_LABELS[item] ?? item;
+  drawText(context, label, tile.x + tile.width / 2, tile.y + Math.floor((tile.height - GLYPH_HEIGHT * scale) / 2), {
+    scale,
+    align: 'center',
+    color,
+    outlineColor: OUTLINE_COLOR,
+  });
 }
 
-function drawJoinUi(context, scene, touchActive) {
+function drawJoinUi(context, scene) {
   const { titleY, slots, tiles, hintY } = joinLayout();
   const { code } = scene.entry;
   drawMenuTitle(context, 'Join a room', titleY);
@@ -183,14 +168,5 @@ function drawJoinUi(context, scene, touchActive) {
       isDisabled: item === JOIN_ITEM && !scene.entry.isComplete,
     });
   });
-  if (touchActive) {
-    drawText(context, 'Tap the four letters', SCREEN_WIDTH / 2, hintY + 3, {
-      scale: 1,
-      align: 'center',
-      color: LETTER_COLOR,
-      outlineColor: null,
-    });
-  } else {
-    drawKeyHints(context, HINTS, hintY);
-  }
+  drawKeyHints(context, HINTS, hintY);
 }

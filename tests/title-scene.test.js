@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { menuRowRectangles } from '../src/ui/menu-kit.js';
 import { TitleScene } from '../src/scenes/title-scene.js';
 import { harborLevel } from './fixtures/harbor-level.mjs';
 
@@ -104,32 +103,38 @@ test('up moves the selection to the previous option and wraps from the first to 
   assert.equal(scene.selectedIndex, 2);
 });
 
-test('jump does not select', () => {
+test('jump selects, the same as Enter', () => {
   const scenes = [];
   const scene = new TitleScene({ sceneManager: { setScene: (nextScene) => scenes.push(nextScene) }, seed: 0 });
 
-  scene.update(inputsWith('red', { jump: true }));
-  scene.update(inputsWith('blue', { jump: true }));
+  scene.update(inputsWith('red', { jump: true, up: true }));
 
-  assert.equal(scenes.length, 0);
+  assert.equal(scenes.length, 1);
+  assert.equal(scene.selectedIndex, 0, 'the keyboard up key is the jump key, so it selects instead of moving');
+});
+
+test('left and right move the selection too, for keyboards and touch', () => {
+  const scene = new TitleScene({ options: threeOptions() });
+
+  scene.update(inputsWith('red', { right: true }));
+  assert.equal(scene.selectedIndex, 1);
+  scene.update(neutralInputs());
+  scene.update(inputsWith('blue', { left: true }));
+  assert.equal(scene.selectedIndex, 0);
+});
+
+test('the shove key, which is also the keyboard down key, does not move the selection', () => {
+  const scene = new TitleScene({ options: threeOptions() });
+
+  scene.update(inputsWith('red', { down: true, action: true }));
+
+  assert.equal(scene.selectedIndex, 0);
 });
 
 test('the title shows the sea at the Harbor water line', () => {
   const scene = new TitleScene({ levels: [harborLevel], seed: 0 });
 
   assert.equal(scene.waterLineY, harborLevel.waterLineY);
-});
-
-test('tapping a menu row selects and confirms it', () => {
-  const scene = new TitleScene({ options: threeOptions() });
-  scene.confirmSelection = function confirmSelection() {
-    this.confirmed = this.selectedIndex;
-  };
-  const rows = menuRowRectangles(['A', 'B', 'C'], 176);
-
-  scene.update(inputsWith('red', { tap: { x: 320, y: rows[2].y + 3 } }));
-
-  assert.equal(scene.confirmed, 2);
 });
 
 function playersAfter(seed, tickCount) {
@@ -183,7 +188,7 @@ function overlapsRectangle(player, rectangle) {
 test('four characters fight, at least three are on screen, and none cross the logo or the menu', () => {
   const scene = new TitleScene({ seed: 5 });
   const logo = { x: 220, y: 30, width: 200, height: 30 };
-  const menu = { x: 270, y: 176, width: 100, height: 64 };
+  const menu = { x: 250, y: 176, width: 140, height: 96 };
   assert.equal(scene.brawl.players.length, 4);
 
   for (let tick = 0; tick < 3600; tick++) {

@@ -2,25 +2,14 @@ import { SCREEN_HEIGHT, SCREEN_WIDTH, TICK_RATE } from '../engine/config.js';
 import { EventEmitter } from '../engine/events.js';
 import { CHARACTERS, HOVER_CHARACTER_BY_PLAYER_ID } from '../entities/characters.js';
 import { PLAYERS } from '../levels/versus-arena.js';
-import {
-  drawKeyHintPanel,
-  drawMenuTitle,
-  drawWithMenuMotion,
-  MenuMotion,
-  rowIndexAt,
-  tapPoint,
-} from '../ui/menu-kit.js';
+import { drawKeyHintRows, drawMenuTitle, drawWithMenuMotion, MenuMotion } from '../ui/menu-kit.js';
 import { MENU_BACKGROUND_COLOR, NO_WATER_LINE_Y } from '../ui/menu-screen.js';
-import {
-  drawEmptySelectCard,
-  drawSelectCard,
-  pickArrowDirectionAt,
-  SELECT_CARD_HEIGHT,
-  selectCardBox,
-} from '../ui/select-card.js';
+import { drawEmptySelectCard, drawSelectCard, SELECT_CARD_HEIGHT, selectCardBox } from '../ui/select-card.js';
 import { SelectCardMotion } from '../ui/select-card-motion.js';
+import { MenuInput } from '../ui/menu-input.js';
 import { drawText } from '../ui/text.js';
 import { ModeSelectScene } from './mode-select-scene.js';
+import { TitleScene } from './title-scene.js';
 
 const TITLE_Y = 24;
 
@@ -30,8 +19,8 @@ const SELECTED_COLOR = '#feae34';
 const UNJOINED_COLOR = '#c0cbdc';
 const NOT_READY_COLOR = '#8b9bb4';
 
-const HINTS_PANEL_WIDTH = 360;
-const HINTS_PANEL_TOP_Y = CARD_TOP_Y + SELECT_CARD_HEIGHT + 20;
+const HINTS_WIDTH = 360;
+const HINTS_TOP_Y = CARD_TOP_Y + SELECT_CARD_HEIGHT + 20;
 const KEY_HINT_ROWS = [
   {
     label: 'Red',
@@ -46,7 +35,7 @@ const KEY_HINT_ROWS = [
         label: 'Pick',
       },
       { keys: [{ player: 'red', control: 'jump' }], label: 'Join or lock in' },
-      { keys: [{ player: 'red', control: 'action' }], label: 'Back' },
+      { keys: [{ player: 'red', control: 'action' }, 'Esc'], label: 'Back' },
     ],
   },
   {
@@ -72,7 +61,7 @@ const KEY_HINT_ROWS = [
     hints: [
       { keys: ['Stick'], pad: ['stick'], label: 'Pick' },
       { keys: ['A'], pad: ['south'], label: 'Join or lock in' },
-      { keys: ['Down'], pad: ['east'], label: 'Back' },
+      { keys: ['B'], pad: ['east'], label: 'Back' },
     ],
   },
 ];
@@ -84,9 +73,6 @@ const JOIN_TEXT_BY_PLAYER_ID = {
   green: 'Press jump on pad 3',
   yellow: 'Press jump on pad 4',
 };
-
-// With touch there are no buttons on this screen, so every card is joined by a tap on it.
-const TOUCH_JOIN_TEXT = 'Tap to join';
 
 // Each card goes through these states in order, one jump press apart.
 const NEXT_STATE = { unjoined: 'picking', picking: 'ready' };
@@ -113,9 +99,9 @@ export class PlayerSelectScene {
     this.waterLineY = NO_WATER_LINE_Y;
     this.menuMotion = new MenuMotion();
     this.backgroundDrawn = false;
-    // Captured from the real input on the first tick this scene runs, so a button still held from
+    // Seeded from the real input on the first tick this scene runs, so a button still held from
     // the title screen's confirm press never counts as a fresh press here.
-    this.previousInput = null;
+    this.menuInput = null;
     // Render only: hops, cheers and slide-ins of the cards.
     this.cardMotion = new SelectCardMotion();
     this.countdownTicksRemaining = null;
@@ -131,25 +117,30 @@ export class PlayerSelectScene {
   update(inputByPlayerId) {
     this.cardMotion.update();
     this.menuMotion.update();
-    if (!this.previousInput) {
-      this.previousInput = {};
-      for (const spawn of PLAYERS) this.previousInput[spawn.id] = { ...inputByPlayerId[spawn.id] };
+    if (!this.menuInput) {
+      this.menuInput = new MenuInput(inputByPlayerId);
       return;
     }
 
+    // Each seat answers only to its own player's jump and shove. Escape and Enter belong to no seat, so on this
+    // screen Escape only goes back to the title.
+    const pressesByPlayerId = this.menuInput.pressesByPlayerId(inputByPlayerId);
     for (const spawn of PLAYERS) {
-      const input = inputByPlayerId[spawn.id] ?? {};
-      const previous = this.previousInput[spawn.id];
+      const presses = pressesByPlayerId[spawn.id];
+      if (!presses) continue;
+      const input = inputByPlayerId[spawn.id];
       if (this.stateByPlayerId[spawn.id] === 'picking') {
-        if (input.left && !previous.left) this.changeCharacter(spawn.id, -1);
-        if (input.right && !previous.right) this.changeCharacter(spawn.id, 1);
+        if (presses.left) this.changeCharacter(spawn.id, -1);
+        if (presses.right) this.changeCharacter(spawn.id, 1);
       }
-      if (input.jump && !previous.jump) this.advance(spawn.id);
-      else if (input.down && !previous.down) this.stepBack(spawn.id);
-      this.previousInput[spawn.id] = { ...input };
+      const jumped = presses.confirm && input.jump;
+      const shoved = presses.back && input.action;
+      if (jumped) this.advance(spawn.id);
+      else if (presses.back && this.nobodyJoined) {
+        this.returnToTitle(inputByPlayerId);
+        return;
+      } else if (shoved) this.stepBack(spawn.id);
     }
-
-    this.advanceTappedCard(inputByPlayerId);
 
     if (!this.everyoneJoinedIsReady()) {
       this.countdownTicksRemaining = null;
@@ -177,22 +168,24 @@ export class PlayerSelectScene {
     return readyCount >= MINIMUM_PLAYERS && states.every((state) => state !== 'picking');
   }
 
-  // A tap on a card drives that seat, so players sharing one phone each tap their own card. The tap joins, then locks
-  // in. While picking, a tap on either arrow changes the character instead.
-  advanceTappedCard(inputByPlayerId) {
-    const point = tapPoint(inputByPlayerId);
-    const seatIndex = rowIndexAt(
-      PLAYERS.map((spawn, index) => playerCardBox(index)),
-      point,
-    );
-    if (seatIndex < 0) return;
-    const playerId = PLAYERS[seatIndex].id;
-    const direction = pickArrowDirectionAt(playerCardBox(seatIndex), point);
-    if (this.stateByPlayerId[playerId] === 'picking' && direction !== 0) this.changeCharacter(playerId, direction);
-    else this.advance(playerId);
+  get nobodyJoined() {
+    return Object.values(this.stateByPlayerId).every((state) => state === 'unjoined');
   }
 
-  // Down steps back: a ready player goes back to picking, and a player who joined by mistake steps out,
+  returnToTitle(initialInput) {
+    this.events.emit('menu-selected', {});
+    this.sceneManager.setScene(
+      new TitleScene({
+        sceneManager: this.sceneManager,
+        levels: this.levels,
+        sprites: this.sprites,
+        seed: this.seed,
+        initialInput,
+      }),
+    );
+  }
+
+  // Shove steps back: a ready player goes back to picking, and a player who joined by mistake steps out,
   // so nobody holds the others up.
   stepBack(playerId) {
     const previousState = { picking: 'unjoined', ready: 'picking' }[this.stateByPlayerId[playerId]];
@@ -286,8 +279,7 @@ function drawPlayerCard(context, scene, spawn, textScale) {
   const seatIndex = PLAYERS.indexOf(spawn);
   const box = playerCardBox(seatIndex);
   if (state === 'unjoined') {
-    const joinText = textScale === 2 ? TOUCH_JOIN_TEXT : JOIN_TEXT_BY_PLAYER_ID[spawn.id];
-    drawEmptySelectCard(context, box, spawn, [joinText], textScale);
+    drawEmptySelectCard(context, box, spawn, [JOIN_TEXT_BY_PLAYER_ID[spawn.id]], textScale);
     return;
   }
   context.save();
@@ -310,7 +302,7 @@ function drawPlayerCard(context, scene, spawn, textScale) {
 function drawPlayerSelectUi(context, scene, textScale) {
   drawMenuTitle(context, 'Player Select', TITLE_Y);
   for (const spawn of PLAYERS) drawPlayerCard(context, scene, spawn, textScale);
-  drawKeyHintPanel(context, KEY_HINT_ROWS, { topY: HINTS_PANEL_TOP_Y, width: HINTS_PANEL_WIDTH });
+  drawKeyHintRows(context, KEY_HINT_ROWS, { topY: HINTS_TOP_Y, width: HINTS_WIDTH });
   if (scene.countdownTicksRemaining !== null) {
     drawText(
       context,

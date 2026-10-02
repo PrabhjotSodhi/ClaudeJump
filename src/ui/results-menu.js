@@ -5,8 +5,9 @@ import {
   drawMenuList,
   drawWithMenuMotion,
   KEYCAP_HEIGHT,
-  menuPanelSize,
-  menuRowRectangles,
+  menuListHeight,
+  MOVE_HINT,
+  SELECT_HINT,
 } from './menu-kit.js';
 import { rankPlayers } from './match-stats.js';
 import { drawMenuBackdrop } from './menu-options.js';
@@ -56,7 +57,7 @@ const AWARD_FLASH_TICKS = 4;
 
 const MENU_TOP_Y = 172;
 const HINT_GAP = 14;
-const HINTS = [{ keys: ['Enter'], pad: ['south'], label: 'Select' }];
+const HINTS = [MOVE_HINT, SELECT_HINT];
 
 // The stats panel positions. Two players each get their own side of the screen. More players fill rows of two,
 // left then right, in the order the panels are given.
@@ -192,13 +193,6 @@ function drawStatsPanel(context, panel, player, rank, matchScene, awardReveal) {
   });
 }
 
-export function resultsMenuRowRectangles(options) {
-  return menuRowRectangles(
-    options.map((option) => option.label),
-    MENU_TOP_Y,
-  );
-}
-
 export function drawResultsMenu(context, { matchScene, options, selectedIndex, motion, awardReveal }) {
   const winnerIndex = matchScene.players.findIndex((player) => player.id === matchScene.winnerId);
   const winner = matchScene.players[winnerIndex];
@@ -208,7 +202,7 @@ export function drawResultsMenu(context, { matchScene, options, selectedIndex, m
     matchScene.wins,
   ).map(({ playerId, rank }) => ({ player: matchScene.players.find((player) => player.id === playerId), rank }));
   const losers = ranked.filter(({ player }) => player !== winner);
-  const menuHeight = menuPanelSize(options.map((option) => option.label)).height;
+  const menuHeight = menuListHeight(options.length);
   const layout = resultsLayout({ winnerIndex, playerCount, menuHeight });
 
   drawMenuBackdrop(context);
