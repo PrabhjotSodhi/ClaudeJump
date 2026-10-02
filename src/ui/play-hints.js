@@ -1,5 +1,5 @@
 import { PLAYERS } from '../levels/versus-arena.js';
-import { drawKeyHintPanel } from './menu-kit.js';
+import { drawKeyHintRows } from './menu-kit.js';
 
 const KEYBOARD_PLAYER_IDS = ['red', 'blue'];
 const PAD_LABEL_COLOR = '#c0cbdc';
@@ -48,5 +48,5 @@ export function playHintRows(playerIds, { shove }) {
 }
 
 export function drawPlayHints(context, rows, topY) {
-  drawKeyHintPanel(context, rows, { topY, width: PANEL_WIDTH });
+  drawKeyHintRows(context, rows, { topY, width: PANEL_WIDTH });
 }

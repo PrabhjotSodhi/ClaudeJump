@@ -4,9 +4,10 @@ import { stateHash } from '../engine/state-hash.js';
 import { PLAYERS } from '../levels/versus-arena.js';
 import { AwardReveal } from '../ui/award-reveal.js';
 import { pickAwards } from '../ui/match-stats.js';
-import { drawWithMenuMotion, MenuMotion, menuPanelSize, rowIndexAt, wrapMenuIndex } from '../ui/menu-kit.js';
+import { drawWithMenuMotion, menuListHeight, MenuMotion, wrapMenuIndex } from '../ui/menu-kit.js';
+import { MenuInput, menuStep } from '../ui/menu-input.js';
 import { drawPanel } from '../ui/panel.js';
-import { drawResultsMenu, resultsLayout, resultsMenuRowRectangles } from '../ui/results-menu.js';
+import { drawResultsMenu, resultsLayout } from '../ui/results-menu.js';
 import { drawText } from '../ui/text.js';
 import { TitleScene } from './title-scene.js';
 
@@ -57,7 +58,7 @@ export class OnlineMatchScene {
     this.resultsMotion = new MenuMotion();
     this.resultsSelectedIndex = 0;
     this.awardReveal = null;
-    this.previousInput = null;
+    this.menuInput = null;
   }
 
   get waterLineY() {
@@ -102,28 +103,29 @@ export class OnlineMatchScene {
         ),
         this.events,
       );
-      this.previousInput = localInput;
+      this.menuInput = new MenuInput({ local: localInput });
       const transport = this.session.transport;
       transport.onMessage = (peerId, data) => this.handleRoomMessage(data);
       transport.onPeerClose = (peerId) => this.handlePeerClose(peerId);
       return;
     }
-    const previous = this.previousInput;
-    const isFresh = (control) => localInput[control] && !previous[control];
-    this.previousInput = localInput;
-
-    const optionCount = this.resultsOptions.length;
+    const presses = this.menuInput.presses({ local: localInput });
     this.resultsMotion.update();
     this.awardReveal.update();
-    if (isFresh('down')) this.resultsSelectedIndex = wrapMenuIndex(this.resultsSelectedIndex, 1, optionCount);
-    if (isFresh('up')) this.resultsSelectedIndex = wrapMenuIndex(this.resultsSelectedIndex, -1, optionCount);
-    if (isFresh('down') || isFresh('up')) this.events.emit('menu-moved', {});
-    const tappedIndex = rowIndexAt(resultsMenuRowRectangles(this.resultsOptions), localInput.tap);
-    if (tappedIndex >= 0) this.resultsSelectedIndex = tappedIndex;
-    if (isFresh('confirm') || tappedIndex >= 0) {
+    const step = menuStep(presses);
+    if (step !== 0) {
+      this.resultsSelectedIndex = wrapMenuIndex(this.resultsSelectedIndex, step, this.resultsOptions.length);
+      this.events.emit('menu-moved', {});
+    }
+    const optionId = presses.back
+      ? 'leave'
+      : presses.confirm
+        ? this.resultsOptions[this.resultsSelectedIndex].id
+        : null;
+    if (optionId) {
       this.events.emit('menu-selected', {});
       this.resultsMotion.press();
-      this.chooseResultsOption(this.resultsOptions[this.resultsSelectedIndex].id, inputByPlayerId);
+      this.chooseResultsOption(optionId, inputByPlayerId);
     }
   }
 
@@ -224,7 +226,7 @@ export class OnlineMatchScene {
     const { hintBottomY } = resultsLayout({
       winnerIndex,
       playerCount: this.matchScene.players.length,
-      menuHeight: menuPanelSize(this.resultsOptions.map((option) => option.label)).height,
+      menuHeight: menuListHeight(this.resultsOptions.length),
     });
     drawWithMenuMotion(context, this.resultsMotion, () =>
       drawText(context, WAITING_CAPTION, SCREEN_WIDTH / 2, hintBottomY + WAITING_CAPTION_GAP, {

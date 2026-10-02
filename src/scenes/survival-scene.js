@@ -21,7 +21,6 @@ import { PlayerEyes } from '../vfx/player-eyes.js';
 import { ScreenShake } from '../vfx/screen-shake.js';
 import { SeaRipple } from '../vfx/sea-ripple.js';
 import { drawSplashes, Splashes, splashTierFor } from '../vfx/splash.js';
-import { tapPoint } from '../ui/menu-kit.js';
 import { difficultyAt } from './survival-difficulty.js';
 
 const PLAYER_ID = 'red';
@@ -97,9 +96,13 @@ function saveBestScore(bestScore) {
   }
 }
 
+// returnToTitle, when given, is called with the input held at that moment when the player goes back from the run over
+// screen.
 export class SurvivalScene {
-  constructor({ sprites = {}, seed = Date.now() } = {}) {
+  constructor({ sprites = {}, seed = Date.now(), returnToTitle = null } = {}) {
     this.touchLayout = 'onePlayer';
+    this.returnToTitle = returnToTitle;
+    this.backHeld = false;
     this.sprites = sprites;
     this.seed = seed;
     this.events = new EventEmitter();
@@ -391,13 +394,18 @@ export class SurvivalScene {
     const jumpPressed = inputByPlayerId[PLAYER_ID]?.jump ?? false;
     const freshJump = jumpPressed && !this.jumpHeld;
     this.jumpHeld = jumpPressed;
+    const backPressed = !!(inputByPlayerId[PLAYER_ID]?.action || inputByPlayerId[PLAYER_ID]?.pause);
+    const freshBack = backPressed && !this.backHeld;
+    this.backHeld = backPressed;
     this.seaRipple.update();
     this.particles.update();
     this.splashes.update();
     this.screenShake.update();
 
     if (this.phase === 'over') {
-      if (freshJump || tapPoint(inputByPlayerId)) {
+      if (freshBack && this.returnToTitle) {
+        this.returnToTitle(inputByPlayerId);
+      } else if (freshJump) {
         this.seed++;
         this.startRun();
       }

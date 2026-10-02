@@ -65,8 +65,3 @@ export function pressOnce(scene, controls) {
   scene.update({ red: { ...idleInput(), ...controls }, blue: idleInput() });
   scene.update({ red: idleInput(), blue: idleInput() });
 }
-
-export function tapAt(scene, x, y) {
-  scene.update({ red: { ...idleInput(), tap: { x, y } }, blue: idleInput() });
-  scene.update({ red: idleInput(), blue: idleInput() });
-}

@@ -74,15 +74,15 @@ test('saved settings load back the same', () => {
   assert.deepEqual(loadSettings(storage), chosen);
 });
 
-test('changeSetting stops volumes at the ends and wraps the other settings', () => {
+test('changeSetting steps every setting and wraps at the ends, so one button reaches every value', () => {
   const chosen = defaultSettings();
   changeSetting(chosen, 'musicVolume', 1);
-  assert.equal(chosen.musicVolume, 10);
-  changeSetting(chosen, 'musicVolume', -1);
-  assert.equal(chosen.musicVolume, 9);
+  assert.equal(chosen.musicVolume, 0, 'past full volume wraps to silent');
+  changeSetting(chosen, 'musicVolume', 1);
+  assert.equal(chosen.musicVolume, 1);
   chosen.effectsVolume = 0;
   changeSetting(chosen, 'effectsVolume', -1);
-  assert.equal(chosen.effectsVolume, 0);
+  assert.equal(chosen.effectsVolume, 10);
   changeSetting(chosen, 'screenShake', 1);
   assert.equal(chosen.screenShake, 'off');
   changeSetting(chosen, 'screenShake', -1);
@@ -245,12 +245,12 @@ test('the title Settings screen changes a setting, saves it and closes without s
     press(scene, { confirm: true });
     assert.ok(scene.settingsMenu);
 
-    press(scene, { down: true });
-    press(scene, { left: true });
-    assert.equal(settings.effectsVolume, 9);
-    assert.equal(loadSettings(storage).effectsVolume, 9);
+    press(scene, { right: true });
+    press(scene, { jump: true });
+    assert.equal(settings.effectsVolume, 0);
+    assert.equal(loadSettings(storage).effectsVolume, 0);
 
-    press(scene, { pause: true });
+    press(scene, { action: true });
     assert.equal(scene.settingsMenu, null);
     assert.equal(scenes.length, 0);
   } finally {

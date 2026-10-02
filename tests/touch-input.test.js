@@ -41,11 +41,10 @@ test('the pause button presses pause', () => {
   assert.deepEqual(pressedControls(mapTouchesToInput([centerOf('pause')])), ['pause']);
 });
 
-test('a touch between buttons presses nothing and a tap is passed through', () => {
-  const input = mapTouchesToInput([{ x: 320, y: 180 }], { x: 320, y: 180 });
+test('a touch between buttons presses nothing', () => {
+  const input = mapTouchesToInput([{ x: 320, y: 180 }]);
 
   assert.deepEqual(pressedControls(input), []);
-  assert.deepEqual(input.tap, { x: 320, y: 180 });
 });
 
 function clusterCenterOf(playerId, buttonId) {
@@ -87,8 +86,11 @@ test('a lone touch on one side leaves the other player untouched', () => {
   assert.deepEqual(pressedControls(inputByPlayerId.blue), ['confirm', 'jump']);
 });
 
-test('only scenes where players move show touch buttons', () => {
-  assert.deepEqual(touchButtonsFor({}), []);
+test('menus show the menu buttons, and scenes where players move show their own layout', () => {
+  assert.deepEqual(
+    touchButtonsFor({}).map((button) => button.id),
+    ['left', 'right', 'jump', 'action'],
+  );
   assert.equal(touchButtonsFor({ touchLayout: 'onePlayer' }), TOUCH_BUTTONS);
   assert.equal(touchButtonsFor({ matchScene: { touchLayout: 'twoPlayers' } }), TWO_PLAYER_TOUCH_BUTTONS);
   assert.equal(touchButtonsFor({ touchLayout: 'onePlayer', matchScene: { touchLayout: 'twoPlayers' } }), TOUCH_BUTTONS);

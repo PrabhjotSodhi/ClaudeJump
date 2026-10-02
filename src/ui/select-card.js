@@ -29,8 +29,6 @@ const PICK_ARROW_DEPTH = 5;
 // The pick arrows sit this far out from the card's center, level with the character's middle.
 const PICK_ARROW_OFFSET_X = 48;
 const PICK_ARROW_HEIGHT_ABOVE_PEDESTAL = 20;
-// A tap this far or less from the card's side edge counts as a tap on that side's arrow.
-export const PICK_ARROW_TAP_WIDTH = 40;
 
 const EMPTY_FRAME_COLOR = '#3a4466';
 const EMPTY_COLOR = '#5a6988';
@@ -47,13 +45,6 @@ export function selectCardBox(seatIndex, topY) {
     width: SELECT_CARD_WIDTH,
     height: SELECT_CARD_HEIGHT,
   };
-}
-
-// -1 for a tap on the left arrow, 1 for the right arrow and 0 for anywhere else on the card.
-export function pickArrowDirectionAt(box, point) {
-  if (point.x < box.x + PICK_ARROW_TAP_WIDTH) return -1;
-  if (point.x >= box.x + box.width - PICK_ARROW_TAP_WIDTH) return 1;
-  return 0;
 }
 
 function drawFrame(context, box, color) {

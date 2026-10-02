@@ -179,34 +179,20 @@ function sceneWithLevels(levelCount) {
   return sceneWithBaseline({ levels }).scene;
 }
 
-test('down moves along the column and wraps to the top', () => {
+test('left and right step through every tile in order across rows, and down does nothing', () => {
   const scene = sceneWithLevels(7);
+  const randomTile = 7;
 
-  press(scene, 'red', 'right');
-  press(scene, 'red', 'right');
-  assert.equal(scene.cursorByPlayerId.red, 5, 'right from Random wraps to the start of its row, then one on');
   press(scene, 'red', 'down');
-  assert.equal(scene.cursorByPlayerId.red, 1, 'below the last row wraps to the first row');
-  press(scene, 'red', 'down');
-  assert.equal(scene.cursorByPlayerId.red, 5);
-
-  assert.equal(scene.cursorByPlayerId.blue, 7, 'the other cursor does not move');
-});
-
-test('left and right stay inside their row, including a shorter last row', () => {
-  const scene = sceneWithLevels(6);
-  const randomTile = 6;
-
+  assert.equal(scene.cursorByPlayerId.red, randomTile, 'down does not move');
+  for (let step = 0; step < 4; step++) press(scene, 'red', 'right');
+  assert.equal(scene.cursorByPlayerId.red, 3, 'right from Random wraps to the first level, then on across the row');
   press(scene, 'red', 'right');
-  assert.equal(scene.cursorByPlayerId.red, 4, 'right from the end of the last row wraps to its start');
+  assert.equal(scene.cursorByPlayerId.red, 4, 'and on into the next row');
   press(scene, 'red', 'left');
-  assert.equal(scene.cursorByPlayerId.red, randomTile);
+  assert.equal(scene.cursorByPlayerId.red, 3);
 
-  press(scene, 'blue', 'down');
-  assert.equal(scene.cursorByPlayerId.blue, 2, 'down from Random goes to the top of its column');
-  press(scene, 'blue', 'right');
-  press(scene, 'blue', 'down');
-  assert.equal(scene.cursorByPlayerId.blue, 3, 'a column with no card in the last row stays in the first row');
+  assert.equal(scene.cursorByPlayerId.blue, randomTile, 'the other cursor does not move');
 });
 
 const ALL_PLAYER_IDS = ['red', 'blue', 'green', 'yellow'];
@@ -289,21 +275,15 @@ test('voting waits for every joined player and no one else', () => {
   assert.notEqual(scene.pickedLevel, null, 'blue and yellow never joined, so they are not waited for');
 });
 
-test('players sharing one phone vote by tapping in turn', () => {
+test('shove takes a vote back, and with no vote to take back it returns to the mode screen', () => {
   const { scene, scenes } = sceneWithBaseline();
-  const { bounds } = levelSelectLayout(twoLevels.length + 1);
-  const tapTile = (index) => {
-    const tile = bounds[index];
-    scene.update({ ...neutralInputs(), red: { ...noInput(), tap: { x: tile.x + 2, y: tile.y + 2 } } });
-  };
 
-  tapTile(1);
-  tapTile(1);
+  press(scene, 'red', 'jump');
   assert.equal(scene.lockedByPlayerId.red, true);
-  assert.equal(scene.lockedByPlayerId.blue, false);
-  tapTile(1);
-  tapTile(1);
-  assert.equal(scene.lockedByPlayerId.blue, true);
-  ticksUntilMatch(scene, scenes);
-  assert.equal(scenes[0].matchScene.level, otherLevel);
+  press(scene, 'red', 'action');
+  assert.equal(scene.lockedByPlayerId.red, false, 'the vote is taken back');
+  assert.equal(scenes.length, 0);
+
+  press(scene, 'red', 'action');
+  assert.equal(scenes[0].constructor.name, 'ModeSelectScene');
 });

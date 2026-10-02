@@ -3,15 +3,8 @@ import { EventEmitter } from '../engine/events.js';
 import { saveKeyBindings } from '../engine/key-bindings.js';
 import { saveSettings, settings } from '../engine/sound-settings.js';
 import { drawArenaBackground } from '../levels/arena-backgrounds.js';
-import {
-  drawKeyHints,
-  drawMenuList,
-  drawWithMenuMotion,
-  MenuMotion,
-  menuRowRectangles,
-  rowIndexAt,
-  tapPoint,
-} from '../ui/menu-kit.js';
+import { drawKeyHints, drawMenuList, drawWithMenuMotion, MenuMotion, MOVE_HINT, SELECT_HINT } from '../ui/menu-kit.js';
+import { MenuInput, menuStep } from '../ui/menu-input.js';
 import { SettingsMenu } from '../ui/settings-menu.js';
 import { NO_WATER_LINE_Y } from '../ui/menu-screen.js';
 import { drawText } from '../ui/text.js';
@@ -30,17 +23,11 @@ const LOGO_BOB_PERIOD_SECONDS = 3;
 
 const BACKGROUND_NAME = 'harbor';
 
-const MENU_TOP_Y = 168;
+const MENU_TOP_Y = 176;
 
-const TOUCH_HINT_TEXT = 'Tap a mode to play';
-const TOUCH_HINT_Y = 246;
-
-const HINTS_LABEL_COLOR = '#c0cbdc';
-const HINTS_Y = 250;
-const MENU_HINTS = [
-  { keys: ['Up', 'Down'], pad: ['stick'], label: 'Choose' },
-  { keys: ['Enter'], pad: ['south'], label: 'Select' },
-];
+const HINTS_Y = 284;
+// The title is the first screen, so there is nothing to go back to.
+const MENU_HINTS = [MOVE_HINT, SELECT_HINT];
 
 const FULLSCREEN_BUTTON_SIZE = 28;
 const FULLSCREEN_BUTTON_MARGIN = 12;
@@ -62,9 +49,8 @@ export const MENU_OPTIONS = [
 ];
 
 export class TitleScene {
-  // initialInput seeds the held-key baseline from whatever opened this scene, so an up, down or
-  // confirm press still held over from that moment (such as confirming "Return to title" from the
-  // pause menu) does not immediately count as a fresh press here.
+  // initialInput seeds the held-key baseline from whatever opened this scene, so a press still held over from that
+  // moment (such as confirming "Return to title" from the pause menu) does not immediately count as a fresh press here.
   constructor({ sceneManager, levels, sprites, seed = Date.now(), options = MENU_OPTIONS, initialInput = {} } = {}) {
     this.sceneManager = sceneManager;
     this.events = new EventEmitter();
@@ -79,10 +65,7 @@ export class TitleScene {
     this.waterLineY = levels?.find((level) => level.background === BACKGROUND_NAME)?.waterLineY ?? NO_WATER_LINE_Y;
     this.brawl = new TitleBrawl({ seed, characterPoses: sprites?.characterPoses });
     this.backgroundDrawn = false;
-    this.previous = { up: {}, down: {}, confirm: {} };
-    for (const playerId in initialInput) {
-      for (const control in this.previous) this.previous[control][playerId] = !!initialInput[playerId][control];
-    }
+    this.menuInput = new MenuInput(initialInput);
   }
 
   update(inputByPlayerId) {
@@ -92,43 +75,21 @@ export class TitleScene {
     if (this.settingsMenu) {
       if (this.settingsMenu.update(inputByPlayerId)) {
         this.settingsMenu = null;
-        this.holdCurrentInput(inputByPlayerId);
+        this.menuInput.hold(inputByPlayerId);
       }
       return;
     }
 
-    const pressed = { up: false, down: false, confirm: false };
-    for (const playerId in inputByPlayerId) {
-      const input = inputByPlayerId[playerId];
-      for (const control in pressed) {
-        if (input[control] && !this.previous[control][playerId]) pressed[control] = true;
-        this.previous[control][playerId] = !!input[control];
-      }
+    const presses = this.menuInput.presses(inputByPlayerId);
+    const step = menuStep(presses);
+    if (step !== 0) {
+      this.selectedIndex = (this.selectedIndex + step + this.options.length) % this.options.length;
+      this.events.emit('menu-moved', {});
     }
-
-    const optionCount = this.options.length;
-    if (pressed.down) this.selectedIndex = (this.selectedIndex + 1) % optionCount;
-    if (pressed.up) this.selectedIndex = (this.selectedIndex + optionCount - 1) % optionCount;
-    const tappedIndex = rowIndexAt(
-      menuRowRectangles(
-        this.options.map((option) => option.label),
-        MENU_TOP_Y,
-      ),
-      tapPoint(inputByPlayerId),
-    );
-    if (tappedIndex >= 0) this.selectedIndex = tappedIndex;
-    if (pressed.down || pressed.up) this.events.emit('menu-moved', {});
-    if (pressed.confirm || tappedIndex >= 0) {
+    if (presses.confirm) {
       this.events.emit('menu-selected', {});
       this.menuMotion.press();
       this.confirmSelection(inputByPlayerId);
-    }
-  }
-
-  // Whatever is held now, such as the confirm that closed the Settings screen, must be released before it counts again.
-  holdCurrentInput(inputByPlayerId) {
-    for (const playerId in inputByPlayerId) {
-      for (const control in this.previous) this.previous[control][playerId] = !!inputByPlayerId[playerId][control];
     }
   }
 
@@ -142,24 +103,25 @@ export class TitleScene {
         initialInput: inputByPlayerId,
       });
     }
+    const returnToTitle = (initialInput) =>
+      this.sceneManager.setScene(
+        new TitleScene({
+          sceneManager: this.sceneManager,
+          levels: this.levels,
+          sprites: this.sprites,
+          seed: this.seed,
+          initialInput,
+        }),
+      );
     if (option.id === 'survival')
-      this.sceneManager.setScene(new SurvivalScene({ sprites: this.sprites, seed: this.seed }));
+      this.sceneManager.setScene(new SurvivalScene({ sprites: this.sprites, seed: this.seed, returnToTitle }));
     if (option.id === 'online') {
       openOnlineMenu({
         sceneManager: this.sceneManager,
         levels: this.levels,
         sprites: this.sprites,
         seed: this.seed,
-        returnToTitle: (initialInput) =>
-          this.sceneManager.setScene(
-            new TitleScene({
-              sceneManager: this.sceneManager,
-              levels: this.levels,
-              sprites: this.sprites,
-              seed: this.seed,
-              initialInput,
-            }),
-          ),
+        returnToTitle,
       });
     }
     if (option.id === 'versus')
@@ -189,7 +151,7 @@ export class TitleScene {
     renderer.clearGameLayer();
     renderer.clearUiLayer();
     this.brawl.render(renderer.gameContext, this.sprites);
-    drawTitleUi(renderer.uiContext, this, renderer.touchActive);
+    drawTitleUi(renderer.uiContext, this);
     this.settingsMenu?.render(renderer.uiContext);
   }
 }
@@ -226,16 +188,7 @@ function drawLogo(context) {
   drawText(context, LOGO_TEXT, SCREEN_WIDTH / 2, y, { ...options, outlineColor: LOGO_OUTLINE_COLOR });
 }
 
-function drawTouchHint(context) {
-  drawText(context, TOUCH_HINT_TEXT, SCREEN_WIDTH / 2, TOUCH_HINT_Y, {
-    scale: 1,
-    align: 'center',
-    color: HINTS_LABEL_COLOR,
-    outlineColor: LOGO_OUTLINE_COLOR,
-  });
-}
-
-function drawTitleUi(context, scene, touchActive) {
+function drawTitleUi(context, scene) {
   drawLogo(context);
   if (scene.sceneManager?.fullscreen?.supported) drawFullscreenButton(context);
   if (scene.settingsMenu) return;
@@ -246,7 +199,6 @@ function drawTitleUi(context, scene, touchActive) {
       topY: MENU_TOP_Y,
       motion: scene.menuMotion,
     });
-    if (touchActive) drawTouchHint(context);
-    else drawKeyHints(context, MENU_HINTS, HINTS_Y);
+    drawKeyHints(context, MENU_HINTS, HINTS_Y);
   });
 }

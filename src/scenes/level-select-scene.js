@@ -5,22 +5,25 @@ import { SeededRandom } from '../engine/seeded-random.js';
 import { THUMBNAIL_HEIGHT, THUMBNAIL_WIDTH } from '../levels/level-thumbnail.js';
 import { PLAYERS } from '../levels/versus-arena.js';
 import {
+  BACK_HINT,
   drawKeyHints,
   drawMenuTitle,
   drawWithMenuMotion,
-  MenuMotion,
   KEYCAP_HEIGHT,
-  rowIndexAt,
+  MenuMotion,
+  MOVE_HINT,
+  SELECT_HINT,
   TITLE_HEIGHT,
-  tapPoint,
   wrapMenuIndex,
 } from '../ui/menu-kit.js';
+import { MenuInput } from '../ui/menu-input.js';
 import { MENU_BACKGROUND_COLOR, NO_WATER_LINE_Y } from '../ui/menu-screen.js';
 import { drawPanel } from '../ui/panel.js';
 import { TAG_LABEL_BY_PLAYER_ID } from '../ui/player-tags.js';
 import { drawText, measureText } from '../ui/text.js';
 import { drawCharacterBody, FRAME_SIZE } from '../vfx/character-body.js';
 import { EYE_STIFFNESSES, GooglyEye } from '../vfx/googly-eyes.js';
+import { ModeSelectScene } from './mode-select-scene.js';
 import { PausableMatchScene } from './pausable-match-scene.js';
 import { VersusScene } from './versus-scene.js';
 
@@ -48,28 +51,7 @@ const RANDOM_MARK_COLOR = '#5a6988';
 
 // Where each voter's prompt sits, as offsets from the screen's center, by how many players voted.
 const STATUS_OFFSETS_X = { 2: [-148, 148], 3: [-200, 0, 200], 4: [-240, -80, 80, 240] };
-const HINTS = [
-  {
-    keys: [
-      { player: 'red', control: 'left' },
-      { player: 'red', control: 'right' },
-      { player: 'red', control: 'action' },
-      { player: 'blue', control: 'left' },
-      { player: 'blue', control: 'right' },
-      { player: 'blue', control: 'action' },
-    ],
-    pad: ['stick'],
-    label: 'Move',
-  },
-  {
-    keys: [
-      { player: 'red', control: 'jump' },
-      { player: 'blue', control: 'jump' },
-    ],
-    pad: ['south'],
-    label: 'Vote',
-  },
-];
+const HINTS = [MOVE_HINT, { ...SELECT_HINT, label: 'Vote' }, BACK_HINT];
 const SELECTED_COLOR = '#feae34';
 
 // How long the picked tile flashes before the match starts, and how fast it flashes.
@@ -90,9 +72,9 @@ export class LevelSelectScene {
     this.mode = mode;
     this.waterLineY = NO_WATER_LINE_Y;
     this.backgroundDrawn = false;
-    // Captured from the real input on the first tick this scene runs, so the jump that locked in a
-    // character on player select never counts as a fresh press here.
-    this.previousInput = null;
+    // Seeded from the real input on the first tick this scene runs, so the jump that picked the mode never counts as
+    // a fresh press here.
+    this.menuInput = null;
     // A cursor is an index into levels, or levels.length for the Random tile.
     this.cursorByPlayerId = {};
     this.lockedByPlayerId = {};
@@ -115,32 +97,30 @@ export class LevelSelectScene {
       return;
     }
 
-    if (!this.previousInput) {
-      this.previousInput = {};
-      for (const spawn of this.voters) this.previousInput[spawn.id] = { ...inputByPlayerId[spawn.id] };
+    if (!this.menuInput) {
+      this.menuInput = new MenuInput(inputByPlayerId);
       return;
     }
 
+    const pressesByPlayerId = this.menuInput.pressesByPlayerId(inputByPlayerId);
     for (const spawn of this.voters) {
-      const input = inputByPlayerId[spawn.id] ?? {};
-      const previous = this.previousInput[spawn.id];
-      if (!this.lockedByPlayerId[spawn.id]) {
-        const leftPressed = input.left && !previous.left;
-        const rightPressed = input.right && !previous.right;
-        const downPressed = input.down && !previous.down;
-        if (leftPressed) this.moveAlongRow(spawn.id, -1);
-        if (rightPressed) this.moveAlongRow(spawn.id, 1);
-        if (downPressed) this.moveDown(spawn.id);
-        if (leftPressed || rightPressed || downPressed) this.events.emit('menu-moved', { playerId: spawn.id });
-        if (input.jump && !previous.jump) {
-          this.lockedByPlayerId[spawn.id] = true;
-          this.events.emit('menu-selected', { playerId: spawn.id });
-        }
+      const presses = pressesByPlayerId[spawn.id];
+      if (!presses) continue;
+      if (presses.back) {
+        if (this.stepBack(spawn.id)) return;
+        continue;
       }
-      this.previousInput[spawn.id] = { ...input };
+      if (this.lockedByPlayerId[spawn.id]) continue;
+      const step = (presses.right ? 1 : 0) - (presses.left ? 1 : 0);
+      if (step !== 0) {
+        this.cursorByPlayerId[spawn.id] = wrapMenuIndex(this.cursorByPlayerId[spawn.id], step, this.levels.length + 1);
+        this.events.emit('menu-moved', { playerId: spawn.id });
+      }
+      if (presses.confirm) {
+        this.lockedByPlayerId[spawn.id] = true;
+        this.events.emit('menu-selected', { playerId: spawn.id });
+      }
     }
-
-    this.selectTappedTile(inputByPlayerId);
 
     if (Object.values(this.lockedByPlayerId).every((locked) => locked)) {
       this.pickedLevel = this.pickLevel();
@@ -148,38 +128,23 @@ export class LevelSelectScene {
     }
   }
 
-  // Taps vote in seat order, so players sharing one phone take turns: a tap moves the cursor of the first voter who
-  // has not voted yet, and a tap on the tile that cursor is on locks their vote.
-  selectTappedTile(inputByPlayerId) {
-    const tappedIndex = rowIndexAt(levelSelectLayout(this.levels.length + 1).bounds, tapPoint(inputByPlayerId));
-    const voter = this.voters.find((spawn) => !this.lockedByPlayerId[spawn.id]);
-    if (tappedIndex < 0 || !voter) return;
-    if (this.cursorByPlayerId[voter.id] === tappedIndex) {
-      this.lockedByPlayerId[voter.id] = true;
-      this.events.emit('menu-selected', { playerId: voter.id });
-    } else {
-      this.cursorByPlayerId[voter.id] = tappedIndex;
-      this.events.emit('menu-moved', { playerId: voter.id });
+  // Back takes a vote back, and with no vote to take back it returns to the mode screen. True when it left the screen.
+  stepBack(playerId) {
+    this.events.emit('menu-moved', { playerId });
+    if (this.lockedByPlayerId[playerId]) {
+      this.lockedByPlayerId[playerId] = false;
+      return false;
     }
-  }
-
-  // Left and right wrap inside the cursor's row, which may be a shorter last row.
-  moveAlongRow(playerId, direction) {
-    const cardCount = this.levels.length + 1;
-    const { columns } = levelSelectLayout(cardCount);
-    const cursor = this.cursorByPlayerId[playerId];
-    const rowStart = cursor - (cursor % columns);
-    const rowLength = Math.min(columns, cardCount - rowStart);
-    this.cursorByPlayerId[playerId] = rowStart + wrapMenuIndex(cursor - rowStart, direction, rowLength);
-  }
-
-  // Down keeps the column and wraps from the last row to the first. A column missing from the last row skips it.
-  moveDown(playerId) {
-    const cardCount = this.levels.length + 1;
-    const { columns } = levelSelectLayout(cardCount);
-    const cursor = this.cursorByPlayerId[playerId];
-    const below = cursor + columns;
-    this.cursorByPlayerId[playerId] = below < cardCount ? below : cursor % columns;
+    this.sceneManager.setScene(
+      new ModeSelectScene({
+        sceneManager: this.sceneManager,
+        levels: this.levels,
+        characterByPlayerId: this.characterByPlayerId,
+        sprites: this.sprites,
+        seed: this.seed,
+      }),
+    );
+    return true;
   }
 
   // The level with the most votes wins. A Random vote first turns into a vote for one random level, and a tie
@@ -221,9 +186,7 @@ export class LevelSelectScene {
 
     renderer.clearGameLayer();
     renderer.clearUiLayer();
-    drawWithMenuMotion(renderer.uiContext, this.menuMotion, () =>
-      drawLevelSelectUi(renderer.uiContext, this, renderer.touchActive),
-    );
+    drawWithMenuMotion(renderer.uiContext, this.menuMotion, () => drawLevelSelectUi(renderer.uiContext, this));
   }
 }
 
@@ -323,8 +286,7 @@ function drawBadge(context, x, y, seatIndex, character, sprites) {
   });
 }
 
-// With touch there are no buttons on this screen, so the prompt asks for taps instead of a jump.
-function drawLevelSelectUi(context, scene, touchActive) {
+function drawLevelSelectUi(context, scene) {
   const cardCount = scene.levels.length + 1;
   const { tiles, titleY, promptY, hintY } = levelSelectLayout(cardCount);
   drawMenuTitle(context, 'Level Select', titleY);
@@ -348,8 +310,7 @@ function drawLevelSelectUi(context, scene, touchActive) {
   scene.voters.forEach((spawn, voterIndex) => {
     const centerX = SCREEN_WIDTH / 2 + STATUS_OFFSETS_X[scene.voters.length][voterIndex];
     const locked = scene.lockedByPlayerId[spawn.id];
-    const votePrompt = touchActive ? 'Tap twice to vote' : 'Press jump to vote';
-    const prompt = `${TAG_LABEL_BY_PLAYER_ID[spawn.id]} ${locked ? 'Locked in!' : votePrompt}`;
+    const prompt = `${TAG_LABEL_BY_PLAYER_ID[spawn.id]} ${locked ? 'Locked in!' : 'Press jump to vote'}`;
     drawText(context, prompt, centerX - Math.floor(measureText(prompt) / 2), promptY, {
       scale: 1,
       outlineColor: null,

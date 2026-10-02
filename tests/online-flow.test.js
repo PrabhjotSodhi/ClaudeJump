@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { combineInputs, mergeLocalInputs } from '../src/engine/input.js';
+import { mergeLocalInputs } from '../src/engine/input.js';
 import { describeOnlineError, openOnlineMenu } from '../src/scenes/online-flow.js';
 import { OnlineJoinScene, joinLayout } from '../src/scenes/online-join-scene.js';
 import { OnlineLobbyScene } from '../src/scenes/online-lobby-scene.js';
@@ -8,13 +8,7 @@ import { OnlineMenuScene } from '../src/scenes/online-menu-scene.js';
 import { GRID_ITEMS } from '../src/scenes/room-code-entry.js';
 import { TitleScene } from '../src/scenes/title-scene.js';
 import { harborLevel } from './fixtures/harbor-level.mjs';
-import {
-  FakeOnlineConnection,
-  fakeSceneManager,
-  idleInput,
-  pressOnce,
-  tapAt,
-} from './fixtures/fake-online-connection.mjs';
+import { FakeOnlineConnection, fakeSceneManager, idleInput, pressOnce } from './fixtures/fake-online-connection.mjs';
 
 const ERROR_CODES = ['no-webrtc', 'room-not-found', 'room-expired', 'room-full', 'connection-failed', 'server-error'];
 
@@ -54,12 +48,12 @@ function choose(scene, label) {
 }
 
 function typeCode(scene, code) {
-  for (const letter of code) tapAtItem(scene, GRID_ITEMS.indexOf(letter));
+  for (const letter of code) pressItem(scene, GRID_ITEMS.indexOf(letter));
 }
 
-function tapAtItem(scene, itemIndex) {
-  const tile = joinLayout().tiles[itemIndex];
-  tapAt(scene, tile.x + 4, tile.y + 4);
+function pressItem(scene, itemIndex) {
+  scene.entry.cursorIndex = itemIndex;
+  pressOnce(scene, { jump: true });
 }
 
 const settle = () => new Promise((resolve) => setImmediate(resolve));
@@ -164,7 +158,7 @@ test('a room that opens after the player backed out is closed again', async () =
   assert.equal(sceneManager.currentScene.title, 'Online');
 });
 
-test('typing a code by tapping letters joins that room and shows the lobby', async () => {
+test('typing a code letter by letter joins that room and shows the lobby', async () => {
   const connection = new FakeOnlineConnection({ code: 'KQZP' });
   const joined = [];
   const { sceneManager } = openMenu({
@@ -180,7 +174,7 @@ test('typing a code by tapping letters joins that room and shows the lobby', asy
 
   typeCode(joinScene, 'KQZP');
   assert.deepEqual(joined, []);
-  tapAtItem(joinScene, GRID_ITEMS.indexOf('join'));
+  pressItem(joinScene, GRID_ITEMS.indexOf('join'));
   await settle();
 
   assert.deepEqual(joined, ['KQZP']);
@@ -230,7 +224,7 @@ for (const [code, title] of [
     const joinScene = sceneManager.currentScene;
     joinScene.update({ red: idleInput() });
     typeCode(joinScene, 'ABCD');
-    tapAtItem(joinScene, GRID_ITEMS.indexOf('join'));
+    pressItem(joinScene, GRID_ITEMS.indexOf('join'));
     await settle();
 
     const notice = sceneManager.currentScene;
@@ -269,7 +263,7 @@ test('the host leaving shows a message with a way back', async () => {
   choose(sceneManager.currentScene, 'Join');
   sceneManager.currentScene.update({ red: idleInput() });
   typeCode(sceneManager.currentScene, 'ABCD');
-  tapAtItem(sceneManager.currentScene, GRID_ITEMS.indexOf('join'));
+  pressItem(sceneManager.currentScene, GRID_ITEMS.indexOf('join'));
   await settle();
 
   connection.onPeerClose('host-peer');
@@ -302,12 +296,12 @@ test('the code screen only joins with four letters and Back leaves', () => {
   scene.update({ red: idleInput() });
 
   typeCode(scene, 'AB');
-  tapAtItem(scene, GRID_ITEMS.indexOf('join'));
+  pressItem(scene, GRID_ITEMS.indexOf('join'));
   assert.deepEqual(joins, []);
 
-  tapAtItem(scene, GRID_ITEMS.indexOf('delete'));
+  pressItem(scene, GRID_ITEMS.indexOf('delete'));
   assert.equal(scene.entry.code, 'A');
-  tapAtItem(scene, GRID_ITEMS.indexOf('back'));
+  pressItem(scene, GRID_ITEMS.indexOf('back'));
   assert.equal(backs, 1);
 });
 
@@ -332,13 +326,11 @@ test('every letter tile is inside the screen and no two tiles overlap', () => {
 test('one device merges both keyboard sides, pad 1 and touch into one input', () => {
   const merged = mergeLocalInputs({
     red: { ...idleInput(), left: true },
-    blue: { ...idleInput(), jump: true, tap: { x: 3, y: 4 } },
+    blue: { ...idleInput(), jump: true },
   });
 
   assert.equal(merged.left, true);
   assert.equal(merged.jump, true);
   assert.equal(merged.right, false);
-  assert.deepEqual(merged.tap, { x: 3, y: 4 });
-  assert.deepEqual(combineInputs({ red: idleInput() }).red.tap, null);
   assert.equal(mergeLocalInputs({}).left, false);
 });

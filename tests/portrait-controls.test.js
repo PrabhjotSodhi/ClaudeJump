@@ -43,10 +43,10 @@ test('the rocker halves and the two action buttons are sized for thumbs', () => 
 });
 
 test('panel touches map to the same input records as the landscape buttons', () => {
-  assert.deepEqual(pressedControls(mapTouchesToInput([centerOf('right')], null, BUTTONS)), ['right']);
-  assert.deepEqual(pressedControls(mapTouchesToInput([centerOf('action')], null, BUTTONS)), ['action', 'down']);
-  assert.deepEqual(pressedControls(mapTouchesToInput([centerOf('pause')], null, BUTTONS)), ['pause']);
-  assert.deepEqual(pressedControls(mapTouchesToInput([centerOf('left'), centerOf('jump')], null, BUTTONS)), [
+  assert.deepEqual(pressedControls(mapTouchesToInput([centerOf('right')], BUTTONS)), ['right']);
+  assert.deepEqual(pressedControls(mapTouchesToInput([centerOf('action')], BUTTONS)), ['action', 'down']);
+  assert.deepEqual(pressedControls(mapTouchesToInput([centerOf('pause')], BUTTONS)), ['pause']);
+  assert.deepEqual(pressedControls(mapTouchesToInput([centerOf('left'), centerOf('jump')], BUTTONS)), [
     'confirm',
     'jump',
     'left',
@@ -97,21 +97,11 @@ test('two fingers on the panel run and jump at once', () => {
   assert.deepEqual(pressedControls(touchInput.sample(BUTTONS, 'controls').red), ['confirm', 'jump', 'left']);
 });
 
-test('a finger on the panel is not a tap on the game', () => {
-  const { touchInput, touch } = createPhone();
-  touch('controls', [panelScreenPoint('left')]);
-
-  assert.equal(touchInput.sample(BUTTONS, 'controls').red.tap, null);
-});
-
-test('a tap on the game still reaches menus and presses no panel button', () => {
+test('a finger on the game, away from the panel, presses no panel button', () => {
   const { touchInput, touch } = createPhone();
   touch('game', [{ x: 100, y: 200 }]);
 
-  const input = touchInput.sample(BUTTONS, 'controls').red;
-
-  assert.deepEqual(input.tap, { x: 100, y: 200 });
-  assert.deepEqual(pressedControls(input), []);
+  assert.deepEqual(pressedControls(touchInput.sample(BUTTONS, 'controls').red), []);
 });
 
 test('the pressed buttons under a finger are reported for drawing', () => {

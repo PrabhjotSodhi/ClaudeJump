@@ -1,12 +1,12 @@
 import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../engine/config.js';
 import { EventEmitter } from '../engine/events.js';
-import { mergeLocalInputs } from '../engine/input.js';
 import { LockstepSession } from '../engine/lockstep-session.js';
 import { SeededRandom } from '../engine/seeded-random.js';
 import { PLAYERS } from '../levels/versus-arena.js';
-import { drawWithMenuMotion, MenuMotion, rowIndexAt, wrapMenuIndex } from '../ui/menu-kit.js';
+import { drawWithMenuMotion, MenuMotion, wrapMenuIndex } from '../ui/menu-kit.js';
+import { MenuInput, menuStep } from '../ui/menu-input.js';
 import { MENU_BACKGROUND_COLOR, NO_WATER_LINE_Y } from '../ui/menu-screen.js';
-import { CHANGEABLE_ROWS, drawOnlineLobby, lobbyRowLabels, lobbyRowRectangles } from '../ui/online-lobby-view.js';
+import { CHANGEABLE_ROWS, drawOnlineLobby } from '../ui/online-lobby-view.js';
 import { SelectCardMotion } from '../ui/select-card-motion.js';
 import { OnlineLobby } from './online-lobby-state.js';
 import { OnlineMatchScene } from './online-match-scene.js';
@@ -43,7 +43,7 @@ export class OnlineLobbyScene {
     this.backgroundDrawn = false;
     this.rows = isHost ? HOST_ROWS : JOINER_ROWS;
     this.selectedRow = 0;
-    this.previousInput = null;
+    this.menuInput = null;
     this.lobby = new OnlineLobby({ levelNames: levels.map((level) => level.name) });
     this.localSeat = isHost ? this.lobby.join(HOST_MEMBER_ID) : -1;
     this.attachConnection();
@@ -69,7 +69,7 @@ export class OnlineLobbyScene {
   resume() {
     this.events = new EventEmitter();
     this.attachConnection();
-    this.previousInput = null;
+    this.menuInput = null;
     this.menuMotion = new MenuMotion();
     this.cardMotion = new SelectCardMotion();
     this.backgroundDrawn = false;
@@ -133,24 +133,31 @@ export class OnlineLobbyScene {
     this.menuMotion.update();
     this.cardMotion.update();
     this.startSeatMotion();
-    const input = mergeLocalInputs(inputByPlayerId);
-    if (!this.previousInput) {
-      this.previousInput = input;
+    if (!this.menuInput) {
+      this.menuInput = new MenuInput(inputByPlayerId);
       return;
     }
-    const previous = this.previousInput;
-    const isFresh = (control) => input[control] && !previous[control];
-    this.previousInput = input;
+    const presses = this.menuInput.presses(inputByPlayerId);
 
-    const rowCount = this.rows.length;
-    if (isFresh('down')) this.selectedRow = wrapMenuIndex(this.selectedRow, 1, rowCount);
-    if (isFresh('up')) this.selectedRow = wrapMenuIndex(this.selectedRow, -1, rowCount);
-    if (isFresh('down') || isFresh('up')) this.events.emit('menu-moved', {});
+    const step = menuStep(presses);
+    if (step !== 0) {
+      this.selectedRow = wrapMenuIndex(this.selectedRow, step, this.rows.length);
+      this.events.emit('menu-moved', {});
+    }
     const row = this.rows[this.selectedRow];
-    if (isFresh('left') && CHANGEABLE_ROWS.includes(row)) this.changeRow(row, -1);
-    if (isFresh('right') && CHANGEABLE_ROWS.includes(row)) this.changeRow(row, 1);
-    if (isFresh('confirm')) this.activateRow(row, inputByPlayerId);
-    this.handleTap(input.tap, inputByPlayerId);
+    if (presses.back) this.goBack(inputByPlayerId);
+    else if (presses.confirm && CHANGEABLE_ROWS.includes(row)) this.changeRow(row, 1);
+    else if (presses.confirm) this.activateRow(row, inputByPlayerId);
+  }
+
+  // Back takes a ready back first, and otherwise leaves the room.
+  goBack(inputByPlayerId) {
+    if (this.lobby.seats[this.localSeat]?.ready) {
+      this.toggleReady();
+      this.events.emit('menu-selected', {});
+    } else {
+      this.activateRow('leave', inputByPlayerId);
+    }
   }
 
   // Seats change by network messages too, so the card motion follows what the lobby shows.
@@ -162,21 +169,6 @@ export class OnlineLobbyScene {
       if (kind === 'cheered') {
         this.events.emit('character-cheered', { playerId: PLAYERS[seat].id, characterName: seats[seat].characterName });
       }
-    }
-  }
-
-  // A tap on a row that changes with left and right steps it by the side that was tapped. Any other row is chosen.
-  handleTap(tap, inputByPlayerId) {
-    const rectangles = lobbyRowRectangles(lobbyRowLabels(this));
-    const tappedIndex = rowIndexAt(rectangles, tap);
-    if (tappedIndex < 0) return;
-    this.selectedRow = tappedIndex;
-    const row = this.rows[tappedIndex];
-    if (CHANGEABLE_ROWS.includes(row)) {
-      const rectangle = rectangles[tappedIndex];
-      this.changeRow(row, tap.x < rectangle.x + rectangle.width / 2 ? -1 : 1);
-    } else {
-      this.activateRow(row, inputByPlayerId);
     }
   }
 
@@ -279,7 +271,6 @@ export class OnlineLobbyScene {
         selectedRow: this.selectedRow,
         sprites: this.sprites,
         levels: this.levels,
-        touchActive: renderer.touchActive,
         motion: this.menuMotion,
         cardMotion: this.cardMotion,
       }),

@@ -273,7 +273,7 @@ test('all four players can join first and then be ready together', () => {
   assert.deepEqual(Object.keys(scenes[0].characterByPlayerId), ['red', 'blue', 'green', 'yellow']);
 });
 
-test('down steps a picking player back out, so a mistaken join does not hold the match', () => {
+test('shove steps a picking player back out, so a mistaken join does not hold the match', () => {
   const { scene, scenes } = sceneWithBaseline();
   press(scene, 'green', 'jump');
   lockIn(scene, 'red');
@@ -281,7 +281,7 @@ test('down steps a picking player back out, so a mistaken join does not hold the
   runCountdown(scene);
   assert.equal(scenes.length, 0);
 
-  press(scene, 'green', 'down');
+  press(scene, 'green', 'action');
   runCountdown(scene);
 
   assert.equal(scene.stateByPlayerId.green, 'unjoined');
@@ -289,10 +289,11 @@ test('down steps a picking player back out, so a mistaken join does not hold the
   assert.deepEqual(Object.keys(scenes[0].characterByPlayerId), ['red', 'blue']);
 });
 
-test('down does nothing to a player who has not joined', () => {
+test('shove does nothing to a player who has not joined while others have', () => {
   const { scene } = sceneWithBaseline();
+  press(scene, 'red', 'jump');
 
-  press(scene, 'blue', 'down');
+  press(scene, 'blue', 'action');
 
   assert.equal(scene.stateByPlayerId.blue, 'unjoined');
 });
@@ -333,7 +334,7 @@ test('a ready player who steps back cancels the countdown, and it restarts in fu
   lockIn(scene, 'blue');
   runCountdown(scene, START_COUNTDOWN_TICKS - 5);
 
-  press(scene, 'blue', 'down');
+  press(scene, 'blue', 'action');
   assert.equal(scene.stateByPlayerId.blue, 'picking');
   runCountdown(scene);
   assert.equal(scenes.length, 0);
@@ -355,40 +356,18 @@ test('the four cards sit side by side inside the screen without overlapping', ()
   });
 });
 
-test('a tap on the first card joins, a tap on its arrows changes character and a tap in the middle locks in', () => {
-  const { scene } = sceneWithBaseline();
-  const box = playerCardBox(0);
-  const tapAt = (x) => ({ ...neutralInputs(), red: { ...noInput(), tap: { x, y: box.y + box.height / 2 } } });
-  const middleX = box.x + box.width / 2;
-  const startIndex = scene.characterIndexByPlayerId.red;
-
-  scene.update(tapAt(middleX));
-  assert.equal(scene.stateByPlayerId.red, 'picking');
-
-  scene.update(tapAt(box.x + box.width - 2));
-  assert.equal(scene.characterIndexByPlayerId.red, (startIndex + 1) % CHARACTERS.length);
-  scene.update(tapAt(box.x + 2));
-  scene.update(tapAt(box.x + 2));
-  assert.equal(scene.characterIndexByPlayerId.red, (startIndex - 1 + CHARACTERS.length) % CHARACTERS.length);
-  assert.equal(scene.stateByPlayerId.red, 'picking');
-
-  scene.update(tapAt(middleX));
-  assert.equal(scene.stateByPlayerId.red, 'ready');
+test('shove with nobody joined goes back to the title, and Escape does too', () => {
+  for (const control of ['action', 'pause']) {
+    const { scene, scenes } = sceneWithBaseline();
+    press(scene, 'red', control);
+    assert.equal(scenes[0]?.constructor.name, 'TitleScene');
+  }
 });
 
-test('two players on one phone each join and lock in by tapping their own card', () => {
+test('Enter belongs to no seat, so it joins nobody', () => {
   const { scene } = sceneWithBaseline();
-  const tapCard = (seatIndex) => {
-    const box = playerCardBox(seatIndex);
-    scene.update({ ...neutralInputs(), red: { ...noInput(), tap: { x: box.x + box.width / 2, y: box.y + 20 } } });
-  };
 
-  tapCard(0);
-  tapCard(1);
-  assert.equal(scene.stateByPlayerId.red, 'picking');
-  assert.equal(scene.stateByPlayerId.blue, 'picking');
-  tapCard(1);
-  tapCard(0);
-  assert.equal(scene.stateByPlayerId.red, 'ready');
-  assert.equal(scene.stateByPlayerId.blue, 'ready');
+  press(scene, 'red', 'confirm');
+
+  assert.equal(scene.stateByPlayerId.red, 'unjoined');
 });
