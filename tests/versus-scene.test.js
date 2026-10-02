@@ -7,7 +7,7 @@ import {
   SCREEN_WIDTH,
   SHOVE_WINDUP_TICKS,
 } from '../src/engine/config.js';
-import { Crate } from '../src/entities/crate.js';
+import { Crate, CRATE_HEIGHT } from '../src/entities/crate.js';
 import { Platform } from '../src/entities/platform.js';
 import { Rocket } from '../src/entities/rocket.js';
 import { BouncePad } from '../src/entities/bounce-pad.js';
@@ -840,6 +840,20 @@ test('touching a crate with no card takes the card', () => {
   assert.equal(scene.entityGroups.get('crates').includes(crate), false, 'the taken crate is removed');
 });
 
+test('a crate reaches 24 pixels wide, so a player touching its far side takes it', () => {
+  const scene = new VersusScene({ level: harborLevel });
+  advance(scene, READY_TICKS);
+
+  const red = findPlayer(scene, 'red');
+  red.x = 220;
+  red.y = 200;
+  addLandedCrate(scene, { x: red.x - 22, y: red.y + red.height - 24, cardName: 'dash' });
+
+  scene.update(neutralInputs());
+
+  assert.equal(red.heldCardName, 'dash');
+});
+
 test('a crate gives a pickup with 3 uses', () => {
   const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
@@ -950,7 +964,7 @@ test('while the sea is above the side platforms, every crate lands on the still-
 test('a crate is removed once the rising sea reaches its platform', () => {
   const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
-  const crate = addLandedCrate(scene, { x: 120, y: 208, cardName: 'dash' }); // side platform, top y 224
+  const crate = addLandedCrate(scene, { x: 96, y: 224 - CRATE_HEIGHT, cardName: 'dash' }); // side platform, top y 224
 
   scene.waterLineY = 328;
   scene.update(neutralInputs());
@@ -967,10 +981,10 @@ test('a player can take a crate while it is still in the air', () => {
 
   const red = findPlayer(scene, 'red');
   red.x = 200;
-  red.y = 200;
+  red.y = 100;
 
   // Marked far enough below that the fall is already under way and still airborne this tick.
-  const crate = new Crate({ x: red.x, y: red.y + 80, cardName: 'dash' });
+  const crate = new Crate({ x: red.x, y: red.y + 180, cardName: 'dash' });
   crate.y = red.y;
   scene.entityGroups.clear('crates');
   scene.entityGroups.add('crates', crate);
@@ -994,7 +1008,7 @@ test('a player touching where a waiting crate hides above the screen does not ta
   advance(scene, READY_TICKS);
 
   const red = findPlayer(scene, 'red');
-  const crate = new Crate({ x: 200, y: 216, cardName: 'dash' }); // marked spot far enough that the fall has not started
+  const crate = new Crate({ x: 200, y: 200, cardName: 'dash' }); // marked spot close enough that the fall has not started
   red.x = crate.x;
   red.y = crate.y; // standing exactly where the hidden, waiting crate currently sits
 
@@ -1142,14 +1156,42 @@ test('stepping on a banana makes a player slip for the set ticks, then the banan
   assert.ok(blue.x < startX - 20, 'blue keeps sliding left even while steering right');
 });
 
+test('a played banana is tossed backward in a short arc and then lies still behind the thrower', () => {
+  const scene = new VersusScene({ level: harborLevel });
+  advance(scene, READY_TICKS);
+  const red = findPlayer(scene, 'red');
+  red.x = 200;
+  red.y = 196;
+  red.facing = 1;
+  playHeldCard(scene, red, 'banana');
+  const banana = scene.entityGroups.get('bananas')[0];
+  const startY = banana.y;
+
+  let highestY = banana.y;
+  for (let tick = 0; tick < 30; tick++) {
+    scene.update(neutralInputs());
+    highestY = Math.min(highestY, banana.y);
+  }
+
+  assert.ok(highestY < startY - 4, 'it rises before it falls');
+  assert.ok(banana.onGround, 'it lands');
+  assert.ok(banana.x + banana.width < red.x - 20, 'well behind the thrower');
+  assert.ok(banana.x + banana.width > red.x - 60, 'but not far');
+  const restingX = banana.x;
+  advance(scene, 10);
+  assert.equal(banana.x, restingX, 'it lies still once landed');
+});
+
 test('the dropper does not slip on their own banana right away', () => {
   const scene = new VersusScene({ level: harborLevel });
   advance(scene, READY_TICKS);
   const red = findPlayer(scene, 'red');
-  red.x = 100;
+  red.x = 200;
   red.y = 196;
   playHeldCard(scene, red, 'banana');
   const banana = scene.entityGroups.get('bananas')[0];
+  advance(scene, 15);
+  assert.ok(banana.onGround, 'the banana has landed');
 
   red.x = banana.x;
   scene.update(neutralInputs());

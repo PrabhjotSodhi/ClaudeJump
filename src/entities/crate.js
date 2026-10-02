@@ -3,8 +3,8 @@ import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../engine/config.js';
 import { cordFlutter, flutterWobble, swayOffset } from '../vfx/parachute-sway.js';
 import { findLandingPlatform, predictCrateLanding } from './crate-landing.js';
 
-export const CRATE_WIDTH = 16;
-export const CRATE_HEIGHT = 16;
+export const CRATE_WIDTH = 24;
+export const CRATE_HEIGHT = 24;
 // How long the marker shows at the landing spot before the crate lands there, warning included.
 export const CRATE_WARNING_TICKS = 60;
 
@@ -93,14 +93,14 @@ const LANDING_DUST_COLORS = ['#c0cbdc', '#8b9bb4'];
 const SHINE_PERIOD_TICKS = 48;
 const SHINE_COLOR = '#ffffff';
 const SPARKLE_SPOTS = [
-  [-3, 2],
-  [17, 6],
-  [8, -3],
-  [-2, 13],
+  [-3, 3],
+  [26, 9],
+  [12, -3],
+  [-2, 20],
 ];
 const SPARKLE_TICKS = 6;
-const CANOPY_WIDTH = 16;
-const CANOPY_HEIGHT = 7;
+const CANOPY_WIDTH = 24;
+const CANOPY_HEIGHT = 8;
 const STRING_LENGTH = 6;
 const FOLD_TICKS = 12;
 // A popped canopy drifts up and to the side for this long, then is gone.

@@ -54,6 +54,10 @@ const FULL_CHARGE_SHAKE_PIXELS = 1;
 // Display only: how long, and by how many pixels, a player stretches after a jump and squashes
 // after a landing. The hitbox never changes.
 const STRETCH_TICKS = 6;
+// A slipping player is drawn spinning like a coin: their width narrows to SLIP_SPIN_MIN_WIDTH and back every
+// SLIP_SPIN_HALF_TURN_TICKS.
+const SLIP_SPIN_HALF_TURN_TICKS = 8;
+const SLIP_SPIN_MIN_WIDTH = 10;
 const STRETCH_PIXELS = 4;
 const SQUASH_TICKS = 6;
 const SQUASH_PIXELS = 4;
@@ -436,6 +440,13 @@ export class Player extends PhysicsEntity {
     this.jumpBufferTicksRemaining = 0;
   }
 
+  get slipSpinWidthPixels() {
+    if (this.slipTicksRemaining <= 0 || this.inWater) return 0;
+    const phase = (this.slipTicksRemaining % SLIP_SPIN_HALF_TURN_TICKS) / SLIP_SPIN_HALF_TURN_TICKS;
+    const turn = Math.abs(1 - 2 * phase);
+    return -Math.round((FRAME_SIZE - SLIP_SPIN_MIN_WIDTH) * (1 - turn));
+  }
+
   get fullChargeShakePixels() {
     if (!this.isShoveFullyCharged) return 0;
     const towardFront = Math.floor(this.shoveFullChargeTicks / FULL_CHARGE_SHAKE_TICKS) % 2 === 0;
@@ -470,7 +481,7 @@ export class Player extends PhysicsEntity {
       eyesClosed: pose.eyes === 'closed',
       centerX: drawX + this.width / 2 + this.facing * (pose.x ?? 0),
       bottomY: drawY + this.height + 1 + (pose.y ?? 0),
-      width: FRAME_SIZE + squash.width + (pose.width ?? 0),
+      width: FRAME_SIZE + squash.width + (pose.width ?? 0) + this.slipSpinWidthPixels,
       height: FRAME_SIZE + squash.height + (pose.height ?? 0),
     });
     drawShovel(context, this, drawX, drawY, sprites.props, false);

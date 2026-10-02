@@ -3,7 +3,13 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { canopyStripes, landingBounce } from '../src/entities/crate.js';
 import { EventEmitter } from '../src/engine/events.js';
-import { CrateOpenings, OPENING_TICKS, spinningIconWidth } from '../src/vfx/crate-openings.js';
+import {
+  BREAK_TICKS,
+  CrateOpenings,
+  OPENING_TICKS,
+  plankRectangles,
+  spinningIconWidth,
+} from '../src/vfx/crate-openings.js';
 import { cordFlutter } from '../src/vfx/parachute-sway.js';
 
 const palette = new Set(
@@ -75,4 +81,44 @@ test('opening a crate shows the spinning card for about 0.3 seconds', () => {
   assert.ok(Math.abs(OPENING_TICKS / 60 - 0.3) < 0.05);
   assert.ok(widths.every((width) => Number.isInteger(width) && width >= 2));
   assert.ok(new Set(widths).size > 2, 'the icon turns');
+});
+
+test('an opened crate breaks into planks that fly apart, rise and fall back under gravity', () => {
+  const events = new EventEmitter();
+  const openings = new CrateOpenings();
+  openings.attach(events, () => [{ id: 'red', color: '#f77622' }]);
+  events.emit('card-picked-up', { playerId: 'red', cardName: 'rocket', golden: false, x: 100, y: 80 });
+
+  const [crateBreak] = openings.breaks;
+  const start = plankRectangles({ ...crateBreak, age: 0 });
+  const early = plankRectangles({ ...crateBreak, age: 6 });
+  const late = plankRectangles({ ...crateBreak, age: BREAK_TICKS - 1 });
+  const middleX = (rectangle) => rectangle.x + rectangle.width / 2;
+  assert.ok(early.some((plank) => middleX(plank) < 90) && early.some((plank) => middleX(plank) > 110), 'both ways');
+  assert.ok(
+    early.every((plank, index) => plank.y < start[index].y + 2),
+    'they are thrown up first',
+  );
+  assert.ok(
+    late.every((plank, index) => plank.y > start[index].y),
+    'then gravity brings them down',
+  );
+  for (const plank of [...start, ...early, ...late]) {
+    for (const value of Object.values(plank)) assert.ok(Number.isInteger(value));
+  }
+});
+
+test('a crate that sinks breaks apart in the water the same way', () => {
+  const events = new EventEmitter();
+  const openings = new CrateOpenings();
+  openings.attach(events, () => []);
+  events.emit('crate-fell-in-water', { x: 100, y: 328, golden: true });
+  assert.equal(openings.breaks.length, 1);
+  assert.equal(openings.openings.length, 0, 'no card comes out of a sunk crate');
+  let ticks = 0;
+  while (openings.breaks.length > 0) {
+    openings.update();
+    ticks++;
+  }
+  assert.equal(ticks, BREAK_TICKS);
 });
