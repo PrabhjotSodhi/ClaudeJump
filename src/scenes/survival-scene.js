@@ -112,7 +112,6 @@ export class SurvivalScene {
     this.particles = new Particles();
     this.particles.attach(this.events, {
       getPlayers: () => this.players,
-      getWaterLineY: () => this.waterLineY,
       getTickCount: () => this.runTicks,
     });
     this.splashes = new Splashes();

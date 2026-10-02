@@ -1,9 +1,8 @@
-import { SEA_COLUMN_COUNT, SEA_COLUMN_WIDTH } from '../engine/config.js';
+import { SEA_COLUMN_COUNT, SEA_COLUMN_WIDTH, SPLASH_TIERS } from '../engine/config.js';
 
 // A damped wave along the sea surface, one height per column of SEA_COLUMN_WIDTH pixels. Display
 // only: it listens to events, steps once per tick, and is never read by game logic. Positive
 // heights push the surface down. The shader reads the heights as pixel offsets.
-const SPLASH_IMPULSE = 12;
 const SPLASH_SPREAD_COLUMNS = 2;
 const WAVE_STIFFNESS = 0.4;
 const WAVE_DAMPING = 0.99;
@@ -20,9 +19,9 @@ export class SeaRipple {
   }
 
   attach(events, getPlayers) {
-    events.on('player-fell-in-water', ({ playerId }) => {
+    events.on('player-fell-in-water', ({ playerId, splashTier = 'small' }) => {
       const player = getPlayers().find((candidate) => candidate.id === playerId);
-      if (player) this.splash(player.x + player.width / 2);
+      if (player) this.splash(player.x + player.width / 2, splashTier);
     });
   }
 
@@ -30,12 +29,14 @@ export class SeaRipple {
     events.on('crate-fell-in-water', ({ x }) => this.splash(x));
   }
 
-  splash(x) {
+  // The surface dips at x, then the dip spreads out both ways as ripples.
+  splash(x, splashTier = 'small') {
+    const impulse = SPLASH_TIERS[splashTier].rippleImpulse;
     const centerColumn = Math.min(SEA_COLUMN_COUNT - 1, Math.max(0, Math.floor(x / SEA_COLUMN_WIDTH)));
     for (let offset = -SPLASH_SPREAD_COLUMNS; offset <= SPLASH_SPREAD_COLUMNS; offset++) {
       const column = centerColumn + offset;
       if (column < 0 || column >= SEA_COLUMN_COUNT) continue;
-      this.speeds[column] += SPLASH_IMPULSE / (1 + Math.abs(offset));
+      this.speeds[column] += impulse / (1 + Math.abs(offset));
     }
   }
 

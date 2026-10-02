@@ -16,7 +16,7 @@ const PLAYERS = [
 function setUp(tickCount = 0) {
   const events = new EventEmitter();
   const particles = new Particles();
-  particles.attach(events, { getPlayers: () => PLAYERS, getWaterLineY: () => 330, getTickCount: () => tickCount });
+  particles.attach(events, { getPlayers: () => PLAYERS, getTickCount: () => tickCount });
   return { events, particles };
 }
 
@@ -69,11 +69,31 @@ test('the same events throw the same particles and they die out', () => {
   assert.equal(particles.list.length, 0);
 });
 
-test('a player falling in throws droplets at the sea surface', () => {
-  const { events, particles } = setUp();
-  events.emit('player-fell-in-water', { playerId: 'red' });
-  assert.ok(particles.list.length > 0);
-  assert.ok(particles.list.every((particle) => particle.y === 330 && particle.velocityY < 0));
+function splashFor(splashTier) {
+  const events = new EventEmitter();
+  const splashes = new Splashes();
+  splashes.attach(events, { getPlayers: () => PLAYERS, getWaterLineY: () => 330 });
+  events.emit('player-fell-in-water', { playerId: 'red', splashTier });
+  return splashes;
+}
+
+test('a player falling in throws droplets up from the sea surface that fall back in', () => {
+  const splashes = splashFor('small');
+  assert.ok(splashes.list.length > 0);
+  assert.ok(splashes.list.every((droplet) => droplet.y < 330 && droplet.velocityY < 0));
+  const xs = splashes.list.map((droplet) => droplet.velocityX);
+  assert.ok(Math.min(...xs) < 0 && Math.max(...xs) > 0, 'the droplets fan out both ways');
+
+  let ticks = 0;
+  let fellBack = false;
+  while (splashes.list.length > 0 && ticks < 300) {
+    const before = splashes.list.map((droplet) => droplet.velocityY);
+    splashes.update();
+    fellBack ||= before.some((velocityY) => velocityY > 0);
+    ticks++;
+  }
+  assert.ok(fellBack, 'gravity turns the droplets back down');
+  assert.equal(splashes.list.length, 0, 'every droplet joins the sea again');
 });
 
 test('the ripple starts at the splash column and settles back to flat', () => {
@@ -104,12 +124,12 @@ test('a player falling in makes the scene ripple, and effects never change playe
     withEffects.seaRipple.heights.some((height) => height !== 0) ||
       withEffects.seaRipple.speeds.some((speed) => speed !== 0),
   );
-  assert.ok(withEffects.particles.list.length > 0);
+  assert.ok(withEffects.splashes.list.length > 0);
 
   const without = new VersusScene({ level: harborLevel, startInFightPhase: true, seed: 0 });
   without.players.find((player) => player.id === 'red').y = without.waterLineY;
   without.particles.attach = () => {};
-  without.particles.update = () => {};
+  without.splashes.update = () => {};
   without.seaRipple.update = () => {};
   without.update(inputs);
   for (let tick = 0; tick < 30; tick++) {
@@ -170,7 +190,7 @@ function launchedScene() {
   ];
   const events = new EventEmitter();
   const particles = new Particles();
-  particles.attach(events, { getPlayers: () => players, getWaterLineY: () => 330, getTickCount: () => 0 });
+  particles.attach(events, { getPlayers: () => players, getTickCount: () => 0 });
   return { events, particles, players };
 }
 
@@ -242,28 +262,30 @@ test('splash size grows with fall speed and the last knockout is always the larg
   assert.equal(splashTierFor(12, true), 'large');
 });
 
-test('bigger splashes throw more droplets and last longer', () => {
-  const dropletsFor = (splashTier) => {
-    const { events, particles } = setUp();
-    events.emit('player-fell-in-water', { playerId: 'red', splashTier });
-    return particles.list.length;
-  };
-  assert.ok(dropletsFor('small') < dropletsFor('medium'));
-  assert.ok(dropletsFor('medium') < dropletsFor('large'));
+test('bigger splashes throw more droplets, higher, and dip the sea deeper', () => {
+  assert.ok(splashFor('small').list.length < splashFor('medium').list.length);
+  assert.ok(splashFor('medium').list.length < splashFor('large').list.length);
 
-  const ticksFor = (splashTier) => {
-    const events = new EventEmitter();
-    const splashes = new Splashes();
-    splashes.attach(events, { getPlayers: () => PLAYERS, getWaterLineY: () => 330 });
-    events.emit('player-fell-in-water', { playerId: 'red', splashTier });
-    let ticks = 0;
-    while (splashes.list.length > 0) {
+  const peakHeight = (splashTier) => {
+    const splashes = splashFor(splashTier);
+    let highest = 330;
+    for (let tick = 0; tick < 300 && splashes.list.length > 0; tick++) {
+      for (const droplet of splashes.list) highest = Math.min(highest, droplet.y);
       splashes.update();
-      ticks++;
     }
-    return ticks;
+    return 330 - highest;
   };
-  assert.ok(ticksFor('small') < ticksFor('large'));
+  assert.ok(peakHeight('small') < peakHeight('medium'));
+  assert.ok(peakHeight('medium') < peakHeight('large'));
+
+  const dipFor = (splashTier) => {
+    const ripple = new SeaRipple();
+    ripple.splash(320, splashTier);
+    ripple.update();
+    return ripple.heights[SEA_COLUMN_COUNT / 2];
+  };
+  assert.ok(dipFor('small') > 0, 'the surface dips down at the splash');
+  assert.ok(dipFor('small') < dipFor('large'));
 });
 
 test('the scene reports fall speed and only the last knockout of a round gets the large splash', () => {
