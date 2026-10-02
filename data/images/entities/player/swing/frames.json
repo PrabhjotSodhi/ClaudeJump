@@ -1,0 +1,4 @@
+{
+  "ticksPerFrame": 2,
+  "frames": [{ "x": 3, "width": 2, "height": -2 }, { "x": 4, "width": 2, "height": -2 }, { "x": 2 }]
+}

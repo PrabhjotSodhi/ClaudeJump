@@ -122,7 +122,8 @@ function chargedPlayerDraws(player) {
       drawnImages.push({ image, x, y, width, height });
     },
   };
-  const props = { 'shovel-up': { name: 'shovel' }, 'shovel-raised': { name: 'shovel' } };
+  const shovel = { width: 48, height: 48 };
+  const props = { 'shovel-up': shovel, 'shovel-raised': shovel, 'shovel-back': shovel };
   player.render(context, { sprites: { ...spritesFor('claude'), props }, playerEyes: new PlayerEyes() });
   return drawnImages;
 }

@@ -144,7 +144,21 @@ test('a charging player walks slower than a player who is not charging', () => {
   const charging = topSpeed(true);
 
   assert.ok(charging > 0, 'a charging player still moves');
-  assert.ok(charging < walking / 2, 'charging is much slower');
+  assert.ok(charging <= walking * 0.3, 'charging is much slower');
+});
+
+test('a charging player cannot jump, and can again once the shove fires', () => {
+  const { scene, red } = shoveSetup();
+  const startY = red.y;
+  advance(scene, 1, input({ action: true }));
+  advance(scene, 1, input({ action: true, jump: true }));
+  advance(scene, 10, input({ action: true, jump: true }));
+  assert.equal(red.y, startY, 'a jump pressed while charging does nothing');
+  assert.ok(red.onGround);
+
+  advance(scene, HITSTOP_TICKS.heavy + 2, input());
+  advance(scene, 3, input({ jump: true }));
+  assert.ok(red.y < startY, 'after the release a jump works');
 });
 
 test('a held card is played on the press and the shove never charges', () => {

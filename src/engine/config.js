@@ -56,11 +56,11 @@ export const SPLASH_TIERS = {
 
 // The shove. A press winds up for at least SHOVE_WINDUP_TICKS, so a tap lands a few ticks after the press. Holding
 // the button charges up to SHOVE_MAX_CHARGE_TICKS, and the release fires. Knockback grows from the tap value to
-// SHOVE_MAX_KNOCKBACK_MULTIPLIER times it at full charge. Walking is slower while charging.
+// SHOVE_MAX_KNOCKBACK_MULTIPLIER times it at full charge. While charging, walking is slower and jumping is off.
 export const SHOVE_WINDUP_TICKS = 2;
 export const SHOVE_MAX_CHARGE_TICKS = 30;
 export const SHOVE_MAX_KNOCKBACK_MULTIPLIER = 1.6;
-export const SHOVE_CHARGE_WALK_MULTIPLIER = 0.4;
+export const SHOVE_CHARGE_WALK_MULTIPLIER = 0.25;
 // While a shove charges, the scene reports its progress this often, so the charge sound can rise with it.
 export const SHOVE_CHARGE_REPORT_INTERVAL_TICKS = 4;
 

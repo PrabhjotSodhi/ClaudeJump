@@ -6,7 +6,7 @@ import { CHARACTERS } from '../entities/characters.js';
 // the one body sprite is drawn: width and height add to its size, x moves it forward in the facing direction, y moves
 // it down, eyes "closed" shuts the eyes and dust kicks up a puff at the feet as the frame starts. The victory pose is
 // each character's own, in data/images/entities/player/victory/<character name>.json.
-export const CHARACTER_ACTIONS = ['idle', 'run', 'jump', 'fall', 'windup', 'charge', 'hurt', 'launched'];
+export const CHARACTER_ACTIONS = ['idle', 'run', 'jump', 'fall', 'windup', 'charge', 'swing', 'hurt', 'launched'];
 
 const RUN_SPEED_THRESHOLD = 0.5;
 const LAUNCH_SPEED_THRESHOLD = 2;
@@ -45,7 +45,7 @@ export async function loadCharacterPoses() {
 }
 
 // The one action that best shows what the player is doing right now. A winner celebrates. Otherwise being hit wins,
-// then a launch, then a shove.
+// then a launch, then a shove and its swing.
 export function pickCharacterAction(player, winnerId = null) {
   if (player.id === winnerId && !player.inWater) return 'victory';
   const beingHit =
@@ -53,6 +53,7 @@ export function pickCharacterAction(player, winnerId = null) {
   if (beingHit) return 'hurt';
   if (!player.onGround && Math.abs(player.knockbackVelocityX) > LAUNCH_SPEED_THRESHOLD) return 'launched';
   if (player.shoveCharging) return player.shoveChargeTicks > SHOVE_WINDUP_TICKS ? 'charge' : 'windup';
+  if (player.shoveActiveTicksRemaining > 0) return 'swing';
   if (!player.onGround) return player.velocityY < 0 ? 'jump' : 'fall';
   if (Math.abs(player.velocityX) > RUN_SPEED_THRESHOLD) return 'run';
   return 'idle';

@@ -387,7 +387,7 @@ export class Player extends PhysicsEntity {
 
     const moveDirection = input ? input.right - input.left : 0;
     const jumpPressed = input && !slipping ? input.jump : false;
-    if (jumpPressed && !this.jumpHeld) this.jumpBufferTicksRemaining = JUMP_BUFFER_TICKS;
+    if (jumpPressed && !this.jumpHeld && !this.shoveCharging) this.jumpBufferTicksRemaining = JUMP_BUFFER_TICKS;
     const jumpReleased = !jumpPressed && this.jumpHeld;
     this.jumpHeld = jumpPressed;
     if (moveDirection && !slipping) this.facing = moveDirection;
@@ -411,7 +411,7 @@ export class Player extends PhysicsEntity {
     if (this.onGround) this.airJumpAvailable = true;
     this.coyoteTicksRemaining = this.onGround ? COYOTE_TICKS : this.coyoteTicksRemaining - 1;
     this.jumpBufferTicksRemaining--;
-    if (this.jumpBufferTicksRemaining > 0) {
+    if (this.jumpBufferTicksRemaining > 0 && !this.shoveCharging) {
       if (this.coyoteTicksRemaining > 0) {
         this.jump(JUMP_VELOCITY);
         this.coyoteTicksRemaining = 0;
@@ -460,6 +460,7 @@ export class Player extends PhysicsEntity {
     const squash = this.inWater ? { width: 0, height: 0 } : this.squash;
     const pose = this.inWater || !characterAnimations ? {} : characterAnimations.poseFor(this);
     const sprite = sprites[this.character.spriteName].body;
+    drawShovel(context, this, drawX, drawY, sprites.props, true);
     drawCharacterBody(context, {
       sprite,
       outlineSprite: this.outlineColor ? silhouetteOf(sprite, this.outlineColor) : null,
@@ -472,7 +473,7 @@ export class Player extends PhysicsEntity {
       width: FRAME_SIZE + squash.width + (pose.width ?? 0),
       height: FRAME_SIZE + squash.height + (pose.height ?? 0),
     });
-    drawShovel(context, this, drawX, drawY, sprites.props);
+    drawShovel(context, this, drawX, drawY, sprites.props, false);
     drawSpringShoes(context, this, drawX, drawY);
   }
 }
