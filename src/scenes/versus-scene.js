@@ -1,3 +1,4 @@
+import { ComputerPlayer } from '../computer/computer-player.js';
 import { crateCardFor, GOLDEN_PICKUP_USES, PICKUP_USES } from '../cards/card-definitions.js';
 import {
   CALLOUT_CAUSE_TICKS,
@@ -153,8 +154,12 @@ export class VersusScene {
     mode = 'knockout',
   } = {}) {
     this.touchLayout = 'twoPlayers';
-    // The joined players, each { id, character }, in seat order. Every level has a spawn for each id.
+    // The joined players, each { id, character, computer }, in seat order. Every level has a spawn for each id. A
+    // computer player's input comes from a ComputerPlayer instead of the input records.
     this.joinedPlayers = players;
+    this.computerPlayers = players
+      .filter((player) => player.computer)
+      .map((player) => new ComputerPlayer(player.id, players.indexOf(player)));
     this.characterByPlayerId = Object.fromEntries(players.map(({ id, character }) => [id, character]));
     this.sprites = sprites;
     this.levels = levels;
@@ -466,6 +471,10 @@ export class VersusScene {
   }
 
   update(inputByPlayerId) {
+    if (this.computerPlayers.length > 0) {
+      inputByPlayerId = { ...inputByPlayerId };
+      for (const computer of this.computerPlayers) inputByPlayerId[computer.playerId] = computer.inputFor(this);
+    }
     this.tickCount++;
     this.ticksRemaining--;
     if (this.knockoutTicks > 0) this.knockoutTicks++;

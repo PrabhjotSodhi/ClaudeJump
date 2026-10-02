@@ -61,12 +61,22 @@ const REVEAL_FLASH_TICKS = 6;
 const BADGE_EYES = EYE_STIFFNESSES.map((stiffness) => new GooglyEye(stiffness));
 
 export class LevelSelectScene {
-  constructor({ sceneManager, levels, characterByPlayerId, sprites = {}, seed = Date.now(), mode = 'knockout' }) {
+  // computerPlayerIds are the seats computer players fill: they play the match but do not vote.
+  constructor({
+    sceneManager,
+    levels,
+    characterByPlayerId,
+    computerPlayerIds = [],
+    sprites = {},
+    seed = Date.now(),
+    mode = 'knockout',
+  }) {
     this.sceneManager = sceneManager;
     this.events = new EventEmitter();
     this.musicTrackName = 'menu';
     this.levels = levels;
     this.characterByPlayerId = characterByPlayerId;
+    this.computerPlayerIds = computerPlayerIds;
     this.sprites = sprites;
     this.seed = seed;
     this.mode = mode;
@@ -78,8 +88,8 @@ export class LevelSelectScene {
     // A cursor is an index into levels, or levels.length for the Random tile.
     this.cursorByPlayerId = {};
     this.lockedByPlayerId = {};
-    // Only the players who joined vote, in seat order.
-    this.voters = PLAYERS.filter((spawn) => spawn.id in characterByPlayerId);
+    // Only the people who joined vote, in seat order.
+    this.voters = PLAYERS.filter((spawn) => spawn.id in characterByPlayerId && !computerPlayerIds.includes(spawn.id));
     for (const spawn of this.voters) {
       this.cursorByPlayerId[spawn.id] = levels.length;
       this.lockedByPlayerId[spawn.id] = false;
@@ -140,6 +150,7 @@ export class LevelSelectScene {
         sceneManager: this.sceneManager,
         levels: this.levels,
         characterByPlayerId: this.characterByPlayerId,
+        computerPlayerIds: this.computerPlayerIds,
         sprites: this.sprites,
         seed: this.seed,
       }),
@@ -168,7 +179,11 @@ export class LevelSelectScene {
         matchScene: new VersusScene({
           level: this.pickedLevel,
           seed: this.seed,
-          players: this.voters.map(({ id }) => ({ id, character: this.characterByPlayerId[id] })),
+          players: PLAYERS.filter(({ id }) => id in this.characterByPlayerId).map(({ id }) => ({
+            id,
+            character: this.characterByPlayerId[id],
+            computer: this.computerPlayerIds.includes(id),
+          })),
           sprites: this.sprites,
           levels: this.levels,
           heat: gameOptions.heat,
