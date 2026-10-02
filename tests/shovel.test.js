@@ -36,7 +36,7 @@ test('a tap shove shows the shovel, sweeps it through and puts it away', () => {
   const heldPoses = advance(1, input({ action: true }));
   assert.ok(heldPoses[0], 'the shovel shows in the wind-up');
   const frames = advance(20).map((pose) => pose?.frame ?? null);
-  assert.ok(frames.includes('shovel-forward'), 'it sweeps level through the hit');
+  assert.ok(frames.indexOf('shovel-forward') > frames.indexOf('shovel-smear'), 'it smears through the hit');
   assert.ok(frames.indexOf('shovel-down') > frames.indexOf('shovel-forward'), 'then follows through low');
   assert.equal(frames.at(-1), null, 'and is put away after');
 });
@@ -47,5 +47,15 @@ test('a longer charge holds the shovel higher', () => {
   const early = poses[3];
   const full = poses.at(-1);
   assert.ok(full.offsetY < early.offsetY, 'the full charge lifts it higher');
-  assert.equal(full.frame, 'shovel-up');
+  assert.equal(early.frame, 'shovel-raised');
+  assert.equal(full.frame, 'shovel-back', 'and swings it further back');
+});
+
+test('the impact shows a puff that grows for a few ticks', () => {
+  const { advance } = soloRed();
+  advance(1, input({ action: true }));
+  const puffAges = advance(12)
+    .map((pose) => pose?.puffAge ?? null)
+    .filter((age) => age !== null);
+  assert.deepEqual(puffAges, [0, 1, 2, 3]);
 });
