@@ -35,7 +35,14 @@ import { EntityGroups } from '../engine/entity-groups.js';
 import { EventEmitter } from '../engine/events.js';
 import { SeededRandom } from '../engine/seeded-random.js';
 import { wrapAroundScreen } from '../engine/wrap-around-screen.js';
-import { Banana, BANANA_WIDTH, BANANA_HEIGHT, BANANA_SLIP_TICKS } from '../entities/banana.js';
+import {
+  Banana,
+  BANANA_HEIGHT,
+  BANANA_SLIP_TICKS,
+  BANANA_THROW_SPEED_X,
+  BANANA_THROW_SPEED_Y,
+  BANANA_WIDTH,
+} from '../entities/banana.js';
 import { BananaDrop } from '../entities/banana-drop.js';
 import { Bomb, BOMB_WIDTH, BOMB_HEIGHT } from '../entities/bomb.js';
 import {
@@ -827,11 +834,20 @@ export class VersusScene {
     }
   }
 
-  // Dropped just behind the player, then falls to the ground from there, or into the sea.
+  // Tossed backward from just behind the player in a short arc, landing on the ground behind them or in the sea.
   spawnBanana(player) {
     const x = player.facing > 0 ? player.x - BANANA_WIDTH : player.x + player.width;
     const y = player.y + player.height - BANANA_HEIGHT;
-    this.entityGroups.add('bananas', new Banana({ x, y, dropperId: player.id }));
+    this.entityGroups.add(
+      'bananas',
+      new Banana({
+        x,
+        y,
+        dropperId: player.id,
+        velocityX: -player.facing * BANANA_THROW_SPEED_X,
+        velocityY: BANANA_THROW_SPEED_Y,
+      }),
+    );
   }
 
   updateBananas() {
@@ -913,7 +929,11 @@ export class VersusScene {
     crate.update(this.entityGroups.get('platforms'));
     wrapAroundScreen(crate);
     if (crate.y + crate.height >= this.waterLineY) {
-      this.events.emit('crate-fell-in-water', { x: crate.x + crate.width / 2, y: this.waterLineY });
+      this.events.emit('crate-fell-in-water', {
+        x: crate.x + crate.width / 2,
+        y: this.waterLineY,
+        golden: crate.golden,
+      });
       this.entityGroups.remove('crates', crate);
       this.scheduleNextCrate();
       return;

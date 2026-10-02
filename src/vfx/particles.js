@@ -28,6 +28,8 @@ const SPARKLE_COLOR = '#fee761';
 const FULL_CHARGE_SPARKLE = { count: 6, speed: 1.5, ticks: 12, size: 2, gravity: 0, arcStart: 0, arcSize: 2 * Math.PI };
 const HIT_SPARK_CONE = Math.PI / 2;
 const LAUNCH_TRAIL = { size: 8, ticks: 10 };
+// A player slipping on the ground leaves skid dust at their trailing foot every tick.
+const SKID_DUST = { ticks: 14, rise: -0.3, sizes: [3, 2], colors: ['#c0cbdc', '#8b9bb4'], behindPixels: 8 };
 const BLAST_SPARKS = { count: 20, speed: 4.5, ticks: 22, size: 3, gravity: 0.12, arcStart: 0, arcSize: 2 * Math.PI };
 
 export const HARD_LANDING_SPEED = 9;
@@ -166,6 +168,25 @@ export class Particles {
     }
   }
 
+  addSkidDust() {
+    for (const player of this.getPlayers()) {
+      if (player.slipTicksRemaining <= 0 || !player.onGround || player.inWater) continue;
+      const alternate = player.slipTicksRemaining % 2;
+      const size = SKID_DUST.sizes[alternate];
+      this.list.push({
+        x: player.x + PLAYER_HALF_WIDTH - player.slipDirection * SKID_DUST.behindPixels - size / 2,
+        y: player.y + player.height - size,
+        velocityX: -player.slipDirection * 0.4,
+        velocityY: SKID_DUST.rise,
+        gravity: 0,
+        ticksRemaining: SKID_DUST.ticks,
+        totalTicks: SKID_DUST.ticks,
+        color: SKID_DUST.colors[alternate],
+        size,
+      });
+    }
+  }
+
   addTrailSquare(player) {
     this.list.push({
       x: player.x + PLAYER_HALF_WIDTH - LAUNCH_TRAIL.size / 2,
@@ -182,6 +203,7 @@ export class Particles {
 
   update() {
     this.addLaunchTrails();
+    this.addSkidDust();
     for (const particle of this.list) {
       particle.x += particle.velocityX;
       particle.y += particle.velocityY;
