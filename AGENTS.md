@@ -44,6 +44,7 @@ Rules that keep the game deterministic:
 - `src/entities/` holds the things in the world: player, platform, rocket, crab.
 - `src/scenes/` holds the rules of each screen: title, Versus, Survival.
 - `src/levels/` holds the level loader and the Versus background.
+- `src/computer/` holds computer players, which turn game state into input records each tick.
 - `src/cards/` holds card definitions and a player's hand.
 - `src/ui/` holds the pixel font and HUD.
 - `src/vfx/` holds effects that only listen to events: particles, sparks, water, clouds, screen shake.

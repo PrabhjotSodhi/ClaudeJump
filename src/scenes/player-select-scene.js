@@ -74,10 +74,13 @@ const JOIN_TEXT_BY_PLAYER_ID = {
   yellow: 'Press jump on pad 4',
 };
 
-// Each card goes through these states in order, one jump press apart.
-const NEXT_STATE = { unjoined: 'picking', picking: 'ready' };
+// Each card goes through these states in order, one jump press apart. A seat a computer plays is taken back by its
+// own player's jump.
+const NEXT_STATE = { unjoined: 'picking', computer: 'picking', picking: 'ready' };
 
 const MINIMUM_PLAYERS = 2;
+const COMPUTER_TEXT = ['', 'Ready players add', 'a computer with right'];
+const COMPUTER_COLOR = '#8b9bb4';
 
 // Once everyone who joined is ready, this many ticks pass before the match starts, so a player still reaching for
 // their pad can join. A join or an un-ready cancels it.
@@ -132,6 +135,9 @@ export class PlayerSelectScene {
       if (this.stateByPlayerId[spawn.id] === 'picking') {
         if (presses.left) this.changeCharacter(spawn.id, -1);
         if (presses.right) this.changeCharacter(spawn.id, 1);
+      } else if (this.stateByPlayerId[spawn.id] === 'ready') {
+        if (presses.right) this.addComputer();
+        if (presses.left) this.removeComputer();
       }
       const jumped = presses.confirm && input.jump;
       const shoved = presses.back && input.action;
@@ -153,6 +159,7 @@ export class PlayerSelectScene {
           sceneManager: this.sceneManager,
           levels: this.levels,
           characterByPlayerId: this.pickedCharacters(),
+          computerPlayerIds: this.computerPlayerIds,
           sprites: this.sprites,
           seed: this.seed,
         }),
@@ -160,12 +167,42 @@ export class PlayerSelectScene {
     }
   }
 
-  // The match starts once at least two players are ready and nobody who joined is still picking.
-  // Players who never joined take no part.
+  // The match starts once at least one person is ready, there are two fighters counting computers, and nobody who
+  // joined is still picking. Players who never joined take no part.
   everyoneJoinedIsReady() {
     const states = Object.values(this.stateByPlayerId);
     const readyCount = states.filter((state) => state === 'ready').length;
-    return readyCount >= MINIMUM_PLAYERS && states.every((state) => state !== 'picking');
+    const computerCount = states.filter((state) => state === 'computer').length;
+    return (
+      readyCount >= 1 && readyCount + computerCount >= MINIMUM_PLAYERS && states.every((state) => state !== 'picking')
+    );
+  }
+
+  get computerPlayerIds() {
+    return PLAYERS.filter((spawn) => this.stateByPlayerId[spawn.id] === 'computer').map((spawn) => spawn.id);
+  }
+
+  // A ready player fills the first empty seat with a computer player, on the first character nobody has.
+  addComputer() {
+    const seatIndex = PLAYERS.findIndex((spawn) => this.stateByPlayerId[spawn.id] === 'unjoined');
+    if (seatIndex < 0) return;
+    const playerId = PLAYERS[seatIndex].id;
+    this.characterIndexByPlayerId[playerId] = CHARACTERS.findIndex(
+      (character, index) => !this.isLockedByOther(playerId, index),
+    );
+    this.stateByPlayerId[playerId] = 'computer';
+    this.cardMotion.join(seatIndex);
+    this.moveHoveringPlayersOff(playerId);
+    this.events.emit('menu-selected', { playerId });
+  }
+
+  // A ready player empties the last seat a computer plays.
+  removeComputer() {
+    const playerId = this.computerPlayerIds.at(-1);
+    if (!playerId) return;
+    this.stateByPlayerId[playerId] = 'unjoined';
+    this.characterIndexByPlayerId[playerId] = CHARACTERS.indexOf(HOVER_CHARACTER_BY_PLAYER_ID[playerId]);
+    this.events.emit('menu-moved', { playerId });
   }
 
   get nobodyJoined() {
@@ -215,7 +252,7 @@ export class PlayerSelectScene {
     return PLAYERS.some(
       (spawn) =>
         spawn.id !== playerId &&
-        this.stateByPlayerId[spawn.id] === 'ready' &&
+        (this.stateByPlayerId[spawn.id] === 'ready' || this.stateByPlayerId[spawn.id] === 'computer') &&
         this.characterIndexByPlayerId[spawn.id] === characterIndex,
     );
   }
@@ -238,18 +275,18 @@ export class PlayerSelectScene {
   // Anyone still hovering on the character that was just locked in moves on to the next free one.
   moveHoveringPlayersOff(lockedPlayerId) {
     for (const spawn of PLAYERS) {
-      if (spawn.id === lockedPlayerId || this.stateByPlayerId[spawn.id] === 'ready') continue;
+      if (spawn.id === lockedPlayerId || ['ready', 'computer'].includes(this.stateByPlayerId[spawn.id])) continue;
       if (this.characterIndexByPlayerId[spawn.id] === this.characterIndexByPlayerId[lockedPlayerId]) {
         this.changeCharacter(spawn.id, 1);
       }
     }
   }
 
-  // Only the ready players, in seat order.
+  // Only the ready players and the computer players, in seat order.
   pickedCharacters() {
     const characterByPlayerId = {};
     for (const spawn of PLAYERS) {
-      if (this.stateByPlayerId[spawn.id] === 'ready')
+      if (['ready', 'computer'].includes(this.stateByPlayerId[spawn.id]))
         characterByPlayerId[spawn.id] = CHARACTERS[this.characterIndexByPlayerId[spawn.id]];
     }
     return characterByPlayerId;
@@ -279,7 +316,7 @@ function drawPlayerCard(context, scene, spawn, textScale) {
   const seatIndex = PLAYERS.indexOf(spawn);
   const box = playerCardBox(seatIndex);
   if (state === 'unjoined') {
-    drawEmptySelectCard(context, box, spawn, [JOIN_TEXT_BY_PLAYER_ID[spawn.id]], textScale);
+    drawEmptySelectCard(context, box, spawn, [JOIN_TEXT_BY_PLAYER_ID[spawn.id], ...COMPUTER_TEXT], textScale);
     return;
   }
   context.save();
@@ -291,8 +328,11 @@ function drawPlayerCard(context, scene, spawn, textScale) {
     sprites: scene.sprites,
     pose: scene.cardMotion.pose(seatIndex),
     canPick: state === 'picking',
-    status:
-      state === 'ready' ? { text: 'READY!', color: SELECTED_COLOR } : { text: 'Not ready', color: NOT_READY_COLOR },
+    status: {
+      ready: { text: 'READY!', color: SELECTED_COLOR },
+      computer: { text: 'Computer', color: COMPUTER_COLOR },
+      picking: { text: 'Not ready', color: NOT_READY_COLOR },
+    }[state],
     textScale,
   });
   context.restore();

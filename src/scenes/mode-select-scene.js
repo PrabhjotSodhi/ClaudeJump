@@ -39,10 +39,11 @@ export function modeSelectLayout() {
 // Between player select and level select: any player moves the one cursor and picks how the match is played. Back
 // returns to player select.
 export class ModeSelectScene {
-  constructor({ sceneManager, levels, characterByPlayerId, sprites = {}, seed = Date.now() }) {
+  constructor({ sceneManager, levels, characterByPlayerId, computerPlayerIds = [], sprites = {}, seed = Date.now() }) {
     this.sceneManager = sceneManager;
     this.levels = levels;
     this.characterByPlayerId = characterByPlayerId;
+    this.computerPlayerIds = computerPlayerIds;
     this.sprites = sprites;
     this.seed = seed;
     this.events = new EventEmitter();
@@ -89,6 +90,7 @@ export class ModeSelectScene {
         sceneManager: this.sceneManager,
         levels: this.levels,
         characterByPlayerId: this.characterByPlayerId,
+        computerPlayerIds: this.computerPlayerIds,
         sprites: this.sprites,
         seed: this.seed,
         mode: modeId,

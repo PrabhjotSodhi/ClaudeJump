@@ -161,6 +161,7 @@ export class PausableMatchScene {
           sceneManager: this.sceneManager,
           levels: this.matchScene.levels,
           characterByPlayerId: this.matchScene.characterByPlayerId,
+          computerPlayerIds: this.matchScene.computerPlayers.map((computer) => computer.playerId),
           sprites: this.matchScene.sprites,
           seed: this.nextSeed(),
           mode: this.matchScene.mode,
