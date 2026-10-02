@@ -49,6 +49,9 @@ class OnlineConnection {
     this.pollTimer = null;
     this.pollingEnabled = false;
     this.closed = false;
+    // A closed tab never says goodbye on its data channels, so the others would wait on a seat nobody holds.
+    this.closeOnPageHide = () => this.close();
+    addEventListener('pagehide', this.closeOnPageHide);
   }
 
   get peerIds() {
@@ -78,6 +81,7 @@ class OnlineConnection {
   close() {
     if (!this.closed && !this.isHost) this.leaveRoom(this.playerId);
     this.closed = true;
+    removeEventListener('pagehide', this.closeOnPageHide);
     this.stopPolling();
     for (const peer of this.peers.values()) {
       clearTimeout(peer.timeoutTimer);
@@ -140,6 +144,10 @@ class OnlineConnection {
     connection.onicecandidate = (event) => {
       if (event.candidate) this.sendSignal(peerId, { type: 'candidate', candidate: event.candidate });
     };
+    // A device that crashes or drops off the network never closes its channel. Its connection fails instead.
+    connection.onconnectionstatechange = () => {
+      if (connection.connectionState === 'failed' && peer.channel?.readyState === 'open') this.handlePeerGone(peerId);
+    };
     peer.timeoutTimer = setTimeout(() => {
       if (peer.channel?.readyState === 'open') return;
       if (this.isHost) this.dropPeer(peerId);
@@ -166,12 +174,14 @@ class OnlineConnection {
       this.onPeerOpen(peerId);
       if (!this.isWaitingForPeers()) this.stopPolling();
     };
-    channel.onclose = () => {
-      if (this.closed) return;
-      if (this.isHost) this.dropPeer(peerId);
-      else this.onPeerClose(peerId);
-    };
+    channel.onclose = () => this.handlePeerGone(peerId);
     channel.onmessage = (event) => this.onMessage(peerId, JSON.parse(event.data));
+  }
+
+  handlePeerGone(peerId) {
+    if (this.closed || !this.peers.has(peerId)) return;
+    if (this.isHost) this.dropPeer(peerId);
+    else this.onPeerClose(peerId);
   }
 
   async handleSignal(peerId, payload) {
