@@ -17,7 +17,6 @@ import {
 } from '../engine/config.js';
 import { PICKUP_USES } from '../cards/card-definitions.js';
 import { PhysicsEntity } from '../engine/physics-entity.js';
-import { settings } from '../engine/sound-settings.js';
 import { drawCharacterBody, FRAME_SIZE } from '../vfx/character-body.js';
 import { drawShovel } from '../vfx/shovel.js';
 import { drawSpringShoes } from '../vfx/spring-shoes.js';
@@ -49,10 +48,11 @@ export const SHOVE_HIT_ZONE_HEIGHT = 20;
 export const SHOVE_KNOCKBACK_VELOCITY_X = 7;
 export const SHOVE_KNOCKBACK_VELOCITY_Y = -4;
 
+// A fully charged player is drawn shaking one pixel side to side, switching every few ticks.
+const FULL_CHARGE_SHAKE_TICKS = 2;
+const FULL_CHARGE_SHAKE_PIXELS = 1;
 // Display only: how long, and by how many pixels, a player stretches after a jump and squashes
 // after a landing. The hitbox never changes.
-// A fully charged shove flashes white.
-const FULL_CHARGE_FLASH_TICKS = 3;
 const STRETCH_TICKS = 6;
 const STRETCH_PIXELS = 4;
 const SQUASH_TICKS = 6;
@@ -436,6 +436,12 @@ export class Player extends PhysicsEntity {
     this.jumpBufferTicksRemaining = 0;
   }
 
+  get fullChargeShakePixels() {
+    if (!this.isShoveFullyCharged) return 0;
+    const towardFront = Math.floor(this.shoveFullChargeTicks / FULL_CHARGE_SHAKE_TICKS) % 2 === 0;
+    return towardFront ? FULL_CHARGE_SHAKE_PIXELS : -FULL_CHARGE_SHAKE_PIXELS;
+  }
+
   // Drawn a second time offset by a screen width while crossing an edge, so wrapping never shows a gap.
   // appearance is { sprites, playerEyes, characterAnimations }: the loaded sprite files by name, the display only eyes
   // and the display only poses. Without characterAnimations the body is drawn in its plain frame.
@@ -449,16 +455,13 @@ export class Player extends PhysicsEntity {
   // The sprite frame sits bottom centered on the hitbox, one pixel lower so its white outline row overlaps the
   // top row of the platform underfoot.
   renderAt(context, x, { sprites, playerEyes, characterAnimations }) {
-    const drawX = Math.round(x);
+    const drawX = Math.round(x) + this.fullChargeShakePixels;
     const drawY = Math.round(this.y);
     const squash = this.inWater ? { width: 0, height: 0 } : this.squash;
     const pose = this.inWater || !characterAnimations ? {} : characterAnimations.poseFor(this);
     const sprite = sprites[this.character.spriteName].body;
-    const blinkOn = Math.floor(this.shoveFullChargeTicks / FULL_CHARGE_FLASH_TICKS) % 2 === 0;
-    const flashing = this.isShoveFullyCharged && (blinkOn || settings.reduceFlashes);
     drawCharacterBody(context, {
       sprite,
-      flashSprite: flashing ? silhouetteOf(sprite, '#ffffff') : null,
       outlineSprite: this.outlineColor ? silhouetteOf(sprite, this.outlineColor) : null,
       glowSprite: this.glowColor && !this.inWater ? silhouetteOf(sprite, this.glowColor) : null,
       eyeFramePositions: this.character.eyeFramePositions,
