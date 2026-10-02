@@ -196,7 +196,6 @@ export class VersusScene {
     this.particles = new Particles();
     this.particles.attach(this.events, {
       getPlayers: () => this.players,
-      getWaterLineY: () => this.waterLineY,
       getTickCount: () => this.tickCount,
     });
     this.splashes = new Splashes();

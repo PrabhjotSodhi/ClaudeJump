@@ -1,4 +1,4 @@
-// Dust, sparks, droplets and launch trails. Display only: it listens to events, moves particles once per tick
+// Dust, sparks and launch trails. Display only: it listens to events, moves particles once per tick
 // and is never read by game logic. Nothing here is random. Bursts spread particles at evenly
 // spaced angles, and the small offsets come from the tick count, so the same events always
 // throw the same particles. Hit sparks fly in a cone along the direction the hit went, and a
@@ -7,7 +7,6 @@ import {
   CHARGED_SHOVE_EXTRA_SPARK_SPEED,
   CHARGED_SHOVE_EXTRA_SPARKS,
   IMPACT_EFFECTS,
-  SPLASH_TIERS,
   LAUNCH_TRAIL_MIN_SPEED,
   LAUNCH_TRAIL_STRENGTHS,
 } from '../engine/config.js';
@@ -19,7 +18,6 @@ const CRAB_COLOR = '#e43b44';
 const ICE_COLOR = '#2ce8f5';
 const SPRING_COLOR = '#feae34';
 const ICE_GLINT_COLOR = '#ffffff';
-const DROPLET_COLORS = ['#c0cbdc', '#2ce8f5', '#ffffff'];
 const PLAYER_HALF_WIDTH = 12;
 const PLAYER_HALF_HEIGHT = 14;
 
@@ -31,7 +29,6 @@ const FULL_CHARGE_SPARKLE = { count: 6, speed: 1.5, ticks: 12, size: 2, gravity:
 const HIT_SPARK_CONE = Math.PI / 2;
 const LAUNCH_TRAIL = { size: 8, ticks: 10 };
 const BLAST_SPARKS = { count: 20, speed: 4.5, ticks: 22, size: 3, gravity: 0.12, arcStart: 0, arcSize: 2 * Math.PI };
-const SPLASH_DROPLETS = { ticks: 30, size: 2, gravity: 0.22, arcStart: Math.PI + 0.4, arcSize: Math.PI - 0.8 };
 
 export const HARD_LANDING_SPEED = 9;
 
@@ -54,7 +51,7 @@ export class Particles {
     this.getPlayers = () => [];
   }
 
-  attach(events, { getPlayers, getWaterLineY, getTickCount }) {
+  attach(events, { getPlayers, getTickCount }) {
     this.getPlayers = getPlayers;
     const findPlayer = (playerId) => getPlayers().find((candidate) => candidate.id === playerId);
     const centerOf = (player) => ({ x: player.x + PLAYER_HALF_WIDTH, y: player.y + PLAYER_HALF_HEIGHT });
@@ -133,18 +130,6 @@ export class Particles {
       burst(x, y, BLAST_COLOR, BLAST_SPARKS);
       this.markLaunched(playerIds, strength);
     });
-    const splashDroplets = (x, splashTier) => {
-      const { dropletCount, dropletSpeed } = SPLASH_TIERS[splashTier];
-      DROPLET_COLORS.forEach((color, colorIndex) => {
-        const count = Math.ceil((dropletCount - colorIndex) / DROPLET_COLORS.length);
-        burst(x, getWaterLineY(), color, { ...SPLASH_DROPLETS, count, speed: dropletSpeed });
-      });
-    };
-    events.on('player-fell-in-water', ({ playerId, splashTier = 'small' }) => {
-      const player = findPlayer(playerId);
-      if (player) splashDroplets(centerOf(player).x, splashTier);
-    });
-    events.on('crate-fell-in-water', ({ x }) => splashDroplets(x, 'small'));
   }
 
   burst(x, y, color, style, tickCount) {
