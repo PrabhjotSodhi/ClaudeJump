@@ -208,7 +208,6 @@ export class VersusScene {
     this.particles = new Particles();
     this.particles.attach(this.events, {
       getPlayers: () => this.players,
-      getTickCount: () => this.tickCount,
     });
     this.splashes = new Splashes();
     this.splashes.attach(this.events, { getPlayers: () => this.players, getWaterLineY: () => this.waterLineY });
@@ -1124,7 +1123,7 @@ export class VersusScene {
     }
     if (this.mode === 'hill') drawHillZone(renderer.gameContext, this);
     drawWrapPuffs(renderer.gameContext, this);
-    this.characterAnimations.render(renderer.gameContext);
+    drawParticles(renderer.gameContext, this, 'behind');
     this.entityGroups.renderAll(renderer.gameContext, {
       sprites: this.sprites,
       playerEyes: this.playerEyes,
@@ -1136,7 +1135,7 @@ export class VersusScene {
     if (this.mode === 'bomb') drawHeldBomb(renderer.gameContext, this);
     drawMagnetField(renderer.gameContext, this);
     drawSplashes(renderer.gameContext, this);
-    drawParticles(renderer.gameContext, this);
+    drawParticles(renderer.gameContext, this, 'front');
     drawBlastClouds(renderer.gameContext, this);
     drawClashSparks(renderer.gameContext, this);
     drawHeldCardIcons(renderer.gameContext, this);

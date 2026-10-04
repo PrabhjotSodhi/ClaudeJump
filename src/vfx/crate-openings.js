@@ -1,5 +1,6 @@
 import { CRATE_HEIGHT } from '../entities/crate.js';
 import { CARD_ICON_HEIGHT, CARD_ICON_OUTLINE_MARGIN, CARD_ICON_WIDTH, drawCardIcon } from '../ui/card-icons.js';
+import { RAMPS, toPixel } from './particle-rules.js';
 
 // About 0.3 seconds: long enough for everyone to see what came out of the crate.
 export const OPENING_TICKS = 18;
@@ -30,7 +31,6 @@ const DUST_SPOTS = [
   [0, 12, 0, 0],
 ];
 const DUST_TICKS = 16;
-const DUST_COLORS = ['#c0cbdc', '#8b9bb4'];
 const ICON_CANVAS_SIZE = CARD_ICON_WIDTH + CARD_ICON_OUTLINE_MARGIN * 2;
 
 // How wide, in whole pixels, the spinning card icon is drawn `age` ticks after the crate opened. It turns edge-on and
@@ -106,8 +106,8 @@ export function plankRectangles({ x, y, age }) {
     const centerX = x + plank.x + plank.width / 2 + plank.speedX * age;
     const centerY = y + plank.y + plank.height / 2 + plank.speedY * age + (PLANK_GRAVITY * age * age) / 2;
     return {
-      x: Math.round(centerX - width / 2),
-      y: Math.round(centerY - height / 2),
+      x: toPixel(centerX - width / 2),
+      y: toPixel(centerY - height / 2),
       width,
       height,
     };
@@ -130,11 +130,11 @@ function renderDust(context, { x, y, age }) {
   if (age >= DUST_TICKS) return;
   const size = age < DUST_TICKS / 2 ? 4 : 2;
   const spread = Math.floor(age / 2);
-  context.fillStyle = DUST_COLORS[age < DUST_TICKS / 2 ? 0 : 1];
+  context.fillStyle = RAMPS.dust[Math.floor((age / DUST_TICKS) * RAMPS.dust.length)];
   for (const [offsetX, offsetY, directionX, directionY] of DUST_SPOTS) {
     context.fillRect(
-      Math.round(x + offsetX + directionX * spread - size / 2),
-      Math.round(y + offsetY + directionY * spread - size / 2 - Math.floor(age / 4)),
+      toPixel(x + offsetX + directionX * spread - size / 2),
+      toPixel(y + offsetY + directionY * spread - size / 2 - Math.floor(age / 4)),
       size,
       size,
     );

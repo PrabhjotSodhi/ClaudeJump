@@ -4,7 +4,7 @@ import { CHARACTERS } from '../entities/characters.js';
 
 // Every action has a folder of pose frames in data/images/entities/player/<action>/frames.json. A frame changes how
 // the one body sprite is drawn: width and height add to its size, x moves it forward in the facing direction, y moves
-// it down, eyes "closed" shuts the eyes and dust kicks up a puff at the feet as the frame starts. The victory pose is
+// it down and eyes "closed" shuts the eyes. The victory pose is
 // each character's own, in data/images/entities/player/victory/<character name>.json.
 export const CHARACTER_ACTIONS = ['idle', 'run', 'jump', 'fall', 'windup', 'charge', 'swing', 'hurt', 'launched'];
 
@@ -14,13 +14,6 @@ const BLINK_TICKS = 5;
 const MIN_TICKS_BETWEEN_BLINKS = 90;
 const MAX_TICKS_BETWEEN_BLINKS = 300;
 const BLINK_SEED = 7;
-const DUST_LIFETIME_TICKS = 16;
-// Each footfall kicks up one puff at the back foot and a smaller one further behind.
-const DUST_PUFFS = [
-  { behindPixels: 10, startSize: 5 },
-  { behindPixels: 15, startSize: 3 },
-];
-const DUST_COLORS = ['#c0cbdc', '#8b9bb4'];
 const NEUTRAL_FRAME = {};
 
 async function loadPoseEntries(names, pathFor) {
@@ -77,13 +70,12 @@ export function chargeProgressOf(player) {
   );
 }
 
-// Display only: follows each player's action, blinks and run dust once per tick. Game logic never reads it.
+// Display only: follows each player's action and blinks once per tick. Game logic never reads it.
 export class CharacterAnimations {
   constructor(poses) {
     this.poses = poses;
     this.random = new SeededRandom(BLINK_SEED);
     this.stateByPlayerId = new Map();
-    this.dustPuffs = [];
     this.getPlayers = () => [];
     this.getWinnerId = () => null;
   }
@@ -118,17 +110,12 @@ export class CharacterAnimations {
   }
 
   update() {
-    for (const puff of this.dustPuffs) puff.age++;
-    this.dustPuffs = this.dustPuffs.filter((puff) => puff.age < DUST_LIFETIME_TICKS);
     for (const player of this.getPlayers()) {
       const state = this.stateFor(player.id);
       const action = pickCharacterAction(player, this.getWinnerId());
       state.ticksInAction = action === state.action ? state.ticksInAction + 1 : 0;
       state.action = action;
       this.updateBlink(state);
-      const frame = this.frameFor(player);
-      const pose = this.poseOf(player, action);
-      if (frame.dust && pose && state.ticksInAction % pose.ticksPerFrame === 0) this.addDustPuffs(player);
     }
   }
 
@@ -143,18 +130,6 @@ export class CharacterAnimations {
     state.ticksUntilBlink = this.ticksUntilNextBlink();
   }
 
-  addDustPuffs(player) {
-    for (const { behindPixels, startSize } of DUST_PUFFS) {
-      this.dustPuffs.push({
-        x: Math.round(player.x + player.width / 2 - player.facing * behindPixels),
-        y: Math.round(player.y + player.height),
-        directionX: -player.facing,
-        startSize,
-        age: 0,
-      });
-    }
-  }
-
   frameFor(player) {
     const state = this.stateFor(player.id);
     return poseFrame(this.poseOf(player, state.action), state.ticksInAction, chargeProgressOf(player));
@@ -165,21 +140,5 @@ export class CharacterAnimations {
     const frame = this.frameFor(player);
     if (this.stateFor(player.id).blinkTicksRemaining > 0) return { ...frame, eyes: 'closed' };
     return frame;
-  }
-
-  // Each puff shrinks as it drifts back and up. Puffs 3 pixels or wider lose their corners so they read as round.
-  render(context) {
-    for (const puff of this.dustPuffs) {
-      const size = Math.max(1, puff.startSize - Math.floor((puff.age * puff.startSize) / DUST_LIFETIME_TICKS));
-      context.fillStyle = DUST_COLORS[puff.age < DUST_LIFETIME_TICKS / 2 ? 0 : 1];
-      const left = puff.x + puff.directionX * Math.floor(puff.age / 3) - Math.floor(size / 2);
-      const top = puff.y - Math.floor(puff.age / 4) - size;
-      if (size < 3) {
-        context.fillRect(left, top, size, size);
-        continue;
-      }
-      context.fillRect(left + 1, top, size - 2, size);
-      context.fillRect(left, top + 1, size, size - 2);
-    }
   }
 }
