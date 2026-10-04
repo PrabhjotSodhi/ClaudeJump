@@ -17,8 +17,8 @@ export const CHARACTERS = [
     spriteName: 'meta',
     tagColor: '#b55088',
     eyeFramePositions: [
-      [9, 3],
-      [16, 3],
+      [4, 5],
+      [19, 5],
     ],
   },
   {
