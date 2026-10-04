@@ -357,17 +357,19 @@ test('the four cards sit side by side inside the screen without overlapping', ()
 });
 
 test('shove with nobody joined goes back to the title, and Escape does too', () => {
-  for (const control of ['action', 'pause']) {
+  for (const control of ['action', 'back']) {
     const { scene, scenes } = sceneWithBaseline();
     press(scene, 'red', control);
     assert.equal(scenes[0]?.constructor.name, 'TitleScene');
   }
 });
 
-test('Enter belongs to no seat, so it joins nobody', () => {
+test('Enter and Escape join and step back the first player', () => {
   const { scene } = sceneWithBaseline();
 
   press(scene, 'red', 'confirm');
-
+  assert.equal(scene.stateByPlayerId.red, 'picking');
+  assert.equal(scene.stateByPlayerId.blue, 'unjoined');
+  press(scene, 'red', 'back');
   assert.equal(scene.stateByPlayerId.red, 'unjoined');
 });

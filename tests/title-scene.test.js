@@ -103,14 +103,19 @@ test('up moves the selection to the previous option and wraps from the first to 
   assert.equal(scene.selectedIndex, 2);
 });
 
-test('jump selects, the same as Enter', () => {
+test('the jump key moves up like any up key, and only Enter selects', () => {
   const scenes = [];
-  const scene = new TitleScene({ sceneManager: { setScene: (nextScene) => scenes.push(nextScene) }, seed: 0 });
+  const scene = new TitleScene({
+    sceneManager: { setScene: (nextScene) => scenes.push(nextScene) },
+    options: threeOptions(),
+    seed: 0,
+  });
 
   scene.update(inputsWith('red', { jump: true, up: true }));
-
-  assert.equal(scenes.length, 1);
-  assert.equal(scene.selectedIndex, 0, 'the keyboard up key is the jump key, so it selects instead of moving');
+  assert.equal(scenes.length, 0);
+  assert.equal(scene.selectedIndex, 2, 'the keyboard jump key is also up, so it moves');
+  scene.update(inputsWith('red', { confirm: true }));
+  assert.equal(scene.selectedIndex, 2);
 });
 
 test('left and right move the selection too, for keyboards and touch', () => {
@@ -123,12 +128,12 @@ test('left and right move the selection too, for keyboards and touch', () => {
   assert.equal(scene.selectedIndex, 0);
 });
 
-test('the shove key, which is also the keyboard down key, does not move the selection', () => {
+test('the shove key, which is also the keyboard down key, moves down', () => {
   const scene = new TitleScene({ options: threeOptions() });
 
   scene.update(inputsWith('red', { down: true, action: true }));
 
-  assert.equal(scene.selectedIndex, 0);
+  assert.equal(scene.selectedIndex, 1);
 });
 
 test('the title shows the sea at the Harbor water line', () => {

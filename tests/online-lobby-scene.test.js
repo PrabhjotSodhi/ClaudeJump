@@ -93,13 +93,13 @@ test('a joiner can never change the level', () => {
   assert.equal(lobby.scene.lobby.levelName, 'random');
 });
 
-test('the host steps the level with jump on the level row', () => {
+test('the host steps the level with Enter on the level row', () => {
   const lobby = startLobby({ isHost: true });
   lobby.connection.onPeerOpen('guest');
   lobby.connection.sent.length = 0;
 
   selectRow(lobby.scene, 2);
-  pressOnce(lobby.scene, { jump: true });
+  pressOnce(lobby.scene, { confirm: true });
 
   assert.equal(lobby.scene.lobby.levelName, harborLevel.name);
   assert.equal(lobby.connection.sentOfType('lobby-state').at(-1).data.snapshot.levelName, harborLevel.name);
@@ -301,26 +301,26 @@ test('a connection error while in the lobby is reported with its code', () => {
   assert.deepEqual(lobby.calls.errors, ['connection-failed']);
 });
 
-test('jump on the character row picks the next character', () => {
+test('Enter on the character row picks the next character', () => {
   const lobby = startLobby({ isHost: true });
   const startingName = lobby.scene.lobby.snapshot().seats[0].characterName;
 
-  pressOnce(lobby.scene, { jump: true });
+  pressOnce(lobby.scene, { confirm: true });
 
   assert.notEqual(lobby.scene.lobby.snapshot().seats[0].characterName, startingName);
 });
 
-test('shove takes a ready back first, then leaves the room', () => {
+test('back takes a ready back first, then leaves the room', () => {
   const lobby = startLobby({ isHost: true });
   lobby.scene.selectedRow = ROW_READY;
-  pressOnce(lobby.scene, { jump: true });
+  pressOnce(lobby.scene, { confirm: true });
   assert.equal(lobby.scene.lobby.seats[0].ready, true);
 
-  pressOnce(lobby.scene, { action: true });
+  pressOnce(lobby.scene, { back: true });
   assert.equal(lobby.scene.lobby.seats[0].ready, false);
   assert.equal(lobby.calls.left, 0);
 
-  pressOnce(lobby.scene, { action: true });
+  pressOnce(lobby.scene, { back: true });
   assert.equal(lobby.calls.left, 1);
 });
 

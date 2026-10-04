@@ -24,6 +24,7 @@ const DESCRIPTION_GAP = 10;
 const DESCRIPTION_HEIGHT = 5;
 const HINT_GAP = 14;
 const DESCRIPTION_COLOR = '#c0cbdc';
+const TEXT_OUTLINE_COLOR = '#3e2731';
 
 // The title, the mode list, the picked mode's description and the key hints, centered as one block.
 export function modeSelectLayout() {
@@ -122,7 +123,7 @@ export class ModeSelectScene {
         scale: 1,
         align: 'center',
         color: DESCRIPTION_COLOR,
-        outlineColor: null,
+        outlineColor: TEXT_OUTLINE_COLOR,
       });
       drawKeyHints(context, MENU_HINTS, hintY);
     });

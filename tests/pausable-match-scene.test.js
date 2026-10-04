@@ -223,20 +223,20 @@ test('up moves the pause selection up with wrapping, and down moves it down', ()
   assert.equal(scene.selectedIndex, 0, 'down from the last option wraps to the first');
 });
 
-test('jump selects in the pause menu, and shove resumes like Escape', () => {
+test('Enter selects in the pause menu, and Backspace resumes like Escape', () => {
   const { scene } = pausedScene();
   scene.update(inputsWith('red', { pause: true }));
   scene.update(neutralInputs());
 
-  scene.update(inputsWith('red', { jump: true }));
-  assert.equal(scene.paused, false, 'jump chose Resume');
+  scene.update(inputsWith('red', { confirm: true }));
+  assert.equal(scene.paused, false, 'Enter chose Resume');
 
   scene.update(neutralInputs());
   scene.update(inputsWith('blue', { pause: true }));
   scene.update(neutralInputs());
   assert.equal(scene.paused, true);
-  scene.update(inputsWith('blue', { action: true }));
-  assert.equal(scene.paused, false, 'shove went back to the match');
+  scene.update(inputsWith('red', { back: true }));
+  assert.equal(scene.paused, false, 'back went to the match');
 });
 
 test('resuming with up, action and confirm held keeps them out of the match until released', () => {
@@ -268,7 +268,7 @@ test('Return to title, then Versus, opens a player select that can run a tick', 
   for (let tick = 0; tick < START_COUNTDOWN_TICKS; tick++) playerSelectScene.update(neutralInputs());
   const modeSelectScene = currentScene;
   modeSelectScene.update(neutralInputs());
-  modeSelectScene.update(readyInputs());
+  modeSelectScene.update({ ...neutralInputs(), red: { ...noInput(), confirm: true } });
   const levelSelectScene = currentScene;
   levelSelectScene.update(neutralInputs());
   levelSelectScene.update(readyInputs());
@@ -371,12 +371,12 @@ test('Rematch is selected by default and awards pop in with a sound event', () =
   assert.deepEqual(shown, ['splashes']);
 });
 
-test('jump confirms the selected results option, and up wraps to the last one', () => {
+test('Enter confirms the selected results option, and up wraps to the last one', () => {
   const { scene, scenes } = sceneShowingResults();
 
   scene.update(inputsWith('blue', { up: true }));
   scene.update(neutralInputs());
-  scene.update(inputsWith('blue', { jump: true }));
+  scene.update(inputsWith('red', { confirm: true }));
 
   assert.equal(scenes[0].constructor.name, 'PlayerSelectScene');
 });

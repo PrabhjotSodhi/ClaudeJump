@@ -116,10 +116,10 @@ test('Leave closes the connection and returns to the title', () => {
   assert.ok(sceneManager.currentScene instanceof TitleScene);
 });
 
-test('shove leaves too', () => {
+test('back leaves too', () => {
   const { scene, sceneManager } = startResults({ isHost: false });
 
-  pressOnce(scene, { action: true });
+  pressOnce(scene, { back: true });
 
   assert.ok(sceneManager.currentScene instanceof TitleScene);
 });

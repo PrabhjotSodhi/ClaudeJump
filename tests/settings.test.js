@@ -245,12 +245,12 @@ test('the title Settings screen changes a setting, saves it and closes without s
     press(scene, { confirm: true });
     assert.ok(scene.settingsMenu);
 
-    press(scene, { right: true });
-    press(scene, { jump: true });
+    press(scene, { down: true });
+    press(scene, { confirm: true });
     assert.equal(settings.effectsVolume, 0);
     assert.equal(loadSettings(storage).effectsVolume, 0);
 
-    press(scene, { action: true });
+    press(scene, { back: true });
     assert.equal(scene.settingsMenu, null);
     assert.equal(scenes.length, 0);
   } finally {

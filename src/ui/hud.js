@@ -3,7 +3,7 @@ import { ROCKET_HEIGHT } from '../entities/rocket.js';
 import { drawModifierIcon, MODIFIER_ICON_SIZE } from './modifier-icons.js';
 import { drawPanel } from './panel.js';
 import { drawPlayerPanel, PLAYER_PANEL_BOTTOM, playerPanelBoxes } from './player-panel.js';
-import { BACK_HINT, drawKeyHints, drawMenuTitle, menuPanelSize } from './menu-kit.js';
+import { BACK_HINT, drawKeyHints, drawMenuTitle } from './menu-kit.js';
 import { drawMenuBackdrop } from './menu-options.js';
 import { drawPlayHints, playHintRows } from './play-hints.js';
 import { drawText, measureText } from './text.js';
@@ -51,11 +51,11 @@ const METER_TICK_HEIGHT = 8;
 const METER_TRACK_COLOR = '#3a4466';
 const METER_MARKER_COLOR = '#feae34';
 const OVER_TITLE_Y = 96;
-const OVER_PANEL_Y = 120;
-const OVER_FIRST_ROW_OFFSET_Y = 12;
-const OVER_ROW_HEIGHT = 14;
+const OVER_FIRST_ROW_Y = 128;
+const OVER_ROW_HEIGHT = 18;
 const OVER_ROW_COLOR = '#c0cbdc';
-const OVER_HINT_GAP = 12;
+const OVER_OUTLINE_COLOR = '#3e2731';
+const OVER_HINT_GAP = 8;
 // Survival has no round intro, so its move and jump hints show for the start of each run.
 const SURVIVAL_HINT_TICKS = 180;
 const SURVIVAL_HINT_Y = 48;
@@ -222,20 +222,18 @@ function drawRunOver(context, scene) {
   drawMenuTitle(context, 'Splash!', OVER_TITLE_Y);
   const rows = [`Score ${scene.score}`, `Best ${scene.bestScore}`];
   if (scene.newBestTick !== null) rows.push('New best!');
-  const { width, height } = menuPanelSize(rows);
-  drawPanel(context, (SCREEN_WIDTH - width) / 2, OVER_PANEL_Y, width, height);
   rows.forEach((row, index) => {
-    drawText(context, row, SCREEN_WIDTH / 2, OVER_PANEL_Y + OVER_FIRST_ROW_OFFSET_Y + index * OVER_ROW_HEIGHT, {
-      scale: 1,
+    drawText(context, row, SCREEN_WIDTH / 2, OVER_FIRST_ROW_Y + index * OVER_ROW_HEIGHT, {
+      scale: 2,
       align: 'center',
       color: index === 2 ? NEW_BEST_COLOR : OVER_ROW_COLOR,
-      outlineColor: null,
+      outlineColor: OVER_OUTLINE_COLOR,
     });
   });
   drawKeyHints(
     context,
-    [{ keys: [{ player: 'red', control: 'jump' }], pad: ['south'], label: 'Retry' }, BACK_HINT],
-    OVER_PANEL_Y + height + OVER_HINT_GAP,
+    [{ keys: ['Enter'], pad: ['south'], label: 'Retry' }, BACK_HINT],
+    OVER_FIRST_ROW_Y + rows.length * OVER_ROW_HEIGHT + OVER_HINT_GAP,
   );
 }
 

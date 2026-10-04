@@ -5,7 +5,6 @@ import { THUMBNAIL_HEIGHT, THUMBNAIL_WIDTH } from '../levels/level-thumbnail.js'
 import { matchModeName } from '../scenes/match-modes.js';
 import { RANDOM_LEVEL } from '../scenes/online-lobby-state.js';
 import { BACK_HINT, drawKeyHints, drawMenuList, MOVE_HINT, SELECT_HINT } from './menu-kit.js';
-import { drawPanel } from './panel.js';
 import { drawEmptySelectCard, drawSelectCard, selectCardBox } from './select-card.js';
 import { drawText } from './text.js';
 
@@ -13,13 +12,11 @@ const SELECTED_COLOR = '#feae34';
 const LABEL_COLOR = '#c0cbdc';
 const DIM_COLOR = '#8b9bb4';
 const EMPTY_COLOR = '#5a6988';
+const OUTLINE_COLOR = '#3e2731';
 
-const CODE_PANEL_TOP_Y = 12;
-const CODE_PANEL_WIDTH = 148;
-const CODE_PANEL_HEIGHT = 56;
-const CODE_LABEL_Y = CODE_PANEL_TOP_Y + 8;
+const CODE_LABEL_Y = 18;
 const CODE_SCALE = 6;
-const CODE_Y = CODE_PANEL_TOP_Y + 21;
+const CODE_Y = 33;
 
 const CARD_TOP_Y = 76;
 
@@ -60,14 +57,27 @@ export function lobbyRowLabels({ rows, lobby, localSeat }) {
 }
 
 function drawCode(context, code) {
-  drawPanel(context, (SCREEN_WIDTH - CODE_PANEL_WIDTH) / 2, CODE_PANEL_TOP_Y, CODE_PANEL_WIDTH, CODE_PANEL_HEIGHT);
   drawText(context, 'Room code', SCREEN_WIDTH / 2, CODE_LABEL_Y, {
     scale: 1,
     align: 'center',
     color: LABEL_COLOR,
-    outlineColor: null,
+    outlineColor: OUTLINE_COLOR,
   });
-  drawText(context, code, SCREEN_WIDTH / 2, CODE_Y, { scale: CODE_SCALE, align: 'center', color: SELECTED_COLOR });
+  drawText(context, code, SCREEN_WIDTH / 2, CODE_Y, {
+    scale: CODE_SCALE,
+    align: 'center',
+    color: SELECTED_COLOR,
+    outlineColor: OUTLINE_COLOR,
+  });
+}
+
+// A dark border around a thumbnail, the same as on the level select.
+function drawBorder(context, x, y, width, height) {
+  context.fillStyle = OUTLINE_COLOR;
+  context.fillRect(x, y, width, LEVEL_BORDER);
+  context.fillRect(x, y + height - LEVEL_BORDER, width, LEVEL_BORDER);
+  context.fillRect(x, y, LEVEL_BORDER, height);
+  context.fillRect(x + width - LEVEL_BORDER, y, LEVEL_BORDER, height);
 }
 
 function drawPlayerCard(context, view, seatIndex) {
@@ -99,7 +109,7 @@ function drawLevelPanel(context, view, x) {
   const width = THUMBNAIL_WIDTH + 2 * LEVEL_BORDER;
   const height = THUMBNAIL_HEIGHT + 2 * LEVEL_BORDER;
   const level = view.levels.find((candidate) => candidate.name === view.lobby.levelName);
-  drawPanel(context, x, MENU_TOP_Y, width, height);
+  drawBorder(context, x, MENU_TOP_Y, width, height);
   if (level) {
     context.imageSmoothingEnabled = false;
     context.drawImage(level.thumbnail, x + LEVEL_BORDER, MENU_TOP_Y + LEVEL_BORDER);
@@ -114,11 +124,11 @@ function drawLevelPanel(context, view, x) {
     scale: 1,
     align: 'center',
     color: view.rows[view.selectedRow] === 'level' ? SELECTED_COLOR : LABEL_COLOR,
-    outlineColor: null,
+    outlineColor: OUTLINE_COLOR,
   });
 }
 
-function drawStatusPanel(context, view, x) {
+function drawStatus(context, view, x) {
   const { lobby, isHost } = view;
   const lines = [
     [`Players ${lobby.playerCount} of ${PLAYERS.length}`, LABEL_COLOR],
@@ -126,13 +136,12 @@ function drawStatusPanel(context, view, x) {
     [matchModeName(lobby.modeId), LABEL_COLOR],
     [isHost ? 'You start the match' : 'Host starts the match', DIM_COLOR],
   ];
-  drawPanel(context, x, MENU_TOP_Y, SIDE_PANEL_WIDTH, 62);
   lines.forEach(([text, color], index) => {
     drawText(context, text, x + SIDE_PANEL_WIDTH / 2, MENU_TOP_Y + 10 + index * 12, {
       scale: 1,
       align: 'center',
       color,
-      outlineColor: null,
+      outlineColor: OUTLINE_COLOR,
     });
   });
 }
@@ -144,7 +153,7 @@ export function drawOnlineLobby(context, view) {
 
   const labels = lobbyRowLabels(view);
   drawLevelPanel(context, view, SIDE_PANEL_MARGIN_X + (SIDE_PANEL_WIDTH - THUMBNAIL_WIDTH - 2 * LEVEL_BORDER) / 2);
-  drawStatusPanel(context, view, SCREEN_WIDTH - SIDE_PANEL_MARGIN_X - SIDE_PANEL_WIDTH);
+  drawStatus(context, view, SCREEN_WIDTH - SIDE_PANEL_MARGIN_X - SIDE_PANEL_WIDTH);
   drawMenuList(context, {
     options: labels.map((label) => ({ label })),
     selectedIndex: view.selectedRow,

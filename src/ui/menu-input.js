@@ -1,8 +1,10 @@
-const CONTROLS = ['left', 'right', 'up', 'down', 'jump', 'action', 'confirm', 'pause'];
+const CONTROLS = ['left', 'right', 'up', 'down', 'jump', 'action', 'confirm', 'back', 'pause'];
 
-// The one way every menu is driven, the same on every device. Left and right move. Up and down move too where they
-// are buttons of their own, like a pad's stick and d-pad; on a keyboard they are the jump and shove keys, and on touch
-// there is no down. Jump confirms, as do Enter and pad A. Shove goes back, as do Escape and pad B.
+// Menus read input two ways. A shared menu, which anyone drives, moves with any direction and confirms and goes back
+// with the menu keys: Enter or Space and Escape or Backspace on a keyboard, A and B on a pad, jump and shove on touch.
+// Pause goes back too, so the button that opened a menu closes it.
+// A screen where each player has a seat reads each player on their own: left and right pick, jump joins or votes and
+// shove steps back, and the menu keys work too for the player they belong to.
 export class MenuInput {
   // initialInput is what is held as the menu opens, so a press held over from the screen before does not count here.
   constructor(initialInput = {}) {
@@ -18,36 +20,40 @@ export class MenuInput {
     }
   }
 
-  // Each player's fresh presses this tick: { previous, next, left, right, up, down, confirm, back }. Left, right, up and
-  // down are for screens that move in two directions or only sideways. Call once per tick.
-  pressesByPlayerId(inputByPlayerId) {
-    const pressesByPlayerId = {};
+  // Each player's fresh controls this tick, as { control: true }. Call once per tick.
+  freshByPlayerId(inputByPlayerId) {
+    const freshByPlayerId = {};
     for (const playerId in inputByPlayerId) {
       const input = inputByPlayerId[playerId] ?? {};
       const held = this.heldByPlayerId[playerId] ?? {};
-      const fresh = (control) => !!input[control] && !held[control];
-      pressesByPlayerId[playerId] = {
-        previous: fresh('left') || (fresh('up') && !input.jump),
-        next: fresh('right') || (fresh('down') && !input.action),
-        left: fresh('left'),
-        right: fresh('right'),
-        up: fresh('up') && !input.jump,
-        down: fresh('down') && !input.action,
-        confirm: fresh('jump') || fresh('confirm'),
-        back: fresh('action') || fresh('pause'),
-      };
+      freshByPlayerId[playerId] = Object.fromEntries(
+        CONTROLS.map((control) => [control, !!input[control] && !held[control]]),
+      );
     }
     // A player missing from this tick's input holds nothing.
     this.heldByPlayerId = {};
     this.hold(inputByPlayerId);
+    return freshByPlayerId;
+  }
+
+  // Each seated player's presses this tick: { left, right, confirm, back }. Call once per tick.
+  pressesByPlayerId(inputByPlayerId) {
+    const pressesByPlayerId = {};
+    for (const [playerId, fresh] of Object.entries(this.freshByPlayerId(inputByPlayerId))) {
+      pressesByPlayerId[playerId] = {
+        left: fresh.left,
+        right: fresh.right,
+        confirm: fresh.jump || fresh.confirm,
+        back: fresh.action || fresh.back,
+      };
+    }
     return pressesByPlayerId;
   }
 
-  // Everyone's fresh presses this tick, merged, for a menu any player can drive. Call once per tick.
+  // Everyone's presses this tick for a shared menu: { previous, next, left, right, up, down, confirm, back }. Call once
+  // per tick.
   presses(inputByPlayerId) {
     const merged = {
-      previous: false,
-      next: false,
       left: false,
       right: false,
       up: false,
@@ -55,10 +61,11 @@ export class MenuInput {
       confirm: false,
       back: false,
     };
-    for (const presses of Object.values(this.pressesByPlayerId(inputByPlayerId))) {
-      for (const name in merged) merged[name] ||= presses[name];
+    for (const fresh of Object.values(this.freshByPlayerId(inputByPlayerId))) {
+      for (const name in merged) merged[name] ||= fresh[name];
+      merged.back ||= fresh.pause;
     }
-    return merged;
+    return { ...merged, previous: merged.left || merged.up, next: merged.right || merged.down };
   }
 }
 

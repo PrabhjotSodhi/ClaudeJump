@@ -21,7 +21,8 @@ function versusHashes(level) {
 }
 
 function survivalInput(tick) {
-  return { red: { left: tick % 90 < 30, right: tick % 90 >= 45, jump: tick % 20 < 12 } };
+  const jump = tick % 20 < 12;
+  return { red: { left: tick % 90 < 30, right: tick % 90 >= 45, jump, confirm: jump } };
 }
 
 function survivalHashes() {

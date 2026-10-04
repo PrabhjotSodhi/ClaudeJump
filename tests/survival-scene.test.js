@@ -152,13 +152,13 @@ test('the best score never decreases', () => {
   assert.equal(best, 300);
 });
 
-test('a fresh jump press after the run ends starts a new run with the next seed', () => {
+test('a fresh Enter press after the run ends starts a new run with the next seed', () => {
   const scene = new SurvivalScene({ seed: 10 });
   const firstLayout = layout(scene);
   runUntilOver(scene);
-  const jump = { red: { left: false, right: false, jump: true } };
+  const enter = { red: { left: false, right: false, jump: false, confirm: true } };
 
-  scene.update(jump);
+  scene.update(enter);
   scene.update(idle);
   assert.equal(scene.phase, 'playing');
   assert.equal(scene.seaY, scene.rows[0].y + 48);
@@ -167,17 +167,29 @@ test('a fresh jump press after the run ends starts a new run with the next seed'
   assert.deepEqual(layout(scene), layout(new SurvivalScene({ seed: 11 })));
 });
 
-test('a jump held through the end of the run does not start a new one', () => {
+test('Enter held through the end of the run does not start a new one, and a fresh press does', () => {
   const scene = new SurvivalScene({ seed: 10 });
-  const jump = { red: { left: false, right: false, jump: true } };
-  scene.jumpHeld = true;
+  const enter = { red: { left: false, right: false, jump: false, confirm: true } };
+  scene.update(enter);
   scene.phase = 'over';
 
-  scene.update(jump);
+  scene.update(enter);
   assert.equal(scene.phase, 'over');
   scene.update(idle);
-  scene.update(jump);
+  scene.update(enter);
   assert.equal(scene.phase, 'playing');
+});
+
+test('the jump key does not restart from game over, and back leaves', () => {
+  const titleReturns = [];
+  const scene = new SurvivalScene({ seed: 10, returnToTitle: () => titleReturns.push(true) });
+  scene.phase = 'over';
+
+  scene.update({ red: { left: false, right: false, jump: true } });
+  assert.equal(scene.phase, 'over');
+  scene.update(idle);
+  scene.update({ red: { left: false, right: false, jump: false, back: true } });
+  assert.equal(titleReturns.length, 1);
 });
 
 test('the player wraps across the screen edge', () => {

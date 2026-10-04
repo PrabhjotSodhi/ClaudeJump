@@ -44,7 +44,7 @@ test('the rocker halves and the two action buttons are sized for thumbs', () => 
 
 test('panel touches map to the same input records as the landscape buttons', () => {
   assert.deepEqual(pressedControls(mapTouchesToInput([centerOf('right')], BUTTONS)), ['right']);
-  assert.deepEqual(pressedControls(mapTouchesToInput([centerOf('action')], BUTTONS)), ['action', 'down']);
+  assert.deepEqual(pressedControls(mapTouchesToInput([centerOf('action')], BUTTONS)), ['action', 'back']);
   assert.deepEqual(pressedControls(mapTouchesToInput([centerOf('pause')], BUTTONS)), ['pause']);
   assert.deepEqual(pressedControls(mapTouchesToInput([centerOf('left'), centerOf('jump')], BUTTONS)), [
     'confirm',

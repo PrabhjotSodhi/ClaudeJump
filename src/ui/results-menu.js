@@ -11,16 +11,13 @@ import {
 } from './menu-kit.js';
 import { rankPlayers } from './match-stats.js';
 import { drawMenuBackdrop } from './menu-options.js';
-import { drawPanel } from './panel.js';
 import { drawText, measureText } from './text.js';
 
 const BANNER_TEXT = 'Winner';
-const BANNER_TEXT_SCALE = 2;
-const BANNER_TEXT_HEIGHT = 10;
-const BANNER_PADDING_X = 16;
-const BANNER_PADDING_Y = 7;
-const BANNER_TOP_Y = 16;
-const BANNER_STRIPE_HEIGHT = 2;
+const BANNER_TEXT_SCALE = 3;
+const BANNER_TEXT_HEIGHT = 15;
+const BANNER_TOP_Y = 20;
+const OUTLINE_COLOR = '#3e2731';
 
 const PEDESTAL_BLOCK_SIZE = 32;
 const PEDESTAL_BLOCKS = 2;
@@ -35,7 +32,7 @@ const FAR_LOSER_GAP = 4;
 const STAGE_WIDTH_BY_PLAYER_COUNT = { 2: 192, 3: 192, 4: 256 };
 const STAGE_TOP_Y = 48;
 const STAGE_HEIGHT = 92;
-const FLOOR_HEIGHT = 12;
+const FLOOR_HEIGHT = 4;
 const FLOOR_COLOR = '#3a4466';
 const FLOOR_EDGE_COLOR = '#5a6988';
 
@@ -46,10 +43,8 @@ const STATS_PANEL_TOP_Y = 64;
 // With more than two players the panels sit two to a row, so they start higher.
 const STATS_GRID_TOP_Y = 48;
 const STATS_GRID_GAP = 8;
-const STATS_ACCENT_HEIGHT = 3;
-const STATS_TEXT_INSET = 12;
-const STATS_ROW_HEIGHT = 14;
-const STATS_FIRST_ROW_Y = 12;
+const STATS_NAME_HEIGHT = 18;
+const STATS_ROW_HEIGHT = 12;
 const STATS_LABEL_COLOR = '#c0cbdc';
 const AWARD_COLOR = '#feae34';
 const AWARD_FLASH_COLOR = '#ffffff';
@@ -92,7 +87,7 @@ export function resultsLayout({ winnerIndex, playerCount, menuHeight }) {
       side === 'right' ? pedestalX + PEDESTAL_WIDTH + LOSER_GAP + step : pedestalX - LOSER_GAP - FRAME_SIZE - step;
     return { x, y: floorY - FRAME_SIZE, width: FRAME_SIZE, height: FRAME_SIZE };
   });
-  const bannerWidth = measureText(BANNER_TEXT) * BANNER_TEXT_SCALE + 2 * BANNER_PADDING_X;
+  const bannerWidth = measureText(BANNER_TEXT) * BANNER_TEXT_SCALE;
   const menuBottomY = MENU_TOP_Y + menuHeight;
   return {
     stage,
@@ -101,7 +96,7 @@ export function resultsLayout({ winnerIndex, playerCount, menuHeight }) {
       x: Math.floor((SCREEN_WIDTH - bannerWidth) / 2),
       y: BANNER_TOP_Y,
       width: bannerWidth,
-      height: BANNER_TEXT_HEIGHT + 2 * BANNER_PADDING_Y,
+      height: BANNER_TEXT_HEIGHT,
     },
     winner: {
       x: (SCREEN_WIDTH - FRAME_SIZE) / 2,
@@ -119,29 +114,15 @@ export function resultsLayout({ winnerIndex, playerCount, menuHeight }) {
 }
 
 function drawBanner(context, banner, color) {
-  drawPanel(context, banner.x, banner.y, banner.width, banner.height);
-  context.fillStyle = color;
-  context.fillRect(banner.x + 2, banner.y + 3, banner.width - 4, BANNER_STRIPE_HEIGHT);
-  context.fillRect(
-    banner.x + 2,
-    banner.y + banner.height - 3 - BANNER_STRIPE_HEIGHT,
-    banner.width - 4,
-    BANNER_STRIPE_HEIGHT,
-  );
-  drawText(context, BANNER_TEXT, banner.x + banner.width / 2, banner.y + BANNER_PADDING_Y, {
-    scale: BANNER_TEXT_SCALE,
-    align: 'center',
-    color,
-    outlineColor: null,
-  });
+  drawText(context, BANNER_TEXT, banner.x, banner.y, { scale: BANNER_TEXT_SCALE, color, outlineColor: OUTLINE_COLOR });
 }
 
-function drawStage(context, { stage, floorY }) {
-  drawPanel(context, stage.x, stage.y, stage.width, stage.height);
+// A plain ledge the characters stand on, the width of the stage.
+function drawFloor(context, { stage, floorY }) {
   context.fillStyle = FLOOR_COLOR;
-  context.fillRect(stage.x + 2, floorY, stage.width - 4, FLOOR_HEIGHT);
+  context.fillRect(stage.x, floorY, stage.width, FLOOR_HEIGHT);
   context.fillStyle = FLOOR_EDGE_COLOR;
-  context.fillRect(stage.x + 2, floorY, stage.width - 4, 1);
+  context.fillRect(stage.x, floorY, stage.width, 1);
 }
 
 function drawPedestal(context, pedestal, blockSprites) {
@@ -165,31 +146,37 @@ function drawCharacter(context, { player, box, matchScene, pose = {} }) {
 
 const ORDINALS = ['1st', '2nd', '3rd', '4th'];
 
+// One column of stats as outlined text: the name big in the player's color, then the numbers and any award.
 // rank is null when the screen does not show one.
-function drawStatsPanel(context, panel, player, rank, matchScene, awardReveal) {
-  drawPanel(context, panel.x, panel.y, panel.width, panel.height);
-  context.fillStyle = player.color;
-  context.fillRect(panel.x + 2, panel.y + 2, panel.width - 4, STATS_ACCENT_HEIGHT);
-
-  const textX = panel.x + STATS_TEXT_INSET;
-  const firstRowY = panel.y + STATS_FIRST_ROW_Y + STATS_ACCENT_HEIGHT;
-  const rows = [
-    [rank ? `${ORDINALS[rank - 1]} ${player.character.displayName}` : player.character.displayName, player.color],
-    [`Rounds won ${matchScene.wins[player.id]}`, STATS_LABEL_COLOR],
-    [`Falls ${matchScene.matchStats.fallsIn[player.id]}`, STATS_LABEL_COLOR],
-  ];
-  rows.forEach(([text, color], index) => {
-    drawText(context, text, textX, firstRowY + index * STATS_ROW_HEIGHT, { scale: 1, color, outlineColor: null });
+function drawStats(context, column, player, rank, matchScene, awardReveal) {
+  const centerX = column.x + column.width / 2;
+  drawText(context, player.character.displayName, centerX, column.y, {
+    scale: 2,
+    align: 'center',
+    color: player.color,
+    outlineColor: OUTLINE_COLOR,
+  });
+  const rows = [`Rounds won ${matchScene.wins[player.id]}`, `Falls ${matchScene.matchStats.fallsIn[player.id]}`];
+  if (rank) rows.unshift(`${ORDINALS[rank - 1]} place`);
+  const firstRowY = column.y + STATS_NAME_HEIGHT;
+  rows.forEach((text, index) => {
+    drawText(context, text, centerX, firstRowY + index * STATS_ROW_HEIGHT, {
+      scale: 1,
+      align: 'center',
+      color: STATS_LABEL_COLOR,
+      outlineColor: OUTLINE_COLOR,
+    });
   });
 
   const ticksSinceShown = awardReveal?.ticksSinceShown(player.id) ?? -1;
   if (ticksSinceShown < 0) return;
   // A new award hops up and settles down, and flashes white while it does.
   const hop = Math.max(0, Math.floor((AWARD_POP_TICKS - ticksSinceShown) / 2));
-  drawText(context, awardReveal.awardFor(player.id).label, textX, firstRowY + rows.length * STATS_ROW_HEIGHT - hop, {
+  drawText(context, awardReveal.awardFor(player.id).label, centerX, firstRowY + rows.length * STATS_ROW_HEIGHT - hop, {
     scale: 1,
+    align: 'center',
     color: ticksSinceShown < AWARD_FLASH_TICKS ? AWARD_FLASH_COLOR : AWARD_COLOR,
-    outlineColor: null,
+    outlineColor: OUTLINE_COLOR,
   });
 }
 
@@ -208,7 +195,7 @@ export function drawResultsMenu(context, { matchScene, options, selectedIndex, m
   drawMenuBackdrop(context);
   drawWithMenuMotion(context, motion, () => {
     drawBanner(context, layout.banner, winner.color);
-    drawStage(context, layout);
+    drawFloor(context, layout);
     drawPedestal(context, layout.pedestal, matchScene.level.tileSprites);
     losers.forEach(({ player }, index) => drawCharacter(context, { player, box: layout.losers[index], matchScene }));
     const winnerPose = matchScene.characterAnimations?.poseFor(winner);
@@ -216,11 +203,11 @@ export function drawResultsMenu(context, { matchScene, options, selectedIndex, m
     // Two players keep their own side. More are shown in rank order with their place named.
     if (playerCount === 2) {
       matchScene.players.forEach((player, index) =>
-        drawStatsPanel(context, layout.statsPanels[index], player, null, matchScene, awardReveal),
+        drawStats(context, layout.statsPanels[index], player, null, matchScene, awardReveal),
       );
     } else {
       ranked.forEach(({ player, rank }, index) =>
-        drawStatsPanel(context, layout.statsPanels[index], player, rank, matchScene, awardReveal),
+        drawStats(context, layout.statsPanels[index], player, rank, matchScene, awardReveal),
       );
     }
     drawMenuList(context, { options, selectedIndex, topY: layout.menuTopY, motion });
