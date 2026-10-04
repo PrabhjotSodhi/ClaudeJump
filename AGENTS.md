@@ -96,7 +96,7 @@ Before calling work done, check which of these your change touches and confirm e
 - One concern per PR. If the description says "also", split it.
 - Title in conventional commit form, plain language: `feat(cards): rocket card knocks players back`.
 - Body: the problem in a sentence or two, then how you solved it, then `Closes #<issue>`. End with the model and harness that did the work, for example `Built by sonnet-5 via Claude Code`.
-- Visual changes need a screenshot. Motion or timing needs a short video. Upload them to the PR, never commit them.
+- Visual changes need a screenshot. Motion or timing needs a short video. Upload them to the PR, never commit them. The one exception is the README's own media, kept small in `docs/media/`.
 - The maintainer reviews and merges every PR. Never merge your own.
 
 ## Plans and notes
