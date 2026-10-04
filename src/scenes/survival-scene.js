@@ -117,7 +117,6 @@ export class SurvivalScene {
     this.particles = new Particles();
     this.particles.attach(this.events, {
       getPlayers: () => this.players,
-      getTickCount: () => this.runTicks,
     });
     this.splashes = new Splashes();
     this.splashes.attach(this.events, { getPlayers: () => this.players, getWaterLineY: () => this.waterLineY });
@@ -485,7 +484,7 @@ export class SurvivalScene {
       }
     }
     this.entityGroups.get('crabs').forEach((crab) => crab.render(context));
-    this.characterAnimations.render(context);
+    drawParticles(context, this, 'behind');
     const appearance = {
       sprites: this.sprites,
       playerEyes: this.playerEyes,
@@ -494,7 +493,7 @@ export class SurvivalScene {
     this.entityGroups.get('players').forEach((player) => player.render(context, appearance));
     this.entityGroups.get('rockets').forEach((rocket) => rocket.render(context));
     drawSplashes(context, this);
-    drawParticles(context, this);
+    drawParticles(context, this, 'front');
     context.restore();
     drawSurvivalHud(renderer.uiContext, this);
   }

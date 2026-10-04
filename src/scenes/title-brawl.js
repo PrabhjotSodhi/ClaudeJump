@@ -92,7 +92,6 @@ export class TitleBrawl {
     this.particles.attach(this.events, {
       getPlayers: () => this.players,
       getWaterLineY: () => RESPAWN_FEET_Y,
-      getTickCount: () => this.tickCount,
     });
   }
 
@@ -260,10 +259,10 @@ export class TitleBrawl {
         context.drawImage(sprites.stoneBlocks[spriteName], ledge.leftX + index * BLOCK_STRIDE, ledge.topY);
       }
     }
-    this.characterAnimations.render(context);
+    drawParticles(context, this, 'behind');
     const appearance = { sprites, playerEyes: this.playerEyes, characterAnimations: this.characterAnimations };
     for (const player of this.players) player.render(context, appearance);
     for (const player of this.players) player.renderLandedShovel(context, sprites);
-    drawParticles(context, this);
+    drawParticles(context, this, 'front');
   }
 }

@@ -1,8 +1,10 @@
 import { SPLASH_DROPLET_GRAVITY, SPLASH_MEDIUM_FALL_SPEED, SPLASH_TIERS } from '../engine/config.js';
+import { createParticle, stepParticle, toPixel } from './particle-rules.js';
 
 // Water thrown up where something hits the sea. Display only: it listens to the fall events, steps once per tick
-// and is never read by game logic. Each droplet flies on its own arc and is gone once it falls back into the sea.
-// Nothing here is random: droplets spread at evenly spaced angles and their speeds follow a fixed pattern.
+// and is never read by game logic. Each droplet is a particle on the shared rules that flies on its own arc and is
+// gone once it falls back into the sea. Nothing here is random: droplets spread at evenly spaced angles and their
+// speeds follow a fixed pattern.
 const PLAYER_HALF_WIDTH = 12;
 // Droplets leave from across this many pixels of the surface, fanned within this many radians of straight up.
 const LAUNCH_WIDTH = 14;
@@ -47,23 +49,23 @@ export class Splashes {
       const angle = -Math.PI / 2 + spread * 2 * ANGLE_SPREAD;
       const centerShare = 1 - (1 - EDGE_SPEED_SHARE) * Math.abs(spread) * 2;
       const speed = dropletSpeed * SPEED_PATTERN[index % SPEED_PATTERN.length] * centerShare;
-      this.list.push({
+      const size = index % 3 === 0 ? 3 : 2;
+      const droplet = createParticle({
         x: x + spread * LAUNCH_WIDTH,
         y: waterLineY - 1,
         velocityX: Math.cos(angle) * speed,
         velocityY: Math.sin(angle) * speed,
-        waterLineY,
-        size: index % 3 === 0 ? 3 : 2,
+        gravity: SPLASH_DROPLET_GRAVITY,
+        lifeTicks: Infinity,
+        sizes: [size],
+        colors: [WATER_COLOR],
       });
+      this.list.push({ ...droplet, waterLineY, size });
     }
   }
 
   update() {
-    for (const droplet of this.list) {
-      droplet.x += droplet.velocityX;
-      droplet.y += droplet.velocityY;
-      droplet.velocityY += SPLASH_DROPLET_GRAVITY;
-    }
+    for (const droplet of this.list) stepParticle(droplet);
     this.list = this.list.filter((droplet) => droplet.velocityY < 0 || droplet.y < droplet.waterLineY);
   }
 }
@@ -72,8 +74,8 @@ export class Splashes {
 // when it moves fast.
 export function drawSplashes(context, scene) {
   for (const droplet of scene.splashes.list) {
-    const x = Math.round(droplet.x);
-    const y = Math.round(droplet.y);
+    const x = toPixel(droplet.x);
+    const y = toPixel(droplet.y);
     const length = droplet.size + (Math.abs(droplet.velocityY) > STRETCH_SPEED ? 1 : 0);
     context.fillStyle = WATER_COLOR;
     context.fillRect(x, y, droplet.size, length);

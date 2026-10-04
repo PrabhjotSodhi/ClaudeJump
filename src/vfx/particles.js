@@ -1,8 +1,8 @@
-// Dust, sparks and launch trails. Display only: it listens to events, moves particles once per tick
-// and is never read by game logic. Nothing here is random. Bursts spread particles at evenly
-// spaced angles, and the small offsets come from the tick count, so the same events always
-// throw the same particles. Hit sparks fly in a cone along the direction the hit went, and a
-// player launched by a medium or heavy hit leaves a trail until their knockback slows down.
+// Dust, sparks and launch trails. Display only: it listens to events and watches the players once per tick, and is
+// never read by game logic. Every particle follows the rules in particle-rules.js, with its small variations from
+// this effect's own seeded random, so the same events always throw the same particles. Dust kicks up behind running
+// feet and on turns, jumps and landings. Hit sparks fly in a cone along the direction the hit went, in front of the
+// characters, and a player launched by a medium or heavy hit leaves a trail until their knockback slows down.
 import {
   CHARGED_SHOVE_EXTRA_SPARK_SPEED,
   CHARGED_SHOVE_EXTRA_SPARKS,
@@ -10,27 +10,47 @@ import {
   LAUNCH_TRAIL_MIN_SPEED,
   LAUNCH_TRAIL_STRENGTHS,
 } from '../engine/config.js';
+import { SeededRandom } from '../engine/seeded-random.js';
+import { createParticle, drawParticle, RAMPS, sparkRamp, stepParticle, trailRamp, varied } from './particle-rules.js';
 
-const DUST_COLOR = '#c8ccd4';
-const FIRE_COLOR = '#f77622';
-const BLAST_COLOR = '#ffd23c';
 const CRAB_COLOR = '#e43b44';
-const ICE_COLOR = '#2ce8f5';
 const SPRING_COLOR = '#feae34';
-const ICE_GLINT_COLOR = '#ffffff';
+const SPARKLE_COLOR = '#fee761';
 const PLAYER_HALF_WIDTH = 12;
 const PLAYER_HALF_HEIGHT = 14;
+const RANDOM_SEED = 11;
+// How much each particle's speed and life vary, as a share, and its angle, in radians.
+const SPEED_VARIATION = 0.25;
+const LIFE_VARIATION = 0.2;
+const ANGLE_VARIATION = 0.26;
 
-const JUMP_DUST = { count: 6, speed: 1.2, ticks: 16, size: 2, gravity: 0.05, arcStart: Math.PI, arcSize: Math.PI };
-const LANDING_DUST = { count: 10, speed: 1.8, ticks: 20, size: 3, gravity: 0.05, arcStart: Math.PI, arcSize: Math.PI };
-const HIT_SPARKS = { count: 8, speed: 3, ticks: 14, size: 2, gravity: 0.12, arcStart: 0, arcSize: 2 * Math.PI };
-const SPARKLE_COLOR = '#fee761';
-const FULL_CHARGE_SPARKLE = { count: 6, speed: 1.5, ticks: 12, size: 2, gravity: 0, arcStart: 0, arcSize: 2 * Math.PI };
+// A burst throws `count` sparks at evenly spaced angles across the arc, each nudged by the variations above.
+const SPARK = { drag: 0.86, gravity: 0.05 };
+const HIT_SPARKS = { count: 8, speed: 3, ticks: 10, sizes: [2, 2, 1], arcStart: 0, arcSize: 2 * Math.PI };
+const FULL_CHARGE_SPARKLE = { count: 6, speed: 1.5, ticks: 12, sizes: [2, 1], arcStart: 0, arcSize: 2 * Math.PI };
+const BLAST_SPARKS = { count: 16, speed: 4.5, ticks: 18, sizes: [3, 2, 1], arcStart: 0, arcSize: 2 * Math.PI };
+const SPRING_BURST = { count: 6, speed: 1.6, ticks: 14, sizes: [2, 1], arcStart: Math.PI, arcSize: Math.PI };
 const HIT_SPARK_CONE = Math.PI / 2;
-const LAUNCH_TRAIL = { size: 8, ticks: 10 };
-// A player slipping on the ground leaves skid dust at their trailing foot every tick.
-const SKID_DUST = { ticks: 14, rise: -0.3, sizes: [3, 2], colors: ['#c0cbdc', '#8b9bb4'], behindPixels: 8 };
-const BLAST_SPARKS = { count: 20, speed: 4.5, ticks: 22, size: 3, gravity: 0.12, arcStart: 0, arcSize: 2 * Math.PI };
+
+// Dust leaves the feet sideways and drifts up a little as it slows. It starts at the edge of the body, since it draws
+// behind the characters.
+const DUST = { sizes: [3, 2, 1], drag: 0.92, gravity: -0.01 };
+const FOOT_EDGE_PIXELS = 11;
+// The slowest puff of a fan moves at this share of the speed, and rises this many times higher than the fastest.
+const DUST_FAN = { slowest: 0.4, highestRise: 2 };
+const JUMP_DUST = { count: 4, speedX: 0.7, speedY: -0.25, ticks: 17 };
+// Landings throw more dust, faster and bigger, the harder the fall. A fall slower than the minimum throws none.
+const LAND_DUST_MIN_FALL_SPEED = 2;
+const LAND_DUST_FULL_FALL_SPEED = 12;
+// Running kicks a puff back from the feet every few ticks, and turning around kicks a few at once.
+const RUN_DUST_MIN_SPEED = 1.5;
+const RUN_DUST_INTERVAL_TICKS = 8;
+const RUN_DUST = { speedX: 0.35, speedY: -0.2, ticks: 16 };
+// Each turn puff is slower than the one before, so they spread out instead of piling up.
+const TURN_DUST = { count: 3, speedX: 1.2, slowerPerPuff: 0.3, speedY: -0.3, ticks: 16 };
+// A player slipping on the ground leaves skid dust at their trailing foot every other tick.
+const SKID_DUST = { speedX: 0.4, speedY: -0.3, ticks: 14 };
+const LAUNCH_TRAIL = { sizes: [8, 6, 4], ticks: 10 };
 
 export const HARD_LANDING_SPEED = 9;
 
@@ -46,23 +66,39 @@ function hitSparkStyle(strength, directionX, directionY, charge) {
   };
 }
 
+// How a landing at this fall speed throws its dust.
+export function landDustStyle(fallSpeed) {
+  const range = LAND_DUST_FULL_FALL_SPEED - LAND_DUST_MIN_FALL_SPEED;
+  const hardness = Math.min(1, Math.max(0, (fallSpeed - LAND_DUST_MIN_FALL_SPEED) / range));
+  return {
+    count: 4 + 2 * Math.round(3 * hardness),
+    speedX: 0.8 + hardness,
+    speedY: -0.2 - 0.4 * hardness,
+    ticks: 18 + Math.round(8 * hardness),
+    sizes: hardness >= 0.5 ? [4, 3, 2, 1] : DUST.sizes,
+  };
+}
+
 export class Particles {
   constructor() {
     this.list = [];
     this.launchedPlayerIds = new Set();
+    this.random = new SeededRandom(RANDOM_SEED);
+    // What each player's feet did last tick, to spot jumps, landings and turns:
+    // { onGround, feetY, velocityY, runDirection, runTicks }. runDirection is the way they last ran on the ground.
+    this.feetByPlayerId = new Map();
     this.getPlayers = () => [];
   }
 
-  attach(events, { getPlayers, getTickCount }) {
+  attach(events, { getPlayers }) {
     this.getPlayers = getPlayers;
     const findPlayer = (playerId) => getPlayers().find((candidate) => candidate.id === playerId);
     const centerOf = (player) => ({ x: player.x + PLAYER_HALF_WIDTH, y: player.y + PLAYER_HALF_HEIGHT });
-    const burst = (x, y, color, style) => this.burst(x, y, color, style, getTickCount());
     const hitBurst = (x, y, color, { strength = 'light', directionX = 0, directionY = -1, charge = 0 }) =>
-      burst(x, y, color, hitSparkStyle(strength, directionX, directionY, charge));
+      this.burst(x, y, sparkRamp(color), hitSparkStyle(strength, directionX, directionY, charge));
+    const sparksAt = (player, colors, style = HIT_SPARKS) =>
+      this.burst(centerOf(player).x, centerOf(player).y, colors, style);
 
-    events.on('player-jumped', ({ x, y }) => burst(x, y, DUST_COLOR, JUMP_DUST));
-    events.on('player-landed', ({ x, y }) => burst(x, y, DUST_COLOR, LANDING_DUST));
     events.on('dash-hit', ({ playerIds, strength = 'medium' }) => {
       const [playerA, playerB] = playerIds.map(findPlayer);
       if (!playerA || !playerB) return;
@@ -81,7 +117,7 @@ export class Particles {
     });
     events.on('shove-fully-charged', ({ playerId }) => {
       const player = findPlayer(playerId);
-      if (player) burst(centerOf(player).x, centerOf(player).y, SPARKLE_COLOR, FULL_CHARGE_SPARKLE);
+      if (player) sparksAt(player, sparkRamp(SPARKLE_COLOR), FULL_CHARGE_SPARKLE);
     });
     events.on('trap-sprung', (hit) => {
       const owner = findPlayer(hit.ownerId);
@@ -91,65 +127,103 @@ export class Particles {
     });
     events.on('player-burned', ({ playerId }) => {
       const player = findPlayer(playerId);
-      if (player) burst(centerOf(player).x, player.y + player.height, FIRE_COLOR, HIT_SPARKS);
+      if (player) this.burst(centerOf(player).x, player.y + player.height, RAMPS.fire, HIT_SPARKS);
     });
     events.on('card-played', ({ playerId }) => {
       const player = findPlayer(playerId);
-      if (player) burst(centerOf(player).x, centerOf(player).y, player.color, HIT_SPARKS);
+      if (player) sparksAt(player, sparkRamp(player.color));
     });
     events.on('magnet-pulled', ({ playerId, targetIds }) => {
       const puller = findPlayer(playerId);
       if (!puller) return;
       for (const target of targetIds.map(findPlayer)) {
-        if (target) burst(centerOf(target).x, centerOf(target).y, puller.color, HIT_SPARKS);
+        if (target) sparksAt(target, sparkRamp(puller.color));
       }
     });
-    events.on('spring-jumped', ({ x, y }) => burst(x, y, SPRING_COLOR, LANDING_DUST));
+    events.on('spring-jumped', ({ x, y }) => this.burst(x, y, sparkRamp(SPRING_COLOR), SPRING_BURST));
     events.on('player-iced', ({ targetId, x, y }) => {
       const target = findPlayer(targetId);
-      if (target) burst(centerOf(target).x, centerOf(target).y, ICE_COLOR, BLAST_SPARKS);
-      burst(x, y, ICE_GLINT_COLOR, HIT_SPARKS);
+      if (target) sparksAt(target, RAMPS.ice, BLAST_SPARKS);
+      this.burst(x, y, RAMPS.ice, HIT_SPARKS);
     });
-    events.on('ice-shattered', ({ x, y }) => burst(x, y, ICE_COLOR, HIT_SPARKS));
+    events.on('ice-shattered', ({ x, y }) => this.burst(x, y, RAMPS.ice, HIT_SPARKS));
     events.on('bomb-passed', ({ fromId, toId }) => {
       const passer = findPlayer(fromId);
       const receiver = findPlayer(toId);
-      if (passer && receiver) burst(centerOf(receiver).x, centerOf(receiver).y, passer.color, HIT_SPARKS);
+      if (passer && receiver) sparksAt(receiver, sparkRamp(passer.color));
     });
-    events.on('player-respawned', ({ x, y }) => burst(x, y, DUST_COLOR, LANDING_DUST));
-    events.on('crab-stomped', ({ x, y }) => burst(x, y, CRAB_COLOR, HIT_SPARKS));
+    events.on('player-respawned', ({ x, y }) => this.kickDust(x, y, landDustStyle(HARD_LANDING_SPEED)));
+    events.on('crab-stomped', ({ x, y }) => this.burst(x, y, sparkRamp(CRAB_COLOR), HIT_SPARKS));
     events.on('player-pinched', (hit) => {
       const player = findPlayer(hit.playerId);
       if (player) hitBurst(centerOf(player).x, centerOf(player).y, CRAB_COLOR, hit);
       this.markLaunched([hit.playerId], hit.strength);
     });
-    events.on('block-broken', ({ x, y, size }) => burst(x + size / 2, y + size / 2, DUST_COLOR, LANDING_DUST));
+    events.on('block-broken', ({ x, y, size }) =>
+      this.kickDust(x + size / 2, y + size / 2, landDustStyle(HARD_LANDING_SPEED)),
+    );
     events.on('rocket-exploded', ({ x, y, playerIds = [], strength }) => {
-      burst(x, y, BLAST_COLOR, BLAST_SPARKS);
+      this.burst(x, y, RAMPS.fire, BLAST_SPARKS);
       this.markLaunched(playerIds, strength);
     });
     events.on('bomb-exploded', ({ x, y, playerIds = [], strength }) => {
-      burst(x, y, BLAST_COLOR, BLAST_SPARKS);
+      this.burst(x, y, RAMPS.fire, BLAST_SPARKS);
       this.markLaunched(playerIds, strength);
     });
   }
 
-  burst(x, y, color, style, tickCount) {
+  // Sparks in front of the characters, spread across the style's arc.
+  burst(x, y, colors, style) {
     for (let index = 0; index < style.count; index++) {
-      const angle = style.arcStart + ((index + 0.5) / style.count) * style.arcSize;
-      const speed = style.speed * (0.7 + ((tickCount + index * 3) % 4) * 0.1);
-      this.list.push({
-        x,
-        y,
-        velocityX: Math.cos(angle) * speed,
-        velocityY: Math.sin(angle) * speed,
-        gravity: style.gravity,
-        ticksRemaining: style.ticks - ((tickCount + index) % 3),
-        totalTicks: style.ticks,
-        color,
-        size: style.size,
+      const evenAngle = style.arcStart + ((index + 0.5) / style.count) * style.arcSize;
+      const angle = evenAngle + (this.random.next() * 2 - 1) * ANGLE_VARIATION;
+      const speed = varied(this.random, style.speed, SPEED_VARIATION);
+      this.list.push(
+        createParticle({
+          x,
+          y,
+          velocityX: Math.cos(angle) * speed,
+          velocityY: Math.sin(angle) * speed,
+          gravity: SPARK.gravity,
+          drag: SPARK.drag,
+          lifeTicks: Math.round(varied(this.random, style.ticks, LIFE_VARIATION)),
+          sizes: style.sizes,
+          colors,
+          layer: 'front',
+        }),
+      );
+    }
+  }
+
+  // Dust spreading sideways from under a body's middle on the ground, half of it each way. On each side the puffs fan
+  // out from slow ones that rise to fast ones that skim the ground, so they spread instead of piling up.
+  kickDust(x, y, style) {
+    const perSide = Math.ceil(style.count / 2);
+    for (let index = 0; index < style.count; index++) {
+      const share = perSide > 1 ? Math.floor(index / 2) / (perSide - 1) : 1;
+      this.addDust(x, y, index % 2 === 0 ? -1 : 1, {
+        ...style,
+        speedX: style.speedX * (DUST_FAN.slowest + (1 - DUST_FAN.slowest) * share),
+        speedY: style.speedY * (DUST_FAN.highestRise - (DUST_FAN.highestRise - 1) * share),
       });
     }
+  }
+
+  // One puff of dust leaving the feet of a body centered on x, from its edge, the given way along the ground.
+  addDust(x, y, directionX, { speedX, speedY, ticks, sizes = DUST.sizes }) {
+    this.list.push(
+      createParticle({
+        x: x + directionX * FOOT_EDGE_PIXELS,
+        y: y - 1,
+        velocityX: directionX * varied(this.random, speedX, SPEED_VARIATION),
+        velocityY: varied(this.random, speedY, SPEED_VARIATION),
+        gravity: DUST.gravity,
+        drag: DUST.drag,
+        lifeTicks: Math.round(varied(this.random, ticks, LIFE_VARIATION)),
+        sizes,
+        colors: RAMPS.dust,
+      }),
+    );
   }
 
   markLaunched(playerIds, strength) {
@@ -163,62 +237,75 @@ export class Particles {
     for (const playerId of [...this.launchedPlayerIds]) {
       const player = this.getPlayers().find((candidate) => candidate.id === playerId);
       const slowedDown = player && !player.isFrozen && Math.abs(player.knockbackVelocityX) < LAUNCH_TRAIL_MIN_SPEED;
-      if (!player || player.inWater || slowedDown) this.launchedPlayerIds.delete(playerId);
-      else if (!player.isFrozen) this.addTrailSquare(player);
+      if (!player || player.inWater || slowedDown) {
+        this.launchedPlayerIds.delete(playerId);
+        continue;
+      }
+      if (player.isFrozen) continue;
+      this.list.push(
+        createParticle({
+          x: player.x + PLAYER_HALF_WIDTH,
+          y: player.y + PLAYER_HALF_HEIGHT,
+          lifeTicks: LAUNCH_TRAIL.ticks,
+          sizes: LAUNCH_TRAIL.sizes,
+          colors: trailRamp(player.color),
+        }),
+      );
     }
   }
 
-  addSkidDust() {
+  // Jump, landing, run, turn and skid dust, from what each player's feet did since last tick. Jump dust stays on the
+  // ground the player left.
+  addFootDust() {
     for (const player of this.getPlayers()) {
-      if (player.slipTicksRemaining <= 0 || !player.onGround || player.inWater) continue;
-      const alternate = player.slipTicksRemaining % 2;
-      const size = SKID_DUST.sizes[alternate];
-      this.list.push({
-        x: player.x + PLAYER_HALF_WIDTH - player.slipDirection * SKID_DUST.behindPixels - size / 2,
-        y: player.y + player.height - size,
-        velocityX: -player.slipDirection * 0.4,
-        velocityY: SKID_DUST.rise,
-        gravity: 0,
-        ticksRemaining: SKID_DUST.ticks,
-        totalTicks: SKID_DUST.ticks,
-        color: SKID_DUST.colors[alternate],
-        size,
+      const feetX = player.x + PLAYER_HALF_WIDTH;
+      const feetY = player.y + player.height;
+      const last = this.feetByPlayerId.get(player.id) ?? {
+        onGround: true,
+        feetY,
+        velocityY: 0,
+        runDirection: 0,
+        runTicks: 0,
+      };
+      const direction = Math.sign(player.velocityX);
+      const grounded = player.onGround && !player.inWater;
+      const running = grounded && Math.abs(player.velocityX) >= RUN_DUST_MIN_SPEED;
+      const runTicks = running ? last.runTicks + 1 : 0;
+      if (!player.onGround && last.onGround && player.velocityY < 0) {
+        this.kickDust(feetX, last.feetY, JUMP_DUST);
+      } else if (grounded && !last.onGround) {
+        if (last.velocityY >= LAND_DUST_MIN_FALL_SPEED) this.kickDust(feetX, feetY, landDustStyle(last.velocityY));
+      } else if (running && last.runDirection !== 0 && direction !== last.runDirection) {
+        for (let puff = 0; puff < TURN_DUST.count; puff++) {
+          const speedX = TURN_DUST.speedX * (1 - puff * TURN_DUST.slowerPerPuff);
+          this.addDust(feetX, feetY, -direction, { ...TURN_DUST, speedX });
+        }
+      } else if (running && runTicks % RUN_DUST_INTERVAL_TICKS === 1) {
+        this.addDust(feetX, feetY, -direction, RUN_DUST);
+      }
+      if (grounded && player.slipTicksRemaining > 0 && player.slipTicksRemaining % 2 === 0) {
+        this.addDust(feetX, feetY, -player.slipDirection, SKID_DUST);
+      }
+      this.feetByPlayerId.set(player.id, {
+        onGround: player.onGround,
+        feetY,
+        velocityY: player.velocityY,
+        runDirection: grounded ? (running ? direction : last.runDirection) : 0,
+        runTicks,
       });
     }
   }
 
-  addTrailSquare(player) {
-    this.list.push({
-      x: player.x + PLAYER_HALF_WIDTH - LAUNCH_TRAIL.size / 2,
-      y: player.y + PLAYER_HALF_HEIGHT - LAUNCH_TRAIL.size / 2,
-      velocityX: 0,
-      velocityY: 0,
-      gravity: 0,
-      ticksRemaining: LAUNCH_TRAIL.ticks,
-      totalTicks: LAUNCH_TRAIL.ticks,
-      color: player.color,
-      size: LAUNCH_TRAIL.size,
-    });
-  }
-
   update() {
     this.addLaunchTrails();
-    this.addSkidDust();
-    for (const particle of this.list) {
-      particle.x += particle.velocityX;
-      particle.y += particle.velocityY;
-      particle.velocityY += particle.gravity;
-      particle.ticksRemaining--;
-    }
-    this.list = this.list.filter((particle) => particle.ticksRemaining > 0);
+    this.addFootDust();
+    this.list = this.list.filter(stepParticle);
   }
 }
 
-export function drawParticles(context, scene) {
+// layer is 'behind' to draw before the characters and 'front' to draw after them.
+export function drawParticles(context, scene, layer) {
   for (const particle of scene.particles.list) {
-    context.globalAlpha = Math.min(1, (2 * particle.ticksRemaining) / particle.totalTicks);
-    context.fillStyle = particle.color;
-    context.fillRect(Math.round(particle.x), Math.round(particle.y), particle.size, particle.size);
+    if (particle.layer === layer) drawParticle(context, particle);
   }
-  context.globalAlpha = 1;
 }

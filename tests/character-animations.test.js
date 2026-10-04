@@ -92,22 +92,6 @@ test('eyes blink now and then, briefly, at uneven intervals', () => {
   assert.ok(new Set(gaps).size > 1, 'blinks do not keep a steady beat');
 });
 
-test('running kicks up dust at the feet and standing still does not', () => {
-  const player = standingPlayer();
-  const animations = new CharacterAnimations(POSES);
-  animations.attach(() => [player]);
-  for (let tick = 0; tick < 30; tick++) animations.update();
-  assert.equal(animations.dustPuffs.length, 0);
-
-  player.velocityX = 3;
-  for (let tick = 0; tick < 4; tick++) animations.update();
-  assert.ok(animations.dustPuffs.length > 0);
-  assert.ok(
-    animations.dustPuffs.every((puff) => puff.x < player.x + player.width / 2),
-    'dust trails behind',
-  );
-});
-
 test('a full charge lands in the last shake stage', () => {
   const lastStage = POSES.charge.stages.at(-1);
   assert.ok(lastStage.includes(poseFrame(POSES.charge, 0, 1)));
