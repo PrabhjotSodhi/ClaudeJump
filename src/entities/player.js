@@ -9,6 +9,8 @@ import {
   SCREEN_WIDTH,
   SHOVE_CHARGE_WALK_MULTIPLIER,
   SHOVE_CLASH_WINDOW_TICKS,
+  SHOVE_HIT_ZONE_HEIGHT,
+  SHOVE_HIT_ZONE_WIDTH,
   SHOVE_MAX_CHARGE_TICKS,
   SHOVE_MAX_KNOCKBACK_MULTIPLIER,
   SHOVE_WINDUP_TICKS,
@@ -43,8 +45,6 @@ const SPRING_JUMP_VELOCITY_MULTIPLIER = Math.sqrt(SPRING_SHOES_HEIGHT_MULTIPLIER
 const FROZEN_GLOW_COLOR = '#2ce8f5';
 export const SHOVE_ACTIVE_TICKS = 6;
 export const SHOVE_COOLDOWN_TICKS = 30;
-export const SHOVE_HIT_ZONE_WIDTH = 16;
-export const SHOVE_HIT_ZONE_HEIGHT = 20;
 export const SHOVE_KNOCKBACK_VELOCITY_X = 7;
 export const SHOVE_KNOCKBACK_VELOCITY_Y = -4;
 
@@ -458,9 +458,28 @@ export class Player extends PhysicsEntity {
   // and the display only poses. Without characterAnimations the body is drawn in its plain frame.
   render(context, appearance) {
     if (this.blownUp) return;
-    this.renderAt(context, this.x, appearance);
-    if (this.x < 0) this.renderAt(context, this.x + SCREEN_WIDTH, appearance);
-    else if (this.x + this.width > SCREEN_WIDTH) this.renderAt(context, this.x - SCREEN_WIDTH, appearance);
+    for (const x of this.drawnXs) this.renderAt(context, x, appearance);
+  }
+
+  get drawnXs() {
+    if (this.x < 0) return [this.x, this.x + SCREEN_WIDTH];
+    if (this.x + this.width > SCREEN_WIDTH) return [this.x, this.x - SCREEN_WIDTH];
+    return [this.x];
+  }
+
+  // A blade that lands in a target shows on top of it, so the scene calls this after drawing every player.
+  renderLandedShovel(context, sprites) {
+    if (this.blownUp) return;
+    for (const x of this.drawnXs) {
+      drawShovel(
+        context,
+        this,
+        Math.round(x) + this.fullChargeShakePixels,
+        Math.round(this.y),
+        sprites.props,
+        'over-players',
+      );
+    }
   }
 
   // The sprite frame sits bottom centered on the hitbox, one pixel lower so its white outline row overlaps the
@@ -471,7 +490,7 @@ export class Player extends PhysicsEntity {
     const squash = this.inWater ? { width: 0, height: 0 } : this.squash;
     const pose = this.inWater || !characterAnimations ? {} : characterAnimations.poseFor(this);
     const sprite = sprites[this.character.spriteName].body;
-    drawShovel(context, this, drawX, drawY, sprites.props, true);
+    drawShovel(context, this, drawX, drawY, sprites.props, 'behind');
     drawCharacterBody(context, {
       sprite,
       outlineSprite: this.outlineColor ? silhouetteOf(sprite, this.outlineColor) : null,
@@ -484,7 +503,7 @@ export class Player extends PhysicsEntity {
       width: FRAME_SIZE + squash.width + (pose.width ?? 0) + this.slipSpinWidthPixels,
       height: FRAME_SIZE + squash.height + (pose.height ?? 0),
     });
-    drawShovel(context, this, drawX, drawY, sprites.props, false);
+    drawShovel(context, this, drawX, drawY, sprites.props, 'front');
     drawSpringShoes(context, this, drawX, drawY);
   }
 }

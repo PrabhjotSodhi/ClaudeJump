@@ -263,6 +263,7 @@ export class TitleBrawl {
     this.characterAnimations.render(context);
     const appearance = { sprites, playerEyes: this.playerEyes, characterAnimations: this.characterAnimations };
     for (const player of this.players) player.render(context, appearance);
+    for (const player of this.players) player.renderLandedShovel(context, sprites);
     drawParticles(context, this);
   }
 }

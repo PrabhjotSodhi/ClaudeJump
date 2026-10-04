@@ -45,6 +45,9 @@ export const SHOVE_WINDUP_TICKS = 2;
 export const SHOVE_MAX_CHARGE_TICKS = 30;
 export const SHOVE_MAX_KNOCKBACK_MULTIPLIER = 1.6;
 export const SHOVE_CHARGE_WALK_MULTIPLIER = 0.25;
+// The hit zone sits in front of the shover, centered on their middle.
+export const SHOVE_HIT_ZONE_WIDTH = 16;
+export const SHOVE_HIT_ZONE_HEIGHT = 20;
 // While a shove charges, the scene reports its progress this often, so the charge sound can rise with it.
 export const SHOVE_CHARGE_REPORT_INTERVAL_TICKS = 4;
 
