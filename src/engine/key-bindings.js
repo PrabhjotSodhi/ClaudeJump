@@ -3,8 +3,8 @@
 // Only these controls can be remapped. Jump also drives menu up and action also drives menu down.
 export const REMAPPABLE_CONTROLS = ['left', 'right', 'jump', 'action'];
 const PAUSE_CODE = 'Escape';
-// Menus confirm with these for every player.
-const RESERVED_CODES = ['Enter', 'Space'];
+// Menus confirm and go back with these.
+const RESERVED_CODES = ['Enter', 'Space', 'Backspace'];
 const STORAGE_KEY = 'claudejump-key-bindings';
 
 export const keyBindings = { mappings: [], defaults: [] };

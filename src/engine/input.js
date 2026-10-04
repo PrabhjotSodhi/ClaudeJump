@@ -1,8 +1,10 @@
 import { keyCapture } from './key-bindings.js';
 
 // Keyboard state only. Game logic reads the sampled records, never the keyboard.
-// These keys press `confirm` for every player, so menus confirm with a key no match control uses.
+// Menus confirm and go back with keys no match control uses. They belong to the first player, so on screens where
+// each player has a seat they move only that seat.
 const CONFIRM_KEY_CODES = ['Enter', 'Space'];
+const BACK_KEY_CODES = ['Escape', 'Backspace'];
 
 export function createKeyboardInput(playerKeyMappings) {
   const heldCodes = new Set();
@@ -13,6 +15,7 @@ export function createKeyboardInput(playerKeyMappings) {
   function isTracked(code) {
     return (
       CONFIRM_KEY_CODES.includes(code) ||
+      BACK_KEY_CODES.includes(code) ||
       playerKeyMappings.some((mapping) => Object.values(mapping.keys).includes(code))
     );
   }
@@ -49,7 +52,8 @@ export function createKeyboardInput(playerKeyMappings) {
   return {
     sample() {
       const inputByPlayerId = {};
-      for (const mapping of playerKeyMappings) {
+      playerKeyMappings.forEach((mapping, index) => {
+        const isFirstPlayer = index === 0;
         inputByPlayerId[mapping.id] = {
           left: isDown(mapping.keys.left),
           right: isDown(mapping.keys.right),
@@ -57,17 +61,18 @@ export function createKeyboardInput(playerKeyMappings) {
           up: isDown(mapping.keys.up),
           down: isDown(mapping.keys.down),
           action: isDown(mapping.keys.action),
-          confirm: CONFIRM_KEY_CODES.some(isDown),
+          confirm: isFirstPlayer && CONFIRM_KEY_CODES.some(isDown),
+          back: isFirstPlayer && BACK_KEY_CODES.some(isDown),
           pause: isDown(mapping.keys.pause),
         };
-      }
+      });
       tappedCodes.clear();
       return inputByPlayerId;
     },
   };
 }
 
-const CONTROLS = ['left', 'right', 'jump', 'up', 'down', 'action', 'confirm', 'pause'];
+const CONTROLS = ['left', 'right', 'jump', 'up', 'down', 'action', 'confirm', 'back', 'pause'];
 
 // A control counts as pressed if any source pressed it.
 // A player that only some sources know, such as a gamepad-only seat, is still combined.

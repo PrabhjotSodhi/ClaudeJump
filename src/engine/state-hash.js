@@ -37,7 +37,7 @@ const SURVIVAL_FIELDS = [
   'newBestTick',
   'startPlayerY',
   'lowestPlayerY',
-  'jumpHeld',
+  'menuInput',
   'rocketWarnings',
 ];
 

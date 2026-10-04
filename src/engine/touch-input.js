@@ -120,9 +120,10 @@ export function mapTouchesToInput(points, buttons = TOUCH_BUTTONS) {
     right: pressed.includes('right'),
     jump: pressed.includes('jump'),
     up: false,
-    down: pressed.includes('action'),
+    down: false,
     action: pressed.includes('action'),
     confirm: pressed.includes('jump'),
+    back: pressed.includes('action'),
     pause: pressed.includes('pause'),
   };
 }

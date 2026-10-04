@@ -11,9 +11,10 @@ function input({
   down = false,
   action = false,
   confirm = false,
+  back = false,
   pause = false,
 } = {}) {
-  return { left, right, jump, up, down, action, confirm, pause };
+  return { left, right, jump, up, down, action, confirm, back, pause };
 }
 
 test('combineInputs presses a control when either source presses it', () => {
@@ -110,21 +111,26 @@ test('W and up arrow produce up and jump', () => {
   assert.equal(pressed.blue.jump, true);
 });
 
-test('Enter and Space press confirm for every player, and jump keys do not', () => {
+test('Enter and Space confirm and Escape and Backspace go back for the first player only', () => {
   const { keyboard, press, release } = keyboardWith(KEY_MAPPINGS);
+  const sampleWith = (code) => {
+    press(code);
+    const inputs = keyboard.sample();
+    release(code);
+    return inputs;
+  };
 
-  press('KeyW');
-  const jumpOnly = keyboard.sample();
-  press('Enter');
-  const enter = keyboard.sample();
-  release('Enter');
-  press('Space');
-  const space = keyboard.sample();
-
+  const jumpOnly = sampleWith('KeyW');
   assert.equal(jumpOnly.red.confirm, false);
-  for (const inputs of [enter, space]) {
-    assert.equal(inputs.red.confirm, true);
-    assert.equal(inputs.blue.confirm, true);
+  for (const code of ['Enter', 'Space']) {
+    const inputs = sampleWith(code);
+    assert.equal(inputs.red.confirm, true, code);
+    assert.equal(inputs.blue.confirm, false, code);
+  }
+  for (const code of ['Escape', 'Backspace']) {
+    const inputs = sampleWith(code);
+    assert.equal(inputs.red.back, true, code);
+    assert.equal(inputs.blue.back, false, code);
   }
 });
 

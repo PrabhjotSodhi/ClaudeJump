@@ -32,7 +32,7 @@ export const RESULTS_MENU_OPTIONS = [
 // Controls masked out of the match's input for a player until they release it, so confirming
 // Resume (or toggling pause) with one of these still held does not act on the match the instant
 // it resumes: a held jump would launch the player, a held action button would fire a shove, and so on.
-const CONTROLS_MASKED_ON_RESUME = ['up', 'down', 'jump', 'action', 'confirm'];
+const CONTROLS_MASKED_ON_RESUME = ['up', 'down', 'jump', 'action', 'confirm', 'back'];
 
 // Wraps a match scene so pausing never calls its update(), which keeps the match's own game
 // logic unaware that wall-clock time passed. The wrapper reads input to navigate the pause menu,

@@ -22,6 +22,7 @@ test('neutral gamepad state maps to no input pressed', () => {
     down: false,
     action: false,
     confirm: false,
+    back: false,
     pause: false,
   });
 });
@@ -37,6 +38,7 @@ test('a missing gamepad maps to no input pressed', () => {
     down: false,
     action: false,
     confirm: false,
+    back: false,
     pause: false,
   });
 });

@@ -33,8 +33,8 @@ test('two fingers run and jump at once', () => {
   assert.deepEqual(pressedControls(input), ['confirm', 'jump', 'left']);
 });
 
-test('action presses down so it moves menu selections', () => {
-  assert.deepEqual(pressedControls(mapTouchesToInput([centerOf('action')])), ['action', 'down']);
+test('action shoves and goes back in menus', () => {
+  assert.deepEqual(pressedControls(mapTouchesToInput([centerOf('action')])), ['action', 'back']);
 });
 
 test('the pause button presses pause', () => {
@@ -76,7 +76,7 @@ test('touches on each side map only to that player when both press at once', () 
   ]);
 
   assert.deepEqual(pressedControls(inputByPlayerId.red), ['confirm', 'jump', 'right']);
-  assert.deepEqual(pressedControls(inputByPlayerId.blue), ['action', 'down', 'left']);
+  assert.deepEqual(pressedControls(inputByPlayerId.blue), ['action', 'back', 'left']);
 });
 
 test('a lone touch on one side leaves the other player untouched', () => {

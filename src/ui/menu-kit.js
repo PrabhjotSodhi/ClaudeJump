@@ -1,6 +1,7 @@
 import { SCREEN_WIDTH } from '../engine/config.js';
 import { getInputDevice, getPadType } from '../engine/input-device.js';
 import { boundCode, keyName } from '../engine/key-bindings.js';
+import { PLAYERS } from '../levels/versus-arena.js';
 import { drawGlyph, GLYPH_SIZE, padGlyphName } from './hint-glyphs.js';
 import { drawText, measureText } from './text.js';
 
@@ -34,22 +35,50 @@ const KEYCAP_HIGHLIGHT_COLOR = '#5a6988';
 const KEY_GAP = 2;
 const KEY_LABEL_GAP = 4;
 const HINT_GAP = 12;
-const HINT_ROW_HEIGHT = 14;
+export const HINT_ROW_HEIGHT = 14;
 
 export const TITLE_HEIGHT = GLYPH_HEIGHT * TITLE_SCALE;
 
-// The hints every menu shows, built from the same three: move, select and back.
-export const MOVE_HINT = {
-  keys: [
-    { player: 'red', control: 'left' },
-    { player: 'red', control: 'right' },
-  ],
-  pad: ['stick'],
-  label: 'Move',
-};
-export const SELECT_HINT = { keys: [{ player: 'red', control: 'jump' }, 'Enter'], pad: ['south'], label: 'Select' };
-export const BACK_HINT = { keys: [{ player: 'red', control: 'action' }, 'Esc'], pad: ['east'], label: 'Back' };
+// The hints every shared menu shows, built from the same three: move, select and back.
+export const MOVE_HINT = { keys: ['Arrows'], pad: ['stick'], label: 'Move' };
+export const SELECT_HINT = { keys: ['Enter'], pad: ['south'], label: 'Select' };
+export const BACK_HINT = { keys: ['Esc'], pad: ['east'], label: 'Back' };
 export const MENU_HINTS = [MOVE_HINT, SELECT_HINT, BACK_HINT];
+
+// The hint rows of a screen where each player has a seat: one row per keyboard player with their own keys, and one
+// for pads. confirmLabel names what jump does there, such as 'Vote'.
+export function seatHintRows(confirmLabel) {
+  const keyboardRow = (playerId) => ({
+    label: `${playerId[0].toUpperCase()}${playerId.slice(1)}`,
+    device: 'keyboard',
+    color: PLAYERS.find((spawn) => spawn.id === playerId).color,
+    hints: [
+      {
+        keys: [
+          { player: playerId, control: 'left' },
+          { player: playerId, control: 'right' },
+        ],
+        label: 'Pick',
+      },
+      { keys: [{ player: playerId, control: 'jump' }], label: confirmLabel },
+      { keys: [{ player: playerId, control: 'action' }], label: 'Back' },
+    ],
+  });
+  return [
+    keyboardRow('red'),
+    keyboardRow('blue'),
+    {
+      label: 'Pads',
+      device: 'pad',
+      color: UNSELECTED_COLOR,
+      hints: [
+        { keys: [], pad: ['stick'], label: 'Pick' },
+        { keys: [], pad: ['south'], label: confirmLabel },
+        { keys: [], pad: ['east'], label: 'Back' },
+      ],
+    },
+  ];
+}
 export const KEYCAP_HEIGHT = GLYPH_HEIGHT + 2 * KEYCAP_PADDING_Y + 2;
 
 // The panel fits its widest row plus padding on both sides. Its width is kept even so the text
@@ -263,7 +292,7 @@ export function drawKeyHints(context, hints, y) {
     drawText(context, label, x, y + 1 + KEYCAP_PADDING_Y, {
       scale: BODY_SCALE,
       color: UNSELECTED_COLOR,
-      outlineColor: null,
+      outlineColor: OPTION_OUTLINE_COLOR,
     });
     x += measureText(label) * BODY_SCALE + HINT_GAP;
   }
@@ -277,7 +306,11 @@ export function drawKeyHintRows(context, rows, { topY, width }) {
   const left = (SCREEN_WIDTH - width) / 2;
   shownRows.forEach(({ label, color, hints }, index) => {
     const y = topY + index * HINT_ROW_HEIGHT;
-    drawText(context, label, left, y + 1 + KEYCAP_PADDING_Y, { scale: BODY_SCALE, color, outlineColor: null });
+    drawText(context, label, left, y + 1 + KEYCAP_PADDING_Y, {
+      scale: BODY_SCALE,
+      color,
+      outlineColor: OPTION_OUTLINE_COLOR,
+    });
     drawKeyHints(context, hints, y);
   });
 }

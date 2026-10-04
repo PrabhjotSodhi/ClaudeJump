@@ -13,7 +13,6 @@ import {
 } from '../ui/menu-kit.js';
 import { MenuInput } from '../ui/menu-input.js';
 import { MENU_BACKGROUND_COLOR, NO_WATER_LINE_Y } from '../ui/menu-screen.js';
-import { drawPanel } from '../ui/panel.js';
 import { drawText } from '../ui/text.js';
 import {
   BACK_ITEM,
@@ -127,19 +126,20 @@ export class OnlineJoinScene {
   }
 }
 
+// Each slot is a typed letter, or a bar under where the next letter goes.
 function drawSlot(context, slot, letter, isNext) {
-  drawPanel(context, slot.x, slot.y, slot.width, slot.height);
   if (letter) {
     const letterTopY = slot.y + Math.floor((slot.height - GLYPH_HEIGHT * LETTER_SCALE) / 2);
     drawText(context, letter, slot.x + slot.width / 2, letterTopY, {
       scale: LETTER_SCALE,
       align: 'center',
       color: SELECTED_COLOR,
+      outlineColor: OUTLINE_COLOR,
     });
     return;
   }
   context.fillStyle = isNext ? SELECTED_COLOR : EMPTY_BAR_COLOR;
-  context.fillRect(slot.x + (slot.width - CURSOR_BAR_WIDTH) / 2, slot.y + slot.height - 12, CURSOR_BAR_WIDTH, 2);
+  context.fillRect(slot.x + (slot.width - CURSOR_BAR_WIDTH) / 2, slot.y + slot.height - 10, CURSOR_BAR_WIDTH, 3);
 }
 
 // Each grid item is outlined text straight on the scene. The selected one is bigger and in the selected color. The

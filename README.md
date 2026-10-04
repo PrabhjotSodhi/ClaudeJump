@@ -15,7 +15,9 @@ Designed and directed by [Prabhjot Sodhi](https://github.com/PrabhjotSodhi). Bui
 
 Gamepad: stick or d-pad moves, A jumps, B or the right trigger is the action, Start pauses.
 
-Menus: W S or ↑ ↓ (or stick or d-pad) move the selection, Enter, Space or A selects.
+Menus: arrow keys or WASD (or stick or d-pad) move, Enter, Space or A selects, Escape, Backspace or B goes back.
+
+Player select and level select: each player uses their own keys. A D or ← → pick, W or ↑ joins, readies or votes, S or ↓ steps back. Enter and Escape also work for Red.
 
 ## Run locally
 

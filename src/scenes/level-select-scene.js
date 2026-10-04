@@ -5,20 +5,18 @@ import { SeededRandom } from '../engine/seeded-random.js';
 import { THUMBNAIL_HEIGHT, THUMBNAIL_WIDTH } from '../levels/level-thumbnail.js';
 import { PLAYERS } from '../levels/versus-arena.js';
 import {
-  BACK_HINT,
-  drawKeyHints,
+  drawKeyHintRows,
   drawMenuTitle,
   drawWithMenuMotion,
+  HINT_ROW_HEIGHT,
   KEYCAP_HEIGHT,
   MenuMotion,
-  MOVE_HINT,
-  SELECT_HINT,
+  seatHintRows,
   TITLE_HEIGHT,
   wrapMenuIndex,
 } from '../ui/menu-kit.js';
 import { MenuInput } from '../ui/menu-input.js';
 import { MENU_BACKGROUND_COLOR, NO_WATER_LINE_Y } from '../ui/menu-screen.js';
-import { drawPanel } from '../ui/panel.js';
 import { TAG_LABEL_BY_PLAYER_ID } from '../ui/player-tags.js';
 import { drawText, measureText } from '../ui/text.js';
 import { drawCharacterBody, FRAME_SIZE } from '../vfx/character-body.js';
@@ -29,13 +27,18 @@ import { VersusScene } from './versus-scene.js';
 
 const MAX_CARDS_PER_ROW = 4;
 // Vertical gaps between the title, the grid, the vote prompts and the key hints, which are centered as one block.
-const TITLE_GAP = 16;
-const PROMPT_GAP = 12;
+const TITLE_GAP = 10;
+const PROMPT_GAP = 8;
 const HINT_GAP = 8;
+// Room for the two keyboard players' rows of hints.
+const HINTS_HEIGHT = HINT_ROW_HEIGHT + KEYCAP_HEIGHT;
+const HINTS_WIDTH = 360;
 const TILE_GAP_X = 16;
 const TILE_GAP_Y = 8;
-// The panel border drawn around every thumbnail. The selected tile's border turns into the selection frame.
+// The dark border drawn around every thumbnail. The selected tile's border turns into the selection frame.
 const TILE_BORDER = 2;
+const TILE_BORDER_COLOR = '#3e2731';
+const OUTLINE_COLOR = '#3e2731';
 const SELECTED_LIFT = 2;
 const CAPTION_HEIGHT = 10;
 const TEXT_GLYPH_HEIGHT = 5;
@@ -51,7 +54,7 @@ const RANDOM_MARK_COLOR = '#5a6988';
 
 // Where each voter's prompt sits, as offsets from the screen's center, by how many players voted.
 const STATUS_OFFSETS_X = { 2: [-148, 148], 3: [-200, 0, 200], 4: [-240, -80, 80, 240] };
-const HINTS = [MOVE_HINT, { ...SELECT_HINT, label: 'Vote' }, BACK_HINT];
+const HINT_ROWS = seatHintRows('Vote');
 const SELECTED_COLOR = '#feae34';
 
 // How long the picked tile flashes before the match starts, and how fast it flashes.
@@ -221,7 +224,7 @@ export function levelSelectLayout(cardCount) {
   const tileHeight = THUMBNAIL_HEIGHT + TILE_BORDER * 2 + CAPTION_HEIGHT;
   const gridHeight = rows * tileHeight + (rows - 1) * TILE_GAP_Y;
   const blockHeight =
-    TITLE_HEIGHT + TITLE_GAP + SELECTED_LIFT + gridHeight + PROMPT_GAP + TEXT_GLYPH_HEIGHT + HINT_GAP + KEYCAP_HEIGHT;
+    TITLE_HEIGHT + TITLE_GAP + SELECTED_LIFT + gridHeight + PROMPT_GAP + TEXT_GLYPH_HEIGHT + HINT_GAP + HINTS_HEIGHT;
   const titleY = Math.floor((SCREEN_HEIGHT - blockHeight) / 2);
   const gridTopY = titleY + TITLE_HEIGHT + TITLE_GAP + SELECTED_LIFT;
   const promptY = gridTopY + gridHeight + PROMPT_GAP;
@@ -240,8 +243,8 @@ export function levelSelectLayout(cardCount) {
   return { rows, columns, tiles, bounds, titleY, promptY, hintY };
 }
 
-function drawFrame(context, x, y) {
-  context.fillStyle = SELECTED_COLOR;
+function drawFrame(context, x, y, color) {
+  context.fillStyle = color;
   const width = THUMBNAIL_WIDTH + TILE_BORDER * 2;
   const height = THUMBNAIL_HEIGHT + TILE_BORDER * 2;
   context.fillRect(x, y, width, TILE_BORDER);
@@ -253,8 +256,7 @@ function drawFrame(context, x, y) {
 function drawTile(context, x, y, level, { selected, dimmed }) {
   const panelX = x - TILE_BORDER;
   const panelY = y - TILE_BORDER;
-  drawPanel(context, panelX, panelY, THUMBNAIL_WIDTH + TILE_BORDER * 2, THUMBNAIL_HEIGHT + TILE_BORDER * 2);
-  if (selected) drawFrame(context, panelX, panelY);
+  drawFrame(context, panelX, panelY, selected ? SELECTED_COLOR : TILE_BORDER_COLOR);
   if (level) {
     context.imageSmoothingEnabled = false;
     context.drawImage(level.thumbnail, x, y);
@@ -280,7 +282,7 @@ function drawCaption(context, x, restingY, level, selected) {
   drawText(context, caption, x + Math.floor((THUMBNAIL_WIDTH - measureText(caption)) / 2), captionY, {
     scale: 1,
     color: selected ? SELECTED_COLOR : CAPTION_COLOR,
-    outlineColor: null,
+    outlineColor: OUTLINE_COLOR,
   });
 }
 
@@ -328,9 +330,9 @@ function drawLevelSelectUi(context, scene) {
     const prompt = `${TAG_LABEL_BY_PLAYER_ID[spawn.id]} ${locked ? 'Locked in!' : 'Press jump to vote'}`;
     drawText(context, prompt, centerX - Math.floor(measureText(prompt) / 2), promptY, {
       scale: 1,
-      outlineColor: null,
+      outlineColor: OUTLINE_COLOR,
       color: scene.characterByPlayerId[spawn.id].tagColor,
     });
   });
-  drawKeyHints(context, HINTS, hintY);
+  drawKeyHintRows(context, HINT_ROWS, { topY: hintY, width: HINTS_WIDTH });
 }

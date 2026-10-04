@@ -29,6 +29,7 @@ const MESSAGE_GAP = 6;
 const MESSAGE_HEIGHT = 5;
 const HINT_GAP = 6;
 const REFUSED_COLOR = '#e43b44';
+const TEXT_OUTLINE_COLOR = '#3e2731';
 const WAITING_HINTS = [{ ...BACK_HINT, keys: ['Esc'], label: 'Cancel' }];
 // More rows than fit on screen, so the list scrolls.
 const VISIBLE_ROWS = 7;
@@ -150,7 +151,7 @@ export class ControlsMenu {
         scale: 1,
         align: 'center',
         color: REFUSED_COLOR,
-        outlineColor: null,
+        outlineColor: TEXT_OUTLINE_COLOR,
       });
       drawKeyHints(context, this.waiting ? WAITING_HINTS : MENU_HINTS, messageY + MESSAGE_HEIGHT + HINT_GAP);
     });

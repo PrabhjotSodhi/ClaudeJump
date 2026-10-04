@@ -15,6 +15,7 @@ import { drawArenaBackground } from '../levels/arena-backgrounds.js';
 import { blockName } from '../levels/level-loader.js';
 import { PLAYERS } from '../levels/versus-arena.js';
 import { drawSurvivalHud } from '../ui/hud.js';
+import { MenuInput } from '../ui/menu-input.js';
 import { drawParticles, Particles } from '../vfx/particles.js';
 import { CharacterAnimations } from '../vfx/character-animations.js';
 import { PlayerEyes } from '../vfx/player-eyes.js';
@@ -102,7 +103,8 @@ export class SurvivalScene {
   constructor({ sprites = {}, seed = Date.now(), returnToTitle = null } = {}) {
     this.touchLayout = 'onePlayer';
     this.returnToTitle = returnToTitle;
-    this.backHeld = false;
+    // Read every tick, so a button held through the end of a run is not a fresh press on the game over screen.
+    this.menuInput = new MenuInput();
     this.sprites = sprites;
     this.seed = seed;
     this.events = new EventEmitter();
@@ -129,7 +131,6 @@ export class SurvivalScene {
       saveBestScore(this.bestScore);
     });
     this.backgroundDrawn = false;
-    this.jumpHeld = false;
     this.startRun();
   }
 
@@ -391,21 +392,16 @@ export class SurvivalScene {
   }
 
   update(inputByPlayerId) {
-    const jumpPressed = inputByPlayerId[PLAYER_ID]?.jump ?? false;
-    const freshJump = jumpPressed && !this.jumpHeld;
-    this.jumpHeld = jumpPressed;
-    const backPressed = !!(inputByPlayerId[PLAYER_ID]?.action || inputByPlayerId[PLAYER_ID]?.pause);
-    const freshBack = backPressed && !this.backHeld;
-    this.backHeld = backPressed;
+    const presses = this.menuInput.presses({ [PLAYER_ID]: inputByPlayerId[PLAYER_ID] });
     this.seaRipple.update();
     this.particles.update();
     this.splashes.update();
     this.screenShake.update();
 
     if (this.phase === 'over') {
-      if (freshBack && this.returnToTitle) {
+      if (presses.back && this.returnToTitle) {
         this.returnToTitle(inputByPlayerId);
-      } else if (freshJump) {
+      } else if (presses.confirm) {
         this.seed++;
         this.startRun();
       }

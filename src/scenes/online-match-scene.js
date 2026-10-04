@@ -6,12 +6,12 @@ import { AwardReveal } from '../ui/award-reveal.js';
 import { pickAwards } from '../ui/match-stats.js';
 import { drawWithMenuMotion, menuListHeight, MenuMotion, wrapMenuIndex } from '../ui/menu-kit.js';
 import { MenuInput, menuStep } from '../ui/menu-input.js';
-import { drawPanel } from '../ui/panel.js';
 import { drawResultsMenu, resultsLayout } from '../ui/results-menu.js';
 import { drawText } from '../ui/text.js';
 import { TitleScene } from './title-scene.js';
 
 const MESSAGE_TITLE_Y = 150;
+const OUTLINE_COLOR = '#3e2731';
 const MESSAGE_DETAIL_Y = 176;
 const TITLE_COLOR = '#ffffff';
 const BACKDROP_COLOR = 'rgba(24, 20, 37, 0.8)';
@@ -198,17 +198,17 @@ export class OnlineMatchScene {
     const context = renderer.uiContext;
     context.fillStyle = BACKDROP_COLOR;
     context.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-    drawPanel(context, SCREEN_WIDTH / 2 - 120, MESSAGE_TITLE_Y - 14, 240, lines.length > 1 ? 66 : 40);
     drawText(context, lines[0], SCREEN_WIDTH / 2, MESSAGE_TITLE_Y, {
       scale: 2,
       align: 'center',
       color: this.messageColor(),
+      outlineColor: OUTLINE_COLOR,
     });
     if (lines[1]) {
       drawText(context, lines[1], SCREEN_WIDTH / 2, MESSAGE_DETAIL_Y, {
         scale: 1,
         align: 'center',
-        outlineColor: null,
+        outlineColor: OUTLINE_COLOR,
       });
     }
   }
@@ -233,7 +233,7 @@ export class OnlineMatchScene {
         scale: 1,
         align: 'center',
         color: '#c0cbdc',
-        outlineColor: null,
+        outlineColor: OUTLINE_COLOR,
       }),
     );
   }

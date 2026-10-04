@@ -53,7 +53,7 @@ function typeCode(scene, code) {
 
 function pressItem(scene, itemIndex) {
   scene.entry.cursorIndex = itemIndex;
-  pressOnce(scene, { jump: true });
+  pressOnce(scene, { confirm: true });
 }
 
 const settle = () => new Promise((resolve) => setImmediate(resolve));

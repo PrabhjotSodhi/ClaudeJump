@@ -2,15 +2,16 @@ import { SCREEN_WIDTH } from '../engine/config.js';
 import { PLAYERS } from '../levels/versus-arena.js';
 import { drawCharacterBody } from '../vfx/character-body.js';
 import { EYE_STIFFNESSES, GooglyEye } from '../vfx/googly-eyes.js';
-import { drawPanel } from './panel.js';
 import { drawText, measureText } from './text.js';
 
 // One card per seat, side by side in one row, used by player select and the online lobby.
 export const SELECT_CARD_WIDTH = 148;
 export const SELECT_CARD_HEIGHT = 120;
 const CARD_GAP = 8;
-const FRAME_INSET = 3;
-const LABEL_OFFSET_Y = 8;
+const LABEL_OFFSET_Y = 6;
+const LABEL_SCALE = 2;
+const NAME_SCALE = 2;
+const OUTLINE_COLOR = '#3e2731';
 const BADGE_INSET = 8;
 const PEDESTAL_BLOCK_SIZE = 32;
 const PEDESTAL_BLOCKS = 2;
@@ -20,7 +21,7 @@ const MESSAGE_OFFSET_Y = 50;
 const MESSAGE_LINE_HEIGHT = 12;
 // Phones show the card text at twice the size, so the pedestal and lines under it move up to make room.
 const LAYOUT_BY_TEXT_SCALE = {
-  1: { pedestalOffsetY: 60, nameOffsetY: 98, statusOffsetY: 108 },
+  1: { pedestalOffsetY: 60, nameOffsetY: 94, statusOffsetY: 110 },
   2: { pedestalOffsetY: 54, nameOffsetY: 90, statusOffsetY: 102 },
 };
 const MESSAGE_MAX_WIDTH = SELECT_CARD_WIDTH - 2 * BADGE_INSET;
@@ -30,8 +31,7 @@ const PICK_ARROW_DEPTH = 5;
 const PICK_ARROW_OFFSET_X = 48;
 const PICK_ARROW_HEIGHT_ABOVE_PEDESTAL = 20;
 
-const EMPTY_FRAME_COLOR = '#3a4466';
-const EMPTY_COLOR = '#5a6988';
+const EMPTY_COLOR = '#8b9bb4';
 
 // Every card shows the same eyes at rest.
 const PORTRAIT_EYES = EYE_STIFFNESSES.map((stiffness) => new GooglyEye(stiffness));
@@ -47,20 +47,8 @@ export function selectCardBox(seatIndex, topY) {
   };
 }
 
-function drawFrame(context, box, color) {
-  const x = box.x + FRAME_INSET;
-  const y = box.y + FRAME_INSET;
-  const width = box.width - 2 * FRAME_INSET;
-  const height = box.height - 2 * FRAME_INSET;
-  context.fillStyle = color;
-  context.fillRect(x, y, width, 1);
-  context.fillRect(x, y + height - 1, width, 1);
-  context.fillRect(x, y + 1, 1, height - 2);
-  context.fillRect(x + width - 1, y + 1, 1, height - 2);
-}
-
 function drawCenteredLine(context, text, centerX, y, color, scale = 1) {
-  drawText(context, text, centerX, y, { scale, align: 'center', color, outlineColor: null });
+  drawText(context, text, centerX, y, { scale, align: 'center', color, outlineColor: OUTLINE_COLOR });
 }
 
 // Splits a message into lines that fit across the card at the given text scale, breaking between words.
@@ -83,17 +71,15 @@ function drawPickArrows(context, centerX, topY, color) {
   }
 }
 
-function drawSeatLabel(context, box, spawn, textScale) {
+function drawSeatLabel(context, box, spawn) {
   const text = `${spawn.id[0].toUpperCase()}${spawn.id.slice(1)}`;
-  drawCenteredLine(context, text, box.x + box.width / 2, box.y + LABEL_OFFSET_Y, spawn.color, textScale);
+  drawCenteredLine(context, text, box.x + box.width / 2, box.y + LABEL_OFFSET_Y, spawn.color, LABEL_SCALE);
 }
 
-// A seat nobody sits in: a dim frame, the seat's color name and a line or two of text in the middle.
+// A seat nobody sits in: the seat's color name and a line or two of text in the middle.
 // textScale 2 is for phones, where the lines are wrapped again to fit the bigger text.
 export function drawEmptySelectCard(context, box, spawn, lines, textScale = 1) {
-  drawPanel(context, box.x, box.y, box.width, box.height);
-  drawFrame(context, box, EMPTY_FRAME_COLOR);
-  drawSeatLabel(context, box, spawn, textScale);
+  drawSeatLabel(context, box, spawn);
   const centerX = box.x + box.width / 2;
   const shownLines = textScale === 1 ? lines : lines.flatMap((line) => selectCardMessageLines(line, textScale));
   const lineHeight = MESSAGE_LINE_HEIGHT * textScale;
@@ -103,7 +89,7 @@ export function drawEmptySelectCard(context, box, spawn, lines, textScale = 1) {
   );
 }
 
-// A seat with a player: their color and name at the top, the character on a pedestal with pick arrows
+// A seat with a player, drawn straight on the scene: their color and name at the top, the character on a pedestal with pick arrows
 // while it can still change, then the character's name and a status line.
 // card: { box, spawn, character, sprites, pose, canPick, status: { text, color }, leftBadge, rightBadge, textScale }.
 // textScale 2 is for phones and leaves no room for badges.
@@ -111,15 +97,13 @@ export function drawSelectCard(context, card) {
   const { box, spawn, character, sprites, pose, canPick, status, textScale = 1 } = card;
   const layout = LAYOUT_BY_TEXT_SCALE[textScale];
   const centerX = box.x + box.width / 2;
-  drawPanel(context, box.x, box.y, box.width, box.height);
-  drawFrame(context, box, spawn.color);
-  drawSeatLabel(context, box, spawn, textScale);
-  const labelY = box.y + LABEL_OFFSET_Y;
+  drawSeatLabel(context, box, spawn);
+  const labelY = box.y + LABEL_OFFSET_Y + LABEL_SCALE * 2;
   if (card.leftBadge) {
     drawText(context, card.leftBadge.text, box.x + BADGE_INSET, labelY, {
       scale: 1,
       color: card.leftBadge.color,
-      outlineColor: null,
+      outlineColor: OUTLINE_COLOR,
     });
   }
   if (card.rightBadge) {
@@ -127,7 +111,7 @@ export function drawSelectCard(context, card) {
       scale: 1,
       align: 'right',
       color: card.rightBadge.color,
-      outlineColor: null,
+      outlineColor: OUTLINE_COLOR,
     });
   }
 
@@ -148,6 +132,6 @@ export function drawSelectCard(context, card) {
   if (canPick) drawPickArrows(context, centerX, pedestalY - PICK_ARROW_HEIGHT_ABOVE_PEDESTAL, character.tagColor);
 
   const nameY = box.y + layout.nameOffsetY;
-  drawCenteredLine(context, character.displayName, centerX, nameY, character.tagColor, textScale);
+  drawCenteredLine(context, character.displayName, centerX, nameY, character.tagColor, NAME_SCALE);
   drawCenteredLine(context, status.text, centerX, box.y + layout.statusOffsetY, status.color, textScale);
 }

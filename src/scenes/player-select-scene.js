@@ -2,7 +2,7 @@ import { SCREEN_HEIGHT, SCREEN_WIDTH, TICK_RATE } from '../engine/config.js';
 import { EventEmitter } from '../engine/events.js';
 import { CHARACTERS, HOVER_CHARACTER_BY_PLAYER_ID } from '../entities/characters.js';
 import { PLAYERS } from '../levels/versus-arena.js';
-import { drawKeyHintRows, drawMenuTitle, drawWithMenuMotion, MenuMotion } from '../ui/menu-kit.js';
+import { drawKeyHintRows, drawMenuTitle, drawWithMenuMotion, MenuMotion, seatHintRows } from '../ui/menu-kit.js';
 import { MENU_BACKGROUND_COLOR, NO_WATER_LINE_Y } from '../ui/menu-screen.js';
 import { drawEmptySelectCard, drawSelectCard, SELECT_CARD_HEIGHT, selectCardBox } from '../ui/select-card.js';
 import { SelectCardMotion } from '../ui/select-card-motion.js';
@@ -16,55 +16,11 @@ const TITLE_Y = 24;
 const CARD_TOP_Y = 68;
 
 const SELECTED_COLOR = '#feae34';
-const UNJOINED_COLOR = '#c0cbdc';
 const NOT_READY_COLOR = '#8b9bb4';
 
 const HINTS_WIDTH = 360;
 const HINTS_TOP_Y = CARD_TOP_Y + SELECT_CARD_HEIGHT + 20;
-const KEY_HINT_ROWS = [
-  {
-    label: 'Red',
-    device: 'keyboard',
-    color: PLAYERS.find((spawn) => spawn.id === 'red').color,
-    hints: [
-      {
-        keys: [
-          { player: 'red', control: 'left' },
-          { player: 'red', control: 'right' },
-        ],
-        label: 'Pick',
-      },
-      { keys: [{ player: 'red', control: 'jump' }], label: 'Join or lock in' },
-      { keys: [{ player: 'red', control: 'action' }, 'Esc'], label: 'Back' },
-    ],
-  },
-  {
-    label: 'Blue',
-    device: 'keyboard',
-    color: PLAYERS.find((spawn) => spawn.id === 'blue').color,
-    hints: [
-      {
-        keys: [
-          { player: 'blue', control: 'left' },
-          { player: 'blue', control: 'right' },
-        ],
-        label: 'Pick',
-      },
-      { keys: [{ player: 'blue', control: 'jump' }], label: 'Join or lock in' },
-      { keys: [{ player: 'blue', control: 'action' }], label: 'Back' },
-    ],
-  },
-  {
-    label: 'Pads',
-    device: 'pad',
-    color: UNJOINED_COLOR,
-    hints: [
-      { keys: ['Stick'], pad: ['stick'], label: 'Pick' },
-      { keys: ['A'], pad: ['south'], label: 'Join or lock in' },
-      { keys: ['B'], pad: ['east'], label: 'Back' },
-    ],
-  },
-];
+const KEY_HINT_ROWS = seatHintRows('Join or ready');
 
 // Green and yellow have no keyboard keys, so their cards name the pad to press.
 const JOIN_TEXT_BY_PLAYER_ID = {
@@ -125,8 +81,7 @@ export class PlayerSelectScene {
       return;
     }
 
-    // Each seat answers only to its own player's jump and shove. Escape and Enter belong to no seat, so on this
-    // screen Escape only goes back to the title.
+    // Each seat answers only to its own player's keys. Back with nobody joined leaves for the title.
     const pressesByPlayerId = this.menuInput.pressesByPlayerId(inputByPlayerId);
     for (const spawn of PLAYERS) {
       const presses = pressesByPlayerId[spawn.id];
@@ -139,13 +94,11 @@ export class PlayerSelectScene {
         if (presses.right) this.addComputer();
         if (presses.left) this.removeComputer();
       }
-      const jumped = presses.confirm && input.jump;
-      const shoved = presses.back && input.action;
-      if (jumped) this.advance(spawn.id);
+      if (presses.confirm) this.advance(spawn.id);
       else if (presses.back && this.nobodyJoined) {
         this.returnToTitle(inputByPlayerId);
         return;
-      } else if (shoved) this.stepBack(spawn.id);
+      } else if (presses.back) this.stepBack(spawn.id);
     }
 
     if (!this.everyoneJoinedIsReady()) {

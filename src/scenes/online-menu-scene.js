@@ -23,6 +23,7 @@ const LINE_HEIGHT = 12;
 const LINES_GAP = 14;
 const HINT_GAP = 14;
 const LINE_COLOR = '#c0cbdc';
+const TEXT_OUTLINE_COLOR = '#3e2731';
 
 // The stack of title, lines, options and key hints is centered on the screen as one block.
 export function onlineMenuLayout({ lines, options }) {
@@ -96,7 +97,7 @@ export class OnlineMenuScene {
           scale: 1,
           align: 'center',
           color: LINE_COLOR,
-          outlineColor: null,
+          outlineColor: TEXT_OUTLINE_COLOR,
         });
       });
       drawMenuList(context, {
