@@ -1131,6 +1131,7 @@ export class VersusScene {
       characterAnimations: this.characterAnimations,
       arenaName: this.level.background,
     });
+    for (const player of this.players) player.renderLandedShovel(renderer.gameContext, this.sprites);
     this.crateOpenings.render(renderer.gameContext);
     if (this.mode === 'bomb') drawHeldBomb(renderer.gameContext, this);
     drawMagnetField(renderer.gameContext, this);
