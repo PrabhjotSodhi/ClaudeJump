@@ -56,6 +56,7 @@ import { MatchStats } from '../ui/match-stats.js';
 import { drawPlayerTags } from '../ui/player-tags.js';
 import { WinPips } from '../ui/win-pips.js';
 import { BlastClouds, drawBlastClouds } from '../vfx/blast-cloud.js';
+import { drawClouds } from '../vfx/clouds.js';
 import { ClashSparks, drawClashSparks } from '../vfx/clash-sparks.js';
 import { knockoutZoom } from '../vfx/knockout-zoom.js';
 import { drawHeldBomb } from '../vfx/held-bomb.js';
@@ -707,6 +708,7 @@ export class VersusScene {
     renderer.zoom = knockoutZoom(this);
     renderer.seaRippleBytes = this.seaRipple.toBytes();
     renderer.clearGameLayer();
+    drawClouds(renderer.gameContext, this.level.background, this.tickCount);
     drawArenaMotion(renderer.gameContext, this.level.background, this.tickCount);
     for (const tile of this.level.tiles) {
       if (!this.brokenTiles.has(tile))
