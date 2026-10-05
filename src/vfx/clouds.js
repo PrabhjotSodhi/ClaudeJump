@@ -38,7 +38,7 @@ const SHAPES = {
 const DEPTHS = [
   { count: 3, shape: 'small', color: '#8b9bb4', speed: 0.1 },
   { count: 3, shape: 'medium', color: '#8b9bb4', speed: 0.2 },
-  { count: 2, shape: 'large', color: '#c0cbdc', speed: 0.3, undersideColor: '#8b9bb4' },
+  { count: 2, shape: 'large', color: '#8b9bb4', speed: 0.3, undersideColor: '#5a6988' },
 ];
 
 const random = new SeededRandom(CLOUD_SEED);
