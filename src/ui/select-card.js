@@ -2,7 +2,7 @@ import { SCREEN_WIDTH } from '../engine/config.js';
 import { PLAYERS } from '../levels/versus-arena.js';
 import { drawCharacterBody } from '../vfx/character-body.js';
 import { EYE_STIFFNESSES, GooglyEye } from '../vfx/googly-eyes.js';
-import { drawText, measureText } from './text.js';
+import { drawText, measureText, TEXT_GLYPH_HEIGHT, textOutlineMargin } from './text.js';
 
 // One card per seat, side by side in one row, used by player select and the online lobby.
 export const SELECT_CARD_WIDTH = 148;
@@ -18,11 +18,13 @@ const PEDESTAL_BLOCKS = 2;
 // The white outline row of the body overlaps the top edge of the pedestal so the feet read as touching.
 const CHARACTER_SINK_PIXELS = 1;
 const MESSAGE_OFFSET_Y = 50;
-const MESSAGE_LINE_HEIGHT = 12;
+const MESSAGE_LINE_HEIGHT_BY_TEXT_SCALE = { 1: 12, 2: 16 };
+// The gap kept between the seat label's outline and the first message line's outline.
+const MESSAGE_GAP_BELOW_LABEL = 2;
 // Phones show the card text at twice the size, so the pedestal and lines under it move up to make room.
 const LAYOUT_BY_TEXT_SCALE = {
   1: { pedestalOffsetY: 60, nameOffsetY: 94, statusOffsetY: 110 },
-  2: { pedestalOffsetY: 54, nameOffsetY: 90, statusOffsetY: 102 },
+  2: { pedestalOffsetY: 52, nameOffsetY: 88, statusOffsetY: 104 },
 };
 const MESSAGE_MAX_WIDTH = SELECT_CARD_WIDTH - 2 * BADGE_INSET;
 
@@ -45,6 +47,23 @@ export function selectCardBox(seatIndex, topY) {
     width: SELECT_CARD_WIDTH,
     height: SELECT_CARD_HEIGHT,
   };
+}
+
+// The rows a line of text covers, outline included, when its glyphs start at y.
+function textRows(y, scale) {
+  const margin = textOutlineMargin(scale);
+  return { top: y - margin, bottom: y + (TEXT_GLYPH_HEIGHT / 2) * scale + margin };
+}
+
+// The rows each part of a filled card covers, top to bottom, as offsets from the card's top.
+export function selectCardRows(textScale) {
+  const layout = LAYOUT_BY_TEXT_SCALE[textScale];
+  return [
+    textRows(LABEL_OFFSET_Y, LABEL_SCALE),
+    { top: layout.pedestalOffsetY, bottom: layout.pedestalOffsetY + PEDESTAL_BLOCK_SIZE },
+    textRows(layout.nameOffsetY, NAME_SCALE),
+    textRows(layout.statusOffsetY, textScale),
+  ];
 }
 
 function drawCenteredLine(context, text, centerX, y, color, scale = 1) {
@@ -81,12 +100,20 @@ function drawSeatLabel(context, box, spawn) {
 export function drawEmptySelectCard(context, box, spawn, lines, textScale = 1) {
   drawSeatLabel(context, box, spawn);
   const centerX = box.x + box.width / 2;
+  for (const line of emptySelectCardLines(lines, textScale)) {
+    drawCenteredLine(context, line.text, centerX, box.y + line.offsetY, EMPTY_COLOR, textScale);
+  }
+}
+
+// The message lines of an empty card and where each starts, as an offset from the card's top. The lines center on
+// the card but never rise into the seat label.
+export function emptySelectCardLines(lines, textScale = 1) {
   const shownLines = textScale === 1 ? lines : lines.flatMap((line) => selectCardMessageLines(line, textScale));
-  const lineHeight = MESSAGE_LINE_HEIGHT * textScale;
-  const topY = box.y + MESSAGE_OFFSET_Y - Math.floor(((shownLines.length - 1) * lineHeight) / 2);
-  shownLines.forEach((line, index) =>
-    drawCenteredLine(context, line, centerX, topY + index * lineHeight, EMPTY_COLOR, textScale),
-  );
+  const lineHeight = MESSAGE_LINE_HEIGHT_BY_TEXT_SCALE[textScale];
+  const lowestTopY =
+    textRows(LABEL_OFFSET_Y, LABEL_SCALE).bottom + MESSAGE_GAP_BELOW_LABEL + textOutlineMargin(textScale);
+  const topY = Math.max(lowestTopY, MESSAGE_OFFSET_Y - Math.floor(((shownLines.length - 1) * lineHeight) / 2));
+  return shownLines.map((text, index) => ({ text, offsetY: topY + index * lineHeight }));
 }
 
 // A seat with a player, drawn straight on the scene: their color and name at the top, the character on a pedestal with pick arrows
