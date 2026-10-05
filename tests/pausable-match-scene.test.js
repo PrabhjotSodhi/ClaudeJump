@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { KNOCKOUT_SLOWMO_TICKS, MODIFIER_PICK_TICKS } from '../src/engine/config.js';
 import { PausableMatchScene, RESULTS_MENU_OPTIONS } from '../src/scenes/pausable-match-scene.js';
-import { PlayerSelectScene, START_COUNTDOWN_TICKS } from '../src/scenes/player-select-scene.js';
+import { PlayerSelectScene } from '../src/scenes/player-select-scene.js';
 import { TitleScene } from '../src/scenes/title-scene.js';
 import { VersusScene } from '../src/scenes/versus-scene.js';
 import { harborLevel } from './fixtures/harbor-level.mjs';
@@ -265,7 +265,7 @@ test('Return to title, then Versus, opens a player select that can run a tick', 
     playerSelectScene.update(readyInputs());
     playerSelectScene.update(neutralInputs());
   }
-  for (let tick = 0; tick < START_COUNTDOWN_TICKS; tick++) playerSelectScene.update(neutralInputs());
+  playerSelectScene.update(inputsWith('red', { jump: true }));
   const modeSelectScene = currentScene;
   modeSelectScene.update(neutralInputs());
   modeSelectScene.update({ ...neutralInputs(), red: { ...noInput(), confirm: true } });

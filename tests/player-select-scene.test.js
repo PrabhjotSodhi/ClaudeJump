@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { CHARACTERS } from '../src/entities/characters.js';
-import { PlayerSelectScene, playerCardBox, START_COUNTDOWN_TICKS } from '../src/scenes/player-select-scene.js';
+import { PlayerSelectScene, playerCardBox } from '../src/scenes/player-select-scene.js';
 import { harborLevel } from './fixtures/harbor-level.mjs';
 
 function noInput() {
@@ -80,15 +80,15 @@ test('the mode choice does not open until both players are ready', () => {
 
   readyUp(scene, 'red');
   assert.equal(scene.stateByPlayerId.red, 'ready');
-  runCountdown(scene);
+  press(scene, 'red', 'jump');
   assert.equal(scenes.length, 0, 'only one player is ready so far');
 
   readyUp(scene, 'blue');
   assert.equal(scene.stateByPlayerId.blue, 'ready');
-  assert.equal(scenes.length, 0, 'the countdown has only just begun');
-  runCountdown(scene);
+  assert.equal(scenes.length, 0, 'the jump that readied blue does not also start');
+  press(scene, 'red', 'jump');
 
-  assert.equal(scenes.length, 1, 'the mode choice opens once every player is ready');
+  assert.equal(scenes.length, 1, 'the mode choice opens once every player is ready and one presses jump');
   assert.equal(scenes[0].constructor.name, 'ModeSelectScene');
 });
 
@@ -102,7 +102,8 @@ function readyUp(scene, playerId) {
   press(scene, playerId, 'jump');
 }
 
-function runCountdown(scene, ticks = START_COUNTDOWN_TICKS) {
+// Far longer than anyone waits on this screen.
+function waitTicks(scene, ticks = 600) {
   for (let tick = 0; tick < ticks; tick++) scene.update(neutralInputs());
 }
 
@@ -174,7 +175,7 @@ test('level select gets the character each player locked in', () => {
   press(scene, 'red', 'right');
   press(scene, 'red', 'jump');
   press(scene, 'blue', 'jump');
-  runCountdown(scene);
+  press(scene, 'red', 'jump');
 
   const { characterByPlayerId } = scenes[0];
   assert.deepEqual([characterByPlayerId.red.name, characterByPlayerId.blue.name], ['meta', 'chatgpt']);
@@ -228,7 +229,7 @@ test('a match needs two ready players, so one alone never starts it', () => {
   const { scene, scenes } = sceneWithBaseline();
 
   lockIn(scene, 'green');
-  runCountdown(scene);
+  press(scene, 'green', 'jump');
 
   assert.equal(scene.stateByPlayerId.green, 'ready');
   assert.equal(scenes.length, 0);
@@ -239,7 +240,7 @@ test('the match starts with exactly the players who are ready, in seat order', (
 
   lockIn(scene, 'yellow');
   readyUp(scene, 'red');
-  runCountdown(scene);
+  press(scene, 'yellow', 'jump');
 
   assert.equal(scenes.length, 1);
   assert.deepEqual(Object.keys(scenes[0].characterByPlayerId), ['red', 'yellow']);
@@ -251,11 +252,11 @@ test('a joined player who is still picking holds the match until they are ready'
   lockIn(scene, 'red');
   lockIn(scene, 'blue');
 
-  runCountdown(scene);
+  press(scene, 'red', 'jump');
   assert.equal(scenes.length, 0, 'green joined but has not locked in');
 
   press(scene, 'green', 'jump');
-  runCountdown(scene);
+  press(scene, 'red', 'jump');
   assert.equal(scenes.length, 1);
   assert.deepEqual(Object.keys(scenes[0].characterByPlayerId), ['red', 'blue', 'green']);
 });
@@ -264,11 +265,11 @@ test('all four players can join first and then be ready together', () => {
   const { scene, scenes } = sceneWithBaseline();
   for (const playerId of ['red', 'blue', 'green', 'yellow']) press(scene, playerId, 'jump');
   for (const playerId of ['red', 'blue', 'green']) press(scene, playerId, 'jump');
-  runCountdown(scene);
+  press(scene, 'red', 'jump');
   assert.equal(scenes.length, 0, 'yellow is still picking');
 
   press(scene, 'yellow', 'jump');
-  runCountdown(scene);
+  press(scene, 'yellow', 'jump');
 
   assert.deepEqual(Object.keys(scenes[0].characterByPlayerId), ['red', 'blue', 'green', 'yellow']);
 });
@@ -278,11 +279,11 @@ test('shove steps a picking player back out, so a mistaken join does not hold th
   press(scene, 'green', 'jump');
   lockIn(scene, 'red');
   lockIn(scene, 'blue');
-  runCountdown(scene);
+  press(scene, 'red', 'jump');
   assert.equal(scenes.length, 0);
 
   press(scene, 'green', 'action');
-  runCountdown(scene);
+  press(scene, 'red', 'jump');
 
   assert.equal(scene.stateByPlayerId.green, 'unjoined');
   assert.equal(scenes.length, 1);
@@ -298,51 +299,58 @@ test('shove does nothing to a player who has not joined while others have', () =
   assert.equal(scene.stateByPlayerId.blue, 'unjoined');
 });
 
-test('the match waits a short countdown after everyone is ready, then starts', () => {
+test('once everyone is ready the match never starts on its own, and any ready player starts it with jump', () => {
   const { scene, scenes } = sceneWithBaseline();
   lockIn(scene, 'red');
   lockIn(scene, 'blue');
 
-  runCountdown(scene, START_COUNTDOWN_TICKS - 20);
+  waitTicks(scene);
   assert.equal(scenes.length, 0);
-  assert.ok(START_COUNTDOWN_TICKS >= 90 && START_COUNTDOWN_TICKS <= 150, 'about 2 seconds');
+  assert.ok(scene.canStart(), 'the start prompt shows');
 
-  runCountdown(scene, 20 + 1);
+  press(scene, 'blue', 'jump');
+  assert.equal(scenes[0]?.constructor.name, 'ModeSelectScene');
+});
+
+test('Enter starts the match for the first player, like jump', () => {
+  const { scene, scenes } = sceneWithBaseline();
+  lockIn(scene, 'red');
+  lockIn(scene, 'blue');
+
+  press(scene, 'red', 'confirm');
+
   assert.equal(scenes.length, 1);
 });
 
-test('a player who joins during the countdown holds it and is in the match', () => {
+test('a player who joins once everyone is ready holds the start and is in the match', () => {
   const { scene, scenes } = sceneWithBaseline();
   lockIn(scene, 'red');
   lockIn(scene, 'blue');
-  runCountdown(scene, START_COUNTDOWN_TICKS - 30);
 
   press(scene, 'green', 'jump');
-  runCountdown(scene);
-  assert.equal(scenes.length, 0, 'joining cancels the countdown until green is ready');
-  assert.equal(scene.countdownTicksRemaining, null);
+  assert.ok(!scene.canStart());
+  press(scene, 'red', 'jump');
+  assert.equal(scenes.length, 0, 'green is still picking');
 
   press(scene, 'green', 'jump');
-  runCountdown(scene);
+  press(scene, 'red', 'jump');
 
   assert.deepEqual(Object.keys(scenes[0].characterByPlayerId), ['red', 'blue', 'green']);
 });
 
-test('a ready player who steps back cancels the countdown, and it restarts in full', () => {
+test('a ready player who steps back hides the start until they are ready again', () => {
   const { scene, scenes } = sceneWithBaseline();
   lockIn(scene, 'red');
   lockIn(scene, 'blue');
-  runCountdown(scene, START_COUNTDOWN_TICKS - 5);
 
   press(scene, 'blue', 'action');
   assert.equal(scene.stateByPlayerId.blue, 'picking');
-  runCountdown(scene);
+  assert.ok(!scene.canStart());
+  press(scene, 'red', 'jump');
   assert.equal(scenes.length, 0);
 
   press(scene, 'blue', 'jump');
-  runCountdown(scene, START_COUNTDOWN_TICKS - 5);
-  assert.equal(scenes.length, 0, 'the countdown began again from the start');
-  runCountdown(scene, 10);
+  press(scene, 'red', 'jump');
   assert.equal(scenes.length, 1);
 });
 

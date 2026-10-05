@@ -46,8 +46,8 @@ export const BACK_HINT = { keys: ['Esc'], pad: ['east'], label: 'Back' };
 export const MENU_HINTS = [MOVE_HINT, SELECT_HINT, BACK_HINT];
 
 // The hint rows of a screen where each player has a seat: one row per keyboard player with their own keys, and one
-// for pads. confirmLabel names what jump does there, such as 'Vote'.
-export function seatHintRows(confirmLabel) {
+// for pads. confirmLabel names what jump does there, such as 'Vote', and pickLabel what left and right do.
+export function seatHintRows(confirmLabel, pickLabel = 'Pick') {
   const keyboardRow = (playerId) => ({
     label: `${playerId[0].toUpperCase()}${playerId.slice(1)}`,
     device: 'keyboard',
@@ -58,7 +58,7 @@ export function seatHintRows(confirmLabel) {
           { player: playerId, control: 'left' },
           { player: playerId, control: 'right' },
         ],
-        label: 'Pick',
+        label: pickLabel,
       },
       { keys: [{ player: playerId, control: 'jump' }], label: confirmLabel },
       { keys: [{ player: playerId, control: 'action' }], label: 'Back' },
@@ -72,7 +72,7 @@ export function seatHintRows(confirmLabel) {
       device: 'pad',
       color: UNSELECTED_COLOR,
       hints: [
-        { keys: [], pad: ['stick'], label: 'Pick' },
+        { keys: [], pad: ['stick'], label: pickLabel },
         { keys: [], pad: ['south'], label: confirmLabel },
         { keys: [], pad: ['east'], label: 'Back' },
       ],
