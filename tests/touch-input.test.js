@@ -7,6 +7,9 @@ import {
   touchButtonsFor,
   TWO_PLAYER_TOUCH_BUTTONS,
 } from '../src/engine/touch-input.js';
+import { findCharacter } from '../src/entities/characters.js';
+import { VersusScene } from '../src/scenes/versus-scene.js';
+import { harborLevel } from './fixtures/harbor-level.mjs';
 
 function centerOf(buttonId) {
   const button = TOUCH_BUTTONS.find((candidate) => candidate.id === buttonId);
@@ -94,4 +97,24 @@ test('menus show the menu buttons, and scenes where players move show their own 
   assert.equal(touchButtonsFor({ touchLayout: 'onePlayer' }), TOUCH_BUTTONS);
   assert.equal(touchButtonsFor({ matchScene: { touchLayout: 'twoPlayers' } }), TWO_PLAYER_TOUCH_BUTTONS);
   assert.equal(touchButtonsFor({ touchLayout: 'onePlayer', matchScene: { touchLayout: 'twoPlayers' } }), TOUCH_BUTTONS);
+});
+
+function matchButtonOwners(seats) {
+  const players = seats.map(({ id, computer = false }) => ({ id, character: findCharacter('claude'), computer }));
+  const scene = new VersusScene({ level: harborLevel, seed: 0, players });
+  const buttons = touchButtonsFor({ matchScene: scene });
+  return {
+    buttons,
+    owners: [...new Set(buttons.filter((button) => button.id !== 'pause').map((button) => button.playerId ?? 'red'))],
+  };
+}
+
+test('a match shows touch buttons only for the seats people play', () => {
+  assert.deepEqual(matchButtonOwners([{ id: 'red' }, { id: 'blue' }]).owners, ['red', 'blue']);
+
+  const redAgainstComputer = matchButtonOwners([{ id: 'red' }, { id: 'blue', computer: true }]);
+  assert.equal(redAgainstComputer.buttons, TOUCH_BUTTONS, 'red alone gets the full width buttons');
+
+  assert.equal(matchButtonOwners([{ id: 'red' }, { id: 'green' }]).buttons, TOUCH_BUTTONS);
+  assert.deepEqual(matchButtonOwners([{ id: 'red', computer: true }, { id: 'blue' }]).owners, ['blue']);
 });
