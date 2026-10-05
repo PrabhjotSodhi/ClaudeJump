@@ -1,3 +1,4 @@
+// The claudejump prefix on every key here is kept on purpose so players keep their saved settings.
 const STORAGE_KEY = 'claudejump-sound-enabled';
 
 // Storage can be missing or throw (private windows, blocked site data), so sound defaults to on.

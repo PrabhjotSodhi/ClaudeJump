@@ -63,6 +63,7 @@ const CRAB_MIN_RUN_BLOCKS = 4;
 export const CRAB_STOMP_VELOCITY_Y = -8;
 export const CRAB_KNOCKBACK_VELOCITY_X = 8;
 export const CRAB_KNOCKBACK_VELOCITY_Y = -4;
+// The claudejump prefix is kept on purpose so players keep their best scores.
 export const BEST_SCORE_STORAGE_KEY = 'claudejump.survival.best';
 
 // The horizontal gap between two runs, taking the shortest way round the screen edge. 0 when they overlap.

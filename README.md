@@ -1,22 +1,22 @@
 <p align="center">
-  <a href="https://claudejump.netlify.app"><img src="docs/media/banner.png" width="640" alt="ClaudeJump: seven AI characters standing on stone blocks under the pixel logo"></a>
+  <a href="https://largelanguagemayhem.netlify.app"><img src="docs/media/banner.png" width="640" alt="Large Language Mayhem: seven AI characters standing on stone blocks under the pixel logo"></a>
 </p>
 
 <p align="center"><b>Two players, one keyboard. Shove your friend into the sea.</b></p>
 
 <p align="center">
-  <a href="https://claudejump.netlify.app"><b>▶ Play now in your browser</b></a><br>
+  <a href="https://largelanguagemayhem.netlify.app"><b>▶ Play now in your browser</b></a><br>
   No install, no sign up. Keyboard, gamepad or touch.
 </p>
 
 <p align="center">
-  <a href="https://claudejump.netlify.app"><img src="https://img.shields.io/badge/play-in%20browser-feae34" alt="Play in browser"></a>
+  <a href="https://largelanguagemayhem.netlify.app"><img src="https://img.shields.io/badge/play-in%20browser-feae34" alt="Play in browser"></a>
   <a href="../../actions/workflows/ci.yml"><img src="../../actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-0099db" alt="MIT license"></a>
 </p>
 
 <p align="center">
-  <a href="https://claudejump.netlify.app"><img src="docs/media/hero.gif" width="640" alt="Four computer players shoving each other off the Harbor arena into the sea"></a>
+  <a href="https://largelanguagemayhem.netlify.app"><img src="docs/media/hero.gif" width="640" alt="Four computer players shoving each other off the Harbor arena into the sea"></a>
 </p>
 
 <table>
@@ -30,7 +30,7 @@
   </tr>
 </table>
 
-ClaudeJump is a pixel art platform brawler that runs in the browser. Designed and directed by [Prabhjot Sodhi](https://github.com/PrabhjotSodhi). Built by Claude: Opus 5.5 plans and reviews every ticket, and Sonnet 5 writes the code. Every change is a ticket and a pull request, so the full build history is public in [issues](../../issues?q=is%3Aissue) and [pull requests](../../pulls?q=is%3Apr).
+Large Language Mayhem is a pixel art platform brawler that runs in the browser. Designed and directed by [Prabhjot Sodhi](https://github.com/PrabhjotSodhi). Built by Claude: Opus 5.5 plans and reviews every ticket, and Sonnet 5 writes the code. Every change is a ticket and a pull request, so the full build history is public in [issues](../../issues?q=is%3Aissue) and [pull requests](../../pulls?q=is%3Apr).
 
 ## Features
 

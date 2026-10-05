@@ -1,6 +1,6 @@
 # Art direction
 
-ClaudeJump looks like chunky, bold characters fighting in a quiet, moody world. The characters are the only loud thing on screen, so a player can always find themselves in a split second, even in a small GIF.
+Large Language Mayhem looks like chunky, bold characters fighting in a quiet, moody world. The characters are the only loud thing on screen, so a player can always find themselves in a split second, even in a small GIF.
 
 ## Grid
 

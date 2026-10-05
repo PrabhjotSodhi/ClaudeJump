@@ -304,11 +304,11 @@ async function main() {
   });
 
   // Exposed for devtools and automated checks.
-  window.claudeJump = { sceneManager, soundPlayer, musicPlayer };
+  window.mayhem = { sceneManager, soundPlayer, musicPlayer };
 
   if (isDevMode) {
     // Lets a tester or script drive ticks directly, which keeps working while the tab is hidden.
-    window.claudeJump.step = function step(tickCount, inputRecords) {
+    window.mayhem.step = function step(tickCount, inputRecords) {
       for (let tick = 0; tick < tickCount; tick++) {
         const inputByPlayerId = Array.isArray(inputRecords) ? inputRecords[tick] : inputRecords;
         sceneManager.update(inputByPlayerId ?? {});
@@ -324,7 +324,7 @@ async function main() {
       };
     };
 
-    window.claudeJump.render = function render() {
+    window.mayhem.render = function render() {
       renderFrame(performance.now());
     };
   }
