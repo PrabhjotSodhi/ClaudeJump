@@ -16,7 +16,7 @@ varying vec2 v_uv;
 
 const float SEA_COLUMN_COUNT = 80.0;
 
-const float GLOW_STRENGTH = 0.35;
+const float GLOW_STRENGTH = 0.6;
 
 const vec3 WATER_TOP_COLOR = vec3(0.16, 0.36, 0.82);
 const vec3 WATER_DEEP_COLOR = vec3(0.06, 0.16, 0.47);
