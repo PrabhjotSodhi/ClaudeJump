@@ -7,6 +7,7 @@ export function createGameLoop({ tickRate, update, render }) {
   let accumulatedMilliseconds = 0;
   let lastTimestamp = null;
   let animationFrameId = null;
+  let renderErrorReported = false;
 
   function frame(timestamp) {
     if (lastTimestamp === null) lastTimestamp = timestamp;
@@ -18,7 +19,13 @@ export function createGameLoop({ tickRate, update, render }) {
       accumulatedMilliseconds -= tickDurationMilliseconds;
     }
 
-    render(timestamp);
+    // A drawing bug must never stop the game, so the error is reported once and the next frame runs as usual.
+    try {
+      render(timestamp);
+    } catch (error) {
+      if (!renderErrorReported) console.error(error);
+      renderErrorReported = true;
+    }
     animationFrameId = requestAnimationFrame(frame);
   }
 
