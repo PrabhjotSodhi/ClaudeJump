@@ -55,14 +55,18 @@ export const TWO_PLAYER_TOUCH_BUTTONS = [
   PAUSE_BUTTON,
 ];
 
+// Blue alone, when red is a computer or has not joined: only blue's cluster and pause.
+export const BLUE_TOUCH_BUTTONS = TWO_PLAYER_TOUCH_BUTTONS.filter((button) => button.playerId !== 'red');
+
 // Menus use the one player buttons without pause: left and right move, jump selects and shove goes back.
 export const MENU_TOUCH_BUTTONS = TOUCH_BUTTONS.filter((button) => button.id !== 'pause');
 
-// The buttons a scene shows. A scene where players move sets `touchLayout` to 'onePlayer' or 'twoPlayers', or wraps a
-// match scene that does. Every other scene is a menu and shows the menu buttons.
+// The buttons a scene shows. A scene where players move sets `touchLayout` to 'onePlayer', 'twoPlayers' or
+// 'bluePlayer', or wraps a match scene that does. Every other scene is a menu and shows the menu buttons.
 export function touchButtonsFor(scene) {
   const layout = scene.touchLayout ?? scene.matchScene?.touchLayout;
   if (layout === 'twoPlayers') return TWO_PLAYER_TOUCH_BUTTONS;
+  if (layout === 'bluePlayer') return BLUE_TOUCH_BUTTONS;
   if (layout === 'onePlayer') return TOUCH_BUTTONS;
   return MENU_TOUCH_BUTTONS;
 }
@@ -110,6 +114,15 @@ function isInside(button, point) {
 
 export function pressedButtons(points, buttons = TOUCH_BUTTONS) {
   return buttons.filter((button) => points.some((point) => isInside(button, point)));
+}
+
+// The touch layout for a match: a cluster for each of red and blue that a person plays, and the full width buttons
+// when red is the only one. Computers and empty seats get no buttons.
+export function touchLayoutForPlayers(players) {
+  const isHuman = (playerId) => players.some((player) => player.id === playerId && !player.computer);
+  if (isHuman('red') && isHuman('blue')) return 'twoPlayers';
+  if (isHuman('blue')) return 'bluePlayer';
+  return 'onePlayer';
 }
 
 // Points are in game pixels. Every finger counts, so running and jumping at once works.
