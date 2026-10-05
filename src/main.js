@@ -319,7 +319,7 @@ async function main() {
         phase: scene.phase,
         wins: { ...scene.wins },
         cameraTopY: scene.cameraTopY,
-        players: scene.players.map((player) => ({ id: player.id, x: player.x, y: player.y })),
+        players: (scene.players ?? []).map((player) => ({ id: player.id, x: player.x, y: player.y })),
       };
     };
 
