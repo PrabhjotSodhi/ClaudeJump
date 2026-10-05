@@ -9,6 +9,8 @@ const LIFETIME_TICKS = 240; // explodes on its own after 4 seconds so it can nev
 
 const BODY_COLOR = '#c85050';
 const FLAME_COLOR = '#f0a028';
+const GLOW_BODY_COLOR = '#f77622';
+const GLOW_FLAME_COLOR = '#fee761';
 
 // A rocket fired by a player. It flies straight and explodes on
 // hitting a player, a platform or its own lifetime running out. The explosion itself, and who
@@ -66,18 +68,24 @@ export class Rocket extends Entity {
 
   // Drawn a second time offset by a screen width while crossing an edge, the way Player.render does,
   // so a rocket never appears unannounced from off screen.
-  render(context) {
-    this.renderAt(context, this.x);
-    if (this.x < 0) this.renderAt(context, this.x + SCREEN_WIDTH);
-    else if (this.x + this.width > SCREEN_WIDTH) this.renderAt(context, this.x - SCREEN_WIDTH);
+  render(context, { glowContext } = {}) {
+    this.renderAt(context, glowContext, this.x);
+    if (this.x < 0) this.renderAt(context, glowContext, this.x + SCREEN_WIDTH);
+    else if (this.x + this.width > SCREEN_WIDTH) this.renderAt(context, glowContext, this.x - SCREEN_WIDTH);
   }
 
-  renderAt(context, x) {
+  // The glow layer gets brighter colors than the body, so the rocket glows orange and yellow.
+  renderAt(context, glowContext, x) {
     const drawX = Math.round(x);
     const drawY = Math.round(this.y);
     context.fillStyle = FLAME_COLOR;
     context.fillRect(drawX, drawY + 2, 2, 2);
     context.fillStyle = BODY_COLOR;
     context.fillRect(drawX + 2, drawY, this.width - 2, this.height);
+    if (!glowContext) return;
+    glowContext.fillStyle = GLOW_FLAME_COLOR;
+    glowContext.fillRect(drawX, drawY + 2, 2, 2);
+    glowContext.fillStyle = GLOW_BODY_COLOR;
+    glowContext.fillRect(drawX + 2, drawY, this.width - 2, this.height);
   }
 }

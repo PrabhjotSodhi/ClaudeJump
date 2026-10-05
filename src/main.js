@@ -232,6 +232,7 @@ async function main() {
     gameWindow.render({
       backgroundCanvas: renderer.backgroundChanged ? renderer.backgroundCanvas : null,
       gameCanvas: renderer.gameCanvas,
+      glowCanvas: renderer.glowCanvas,
       uiCanvas: renderer.uiCanvas,
       shakeOffset: renderer.shakeOffset,
       zoom: renderer.zoom,
@@ -319,7 +320,7 @@ async function main() {
         phase: scene.phase,
         wins: { ...scene.wins },
         cameraTopY: scene.cameraTopY,
-        players: scene.players.map((player) => ({ id: player.id, x: player.x, y: player.y })),
+        players: (scene.players ?? []).map((player) => ({ id: player.id, x: player.x, y: player.y })),
       };
     };
 

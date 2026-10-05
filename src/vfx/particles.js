@@ -190,6 +190,7 @@ export class Particles {
           sizes: style.sizes,
           colors,
           layer: 'front',
+          glows: colors === RAMPS.fire,
         }),
       );
     }
@@ -303,9 +304,12 @@ export class Particles {
   }
 }
 
-// layer is 'behind' to draw before the characters and 'front' to draw after them.
-export function drawParticles(context, scene, layer) {
+// layer is 'behind' to draw before the characters and 'front' to draw after them. Glowing particles also draw onto
+// glowContext.
+export function drawParticles(context, scene, layer, glowContext) {
   for (const particle of scene.particles.list) {
-    if (particle.layer === layer) drawParticle(context, particle);
+    if (particle.layer !== layer) continue;
+    drawParticle(context, particle);
+    if (particle.glows && glowContext) drawParticle(glowContext, particle);
   }
 }

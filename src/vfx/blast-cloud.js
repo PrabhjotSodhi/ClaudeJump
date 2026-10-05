@@ -80,11 +80,14 @@ function drawFire(context, cloud, age) {
   fillDisc(context, cloud.x, cloud.y, radius - FIRE_CORE_INSET);
 }
 
-export function drawBlastClouds(context, scene) {
+export function drawBlastClouds(context, scene, glowContext) {
   for (const cloud of scene.blastClouds.activeClouds(scene.tickCount)) {
     const age = scene.tickCount - cloud.spawnTick;
     drawSmoke(context, cloud, age);
-    if (age < FIRE_TICKS) drawFire(context, cloud, age);
+    if (age < FIRE_TICKS) {
+      drawFire(context, cloud, age);
+      if (glowContext) drawFire(glowContext, cloud, age);
+    }
     if (age < FLASH_TICKS) {
       context.globalAlpha = flashStrength();
       context.fillStyle = FLASH_COLOR;

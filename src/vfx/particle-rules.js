@@ -44,7 +44,8 @@ export function varied(random, value, share) {
 }
 
 // x and y are the particle's middle. drag slows it every tick, 1 for none. sizes and colors are stepped through in
-// order over lifeTicks. layer is 'behind' or 'front' of the characters.
+// order over lifeTicks. layer is 'behind' or 'front' of the characters. A glowing particle is also drawn onto the glow
+// layer.
 export function createParticle({
   x,
   y,
@@ -56,8 +57,9 @@ export function createParticle({
   sizes,
   colors,
   layer = 'behind',
+  glows = false,
 }) {
-  return { x, y, velocityX, velocityY, gravity, drag, age: 0, lifeTicks, sizes, colors, layer };
+  return { x, y, velocityX, velocityY, gravity, drag, age: 0, lifeTicks, sizes, colors, layer, glows };
 }
 
 // Moves a particle one tick. Returns whether it is still alive.
