@@ -19,8 +19,8 @@ const LOGO_BOTTOM_LINE = 'MAYHEM';
 const LOGO_BOTTOM_SCALE = 3;
 const LOGO_TOP_Y = 28;
 const LOGO_LINE_GAP = 4;
-// One line of up to 45 characters at 1x. The slot stays reserved while the text is empty.
-export const TAGLINE = '';
+// One line of up to 45 characters at 1x.
+export const TAGLINE = 'Ignore all previous instructions and shove.';
 const TAGLINE_COLOR = '#c0cbdc';
 const TAGLINE_GAP = 8;
 const LOGO_OUTLINE_COLOR = '#3e2731';
