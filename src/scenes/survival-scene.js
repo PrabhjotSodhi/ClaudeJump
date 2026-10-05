@@ -36,6 +36,9 @@ const MAX_REACH_X = 96;
 const SPECIAL_KINDS = ['ice', 'bounce', 'fire', 'crumbling'];
 export const CRUMBLE_TICKS = 30;
 const FIRE_FLICKER_TICKS = 12;
+const FIRE_GLOW_COLOR = '#feae34';
+const FIRE_GLOW_FLICKER_COLOR = '#fee761';
+const FIRE_GLOW_HEIGHT = 2;
 // How far above the player the top of the screen sits once the camera follows.
 const CAMERA_LEAD_Y = 180;
 // Rows are generated until they reach this far above the top of the screen.
@@ -459,6 +462,13 @@ export class SurvivalScene {
     return stoneBlocksByKind[run.kind] ?? stoneBlocks;
   }
 
+  // The bright top edge of a fire run glows, flickering with the sprite.
+  drawFireGlow(glowContext, run, rowY) {
+    const flickerFrame = Math.floor(this.runTicks / FIRE_FLICKER_TICKS) % 2;
+    glowContext.fillStyle = flickerFrame ? FIRE_GLOW_FLICKER_COLOR : FIRE_GLOW_COLOR;
+    glowContext.fillRect(run.x, rowY, run.width, FIRE_GLOW_HEIGHT);
+  }
+
   render(renderer) {
     if (!this.backgroundDrawn) {
       renderer.updateBackground((context) => drawArenaBackground(context, 'rooftops'));
@@ -470,8 +480,11 @@ export class SurvivalScene {
     renderer.clearGameLayer();
     renderer.clearUiLayer();
     const context = renderer.gameContext;
+    const glowContext = renderer.glowContext;
     context.save();
     context.translate(0, -this.cameraTopY);
+    glowContext.save();
+    glowContext.translate(0, -this.cameraTopY);
     for (const row of this.rows) {
       for (const run of row.runs) {
         if (run.broken) continue;
@@ -480,21 +493,23 @@ export class SurvivalScene {
           const column = run.x / TILE_SIZE + block;
           context.drawImage(blocks[blockName('small', column, row.index)], run.x + block * TILE_SIZE, row.y);
         }
+        if (run.kind === 'fire') this.drawFireGlow(glowContext, run, row.y);
         run.pad?.render(context);
       }
     }
     this.entityGroups.get('crabs').forEach((crab) => crab.render(context));
-    drawParticles(context, this, 'behind');
+    drawParticles(context, this, 'behind', glowContext);
     const appearance = {
       sprites: this.sprites,
       playerEyes: this.playerEyes,
       characterAnimations: this.characterAnimations,
     };
     this.entityGroups.get('players').forEach((player) => player.render(context, appearance));
-    this.entityGroups.get('rockets').forEach((rocket) => rocket.render(context));
+    this.entityGroups.get('rockets').forEach((rocket) => rocket.render(context, { glowContext }));
     drawSplashes(context, this);
-    drawParticles(context, this, 'front');
+    drawParticles(context, this, 'front', glowContext);
     context.restore();
+    glowContext.restore();
     drawSurvivalHud(renderer.uiContext, this);
   }
 }
