@@ -1,4 +1,4 @@
-import { SCREEN_HEIGHT, SCREEN_WIDTH, TICK_RATE } from '../engine/config.js';
+import { SCREEN_HEIGHT, SCREEN_WIDTH } from '../engine/config.js';
 import { EventEmitter } from '../engine/events.js';
 import { CHARACTERS, HOVER_CHARACTER_BY_PLAYER_ID } from '../entities/characters.js';
 import { PLAYERS } from '../levels/versus-arena.js';
@@ -18,9 +18,9 @@ const CARD_TOP_Y = 68;
 const SELECTED_COLOR = '#feae34';
 const NOT_READY_COLOR = '#8b9bb4';
 
-const HINTS_WIDTH = 360;
+const HINTS_WIDTH = 420;
 const HINTS_TOP_Y = CARD_TOP_Y + SELECT_CARD_HEIGHT + 20;
-const KEY_HINT_ROWS = seatHintRows('Join or ready');
+const KEY_HINT_ROWS = seatHintRows('Ready or start', 'Pick or CPU');
 
 // Green and yellow have no keyboard keys, so their cards name the pad to press.
 const JOIN_TEXT_BY_PLAYER_ID = {
@@ -31,17 +31,14 @@ const JOIN_TEXT_BY_PLAYER_ID = {
 };
 
 // Each card goes through these states in order, one jump press apart. A seat a computer plays is taken back by its
-// own player's jump.
+// own player's jump. Once the match can start, a ready player's jump starts it.
 const NEXT_STATE = { unjoined: 'picking', computer: 'picking', picking: 'ready' };
 
 const MINIMUM_PLAYERS = 2;
 const COMPUTER_TEXT = ['', 'Ready? Right adds', 'a computer'];
 const COMPUTER_COLOR = '#8b9bb4';
 
-// Once everyone who joined is ready, this many ticks pass before the match starts, so a player still reaching for
-// their pad can join. A join or an un-ready cancels it.
-export const START_COUNTDOWN_TICKS = 120;
-const COUNTDOWN_Y = 290;
+const START_PROMPT_Y = 290;
 
 export function emptyCardMessage(playerId) {
   return [JOIN_TEXT_BY_PLAYER_ID[playerId], ...COMPUTER_TEXT];
@@ -67,7 +64,6 @@ export class PlayerSelectScene {
     this.menuInput = null;
     // Render only: hops, cheers and slide-ins of the cards.
     this.cardMotion = new SelectCardMotion();
-    this.countdownTicksRemaining = null;
     this.stateByPlayerId = {};
     // An index into CHARACTERS: the hovered character until the player locks it in, then the chosen one.
     this.characterIndexByPlayerId = {};
@@ -90,7 +86,6 @@ export class PlayerSelectScene {
     for (const spawn of PLAYERS) {
       const presses = pressesByPlayerId[spawn.id];
       if (!presses) continue;
-      const input = inputByPlayerId[spawn.id];
       if (this.stateByPlayerId[spawn.id] === 'picking') {
         if (presses.left) this.changeCharacter(spawn.id, -1);
         if (presses.right) this.changeCharacter(spawn.id, 1);
@@ -98,35 +93,37 @@ export class PlayerSelectScene {
         if (presses.right) this.addComputer();
         if (presses.left) this.removeComputer();
       }
-      if (presses.confirm) this.advance(spawn.id);
+      if (presses.confirm && this.stateByPlayerId[spawn.id] === 'ready') {
+        if (this.canStart()) {
+          this.startModeSelect();
+          return;
+        }
+      } else if (presses.confirm) this.advance(spawn.id);
       else if (presses.back && this.nobodyJoined) {
         this.returnToTitle(inputByPlayerId);
         return;
       } else if (presses.back) this.stepBack(spawn.id);
     }
-
-    if (!this.everyoneJoinedIsReady()) {
-      this.countdownTicksRemaining = null;
-    } else {
-      this.countdownTicksRemaining = (this.countdownTicksRemaining ?? START_COUNTDOWN_TICKS) - 1;
-    }
-    if (this.countdownTicksRemaining === 0) {
-      this.sceneManager.setScene(
-        new ModeSelectScene({
-          sceneManager: this.sceneManager,
-          levels: this.levels,
-          characterByPlayerId: this.pickedCharacters(),
-          computerPlayerIds: this.computerPlayerIds,
-          sprites: this.sprites,
-          seed: this.seed,
-        }),
-      );
-    }
   }
 
-  // The match starts once at least one person is ready, there are two fighters counting computers, and nobody who
-  // joined is still picking. Players who never joined take no part.
-  everyoneJoinedIsReady() {
+  startModeSelect() {
+    this.events.emit('menu-selected', {});
+    this.sceneManager.setScene(
+      new ModeSelectScene({
+        sceneManager: this.sceneManager,
+        levels: this.levels,
+        characterByPlayerId: this.pickedCharacters(),
+        computerPlayerIds: this.computerPlayerIds,
+        sprites: this.sprites,
+        seed: this.seed,
+      }),
+    );
+  }
+
+  // The match can start once at least one person is ready, there are two fighters counting computers, and nobody who
+  // joined is still picking. It never starts on its own, so ready players can still add or remove computers and
+  // late players can still join. Players who never joined take no part.
+  canStart() {
     const states = Object.values(this.stateByPlayerId);
     const readyCount = states.filter((state) => state === 'ready').length;
     const computerCount = states.filter((state) => state === 'computer').length;
@@ -300,13 +297,11 @@ function drawPlayerSelectUi(context, scene, textScale) {
   drawMenuTitle(context, 'Player Select', TITLE_Y);
   for (const spawn of PLAYERS) drawPlayerCard(context, scene, spawn, textScale);
   drawKeyHintRows(context, KEY_HINT_ROWS, { topY: HINTS_TOP_Y, width: HINTS_WIDTH });
-  if (scene.countdownTicksRemaining !== null) {
-    drawText(
-      context,
-      `Starting in ${Math.ceil(scene.countdownTicksRemaining / TICK_RATE)}`,
-      SCREEN_WIDTH / 2,
-      COUNTDOWN_Y,
-      { scale: 2, align: 'center', color: SELECTED_COLOR },
-    );
+  if (scene.canStart()) {
+    drawText(context, 'Press jump to start', SCREEN_WIDTH / 2, START_PROMPT_Y, {
+      scale: 2,
+      align: 'center',
+      color: SELECTED_COLOR,
+    });
   }
 }

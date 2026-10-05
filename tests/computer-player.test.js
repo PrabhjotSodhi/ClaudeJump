@@ -87,9 +87,31 @@ test('on player select a ready player adds a computer player with right and remo
   assert.deepEqual(scene.computerPlayerIds, ['blue']);
   assert.notEqual(scene.characterIndexByPlayerId.blue, scene.characterIndexByPlayerId.red, 'a free character');
 
-  for (let tick = 0; tick < 200 && scenes.length === 0; tick++) scene.update({ red: STILL, blue: STILL });
+  press(scene, 'red', 'jump');
   assert.deepEqual(scenes[0].computerPlayerIds, ['blue']);
   assert.deepEqual(Object.keys(scenes[0].characterByPlayerId), ['red', 'blue']);
+});
+
+test('one player with one computer waits for jump, so they can still add more computers first', () => {
+  const scenes = [];
+  const scene = new PlayerSelectScene({
+    sceneManager: { setScene: (nextScene) => scenes.push(nextScene) },
+    levels: [harborLevel],
+    seed: 0,
+  });
+  scene.update({ red: STILL, blue: STILL });
+  press(scene, 'red', 'jump');
+  press(scene, 'red', 'jump');
+  press(scene, 'red', 'right');
+
+  for (let tick = 0; tick < 600; tick++) scene.update({ red: STILL, blue: STILL });
+  assert.equal(scenes.length, 0, 'one computer does not start the match on its own');
+
+  press(scene, 'red', 'right');
+  press(scene, 'red', 'right');
+  press(scene, 'red', 'jump');
+
+  assert.deepEqual(scenes[0].computerPlayerIds, ['blue', 'green', 'yellow']);
 });
 
 test('computer players do not vote on a level but play the match', () => {
