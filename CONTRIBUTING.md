@@ -1,6 +1,6 @@
 # Contributing
 
-ClaudeJump is built by AI agents working from tickets, with a human maintainer who reviews and merges every change. The rules for writing code are in [AGENTS.md](AGENTS.md). They apply to people and agents alike.
+Large Language Mayhem is built by AI agents working from tickets, with a human maintainer who reviews and merges every change. The rules for writing code are in [AGENTS.md](AGENTS.md). They apply to people and agents alike.
 
 ## Setup
 

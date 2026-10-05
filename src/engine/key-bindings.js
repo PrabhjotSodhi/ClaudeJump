@@ -5,6 +5,7 @@ export const REMAPPABLE_CONTROLS = ['left', 'right', 'jump', 'action'];
 const PAUSE_CODE = 'Escape';
 // Menus confirm and go back with these.
 const RESERVED_CODES = ['Enter', 'Space', 'Backspace'];
+// The claudejump prefix is kept on purpose so players keep their saved settings.
 const STORAGE_KEY = 'claudejump-key-bindings';
 
 export const keyBindings = { mappings: [], defaults: [] };

@@ -7,15 +7,22 @@ import { drawKeyHints, drawMenuList, drawWithMenuMotion, MenuMotion, MOVE_HINT, 
 import { MenuInput, menuStep } from '../ui/menu-input.js';
 import { SettingsMenu } from '../ui/settings-menu.js';
 import { NO_WATER_LINE_Y } from '../ui/menu-screen.js';
-import { drawText } from '../ui/text.js';
+import { drawText, TEXT_GLYPH_HEIGHT } from '../ui/text.js';
 import { openOnlineMenu } from './online-flow.js';
 import { PlayerSelectScene } from './player-select-scene.js';
 import { SurvivalScene } from './survival-scene.js';
 import { TitleBrawl } from './title-brawl.js';
 
-const LOGO_TEXT = 'ClaudeJump';
-const LOGO_SCALE = 3;
-const LOGO_TOP_Y = 36;
+const LOGO_TOP_LINE = 'LARGE LANGUAGE';
+const LOGO_TOP_SCALE = 2;
+const LOGO_BOTTOM_LINE = 'MAYHEM';
+const LOGO_BOTTOM_SCALE = 3;
+const LOGO_TOP_Y = 28;
+const LOGO_LINE_GAP = 4;
+// One line of up to 45 characters at 1x. The slot stays reserved while the text is empty.
+export const TAGLINE = '';
+const TAGLINE_COLOR = '#c0cbdc';
+const TAGLINE_GAP = 8;
 const LOGO_OUTLINE_COLOR = '#3e2731';
 const LOGO_SHADOW_COLOR = '#181425';
 const LOGO_BOB_PIXELS = 2;
@@ -179,13 +186,23 @@ function drawFullscreenButton(context) {
 function drawLogo(context) {
   const phase = (performance.now() / 1000 / LOGO_BOB_PERIOD_SECONDS) * 2 * Math.PI;
   const y = LOGO_TOP_Y + Math.round(Math.sin(phase) * LOGO_BOB_PIXELS);
-  const options = { scale: LOGO_SCALE, align: 'center' };
-  drawText(context, LOGO_TEXT, SCREEN_WIDTH / 2, y + 1, {
-    ...options,
-    color: LOGO_SHADOW_COLOR,
-    outlineColor: LOGO_SHADOW_COLOR,
-  });
-  drawText(context, LOGO_TEXT, SCREEN_WIDTH / 2, y, { ...options, outlineColor: LOGO_OUTLINE_COLOR });
+  const bottomLineY = y + TEXT_GLYPH_HEIGHT * LOGO_TOP_SCALE + LOGO_LINE_GAP;
+  for (const [text, scale, lineY] of [
+    [LOGO_TOP_LINE, LOGO_TOP_SCALE, y],
+    [LOGO_BOTTOM_LINE, LOGO_BOTTOM_SCALE, bottomLineY],
+  ]) {
+    const options = { scale, align: 'center' };
+    drawText(context, text, SCREEN_WIDTH / 2, lineY + 1, {
+      ...options,
+      color: LOGO_SHADOW_COLOR,
+      outlineColor: LOGO_SHADOW_COLOR,
+    });
+    drawText(context, text, SCREEN_WIDTH / 2, lineY, { ...options, outlineColor: LOGO_OUTLINE_COLOR });
+  }
+  if (TAGLINE) {
+    const taglineY = bottomLineY + TEXT_GLYPH_HEIGHT * LOGO_BOTTOM_SCALE + TAGLINE_GAP;
+    drawText(context, TAGLINE, SCREEN_WIDTH / 2, taglineY, { scale: 1, align: 'center', color: TAGLINE_COLOR });
+  }
 }
 
 function drawTitleUi(context, scene) {

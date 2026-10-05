@@ -53,7 +53,7 @@ function labelY(buttons) {
 // layout and pressedButtons the buttons under a finger. showPause hides pause in scenes that cannot pause.
 export function drawPortraitControls(context, { width, height, buttons, pressedButtons, showPause }) {
   drawFrame(context, width, height);
-  drawText(context, 'ClaudeJump', width / 2, labelY(buttons), {
+  drawText(context, 'Large Language Mayhem', width / 2, labelY(buttons), {
     scale: 1,
     align: 'center',
     color: LABEL_COLOR,
