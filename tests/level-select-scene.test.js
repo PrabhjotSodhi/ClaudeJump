@@ -3,7 +3,8 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { findCharacter } from '../src/entities/characters.js';
 import { measureText } from '../src/ui/text.js';
-import { LevelSelectScene, levelSelectLayout } from '../src/scenes/level-select-scene.js';
+import { SCREEN_WIDTH } from '../src/engine/config.js';
+import { LevelSelectScene, levelSelectLayout, voterPromptCenterX } from '../src/scenes/level-select-scene.js';
 import { harborLevel } from './fixtures/harbor-level.mjs';
 
 const otherLevel = { ...harborLevel, name: 'Dock' };
@@ -286,4 +287,33 @@ test('shove takes a vote back, and with no vote to take back it returns to the m
 
   press(scene, 'red', 'action');
   assert.equal(scenes[0].constructor.name, 'ModeSelectScene');
+});
+
+test('every voter prompt sits on screen without overlap, from one voter against computers up to four', () => {
+  const longestPrompt = measureText('P4 Press jump to vote');
+  for (let voterCount = 1; voterCount <= 4; voterCount++) {
+    const centers = Array.from({ length: voterCount }, (unused, index) => voterPromptCenterX(index, voterCount));
+    for (const centerX of centers) {
+      assert.ok(Number.isFinite(centerX), `${voterCount} voters`);
+      assert.ok(centerX - longestPrompt / 2 >= 0 && centerX + longestPrompt / 2 <= SCREEN_WIDTH);
+    }
+    for (let index = 1; index < centers.length; index++)
+      assert.ok(centers[index] - centers[index - 1] >= longestPrompt);
+  }
+});
+
+test('one player with computers votes alone and starts the match', () => {
+  const scenes = [];
+  const sceneManager = { setScene: (nextScene) => scenes.push(nextScene) };
+  const scene = new LevelSelectScene({
+    sceneManager,
+    levels: twoLevels,
+    characterByPlayerId: pickedCharacters,
+    computerPlayerIds: ['blue'],
+    seed: 0,
+  });
+  scene.update(neutralInputs());
+  press(scene, 'red', 'jump');
+  ticksUntilMatch(scene, scenes);
+  assert.equal(scenes.length, 1);
 });

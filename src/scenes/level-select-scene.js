@@ -52,8 +52,9 @@ const RANDOM_MARK_SCALE = 6;
 const RANDOM_MARK_TOP_Y = 14;
 const RANDOM_MARK_COLOR = '#5a6988';
 
-// Where each voter's prompt sits, as offsets from the screen's center, by how many players voted.
-const STATUS_OFFSETS_X = { 2: [-148, 148], 3: [-200, 0, 200], 4: [-240, -80, 80, 240] };
+// Where each voter's prompt sits, as offsets from the screen's center, by how many players vote. One person playing
+// against computers votes alone.
+const STATUS_OFFSETS_X = { 1: [0], 2: [-148, 148], 3: [-200, 0, 200], 4: [-240, -80, 80, 240] };
 const HINT_ROWS = seatHintRows('Vote');
 const SELECTED_COLOR = '#feae34';
 
@@ -303,6 +304,10 @@ function drawBadge(context, x, y, seatIndex, character, sprites) {
   });
 }
 
+export function voterPromptCenterX(voterIndex, voterCount) {
+  return SCREEN_WIDTH / 2 + STATUS_OFFSETS_X[voterCount][voterIndex];
+}
+
 function drawLevelSelectUi(context, scene) {
   const cardCount = scene.levels.length + 1;
   const { tiles, titleY, promptY, hintY } = levelSelectLayout(cardCount);
@@ -325,7 +330,7 @@ function drawLevelSelectUi(context, scene) {
 
   if (scene.pickedLevel) return;
   scene.voters.forEach((spawn, voterIndex) => {
-    const centerX = SCREEN_WIDTH / 2 + STATUS_OFFSETS_X[scene.voters.length][voterIndex];
+    const centerX = voterPromptCenterX(voterIndex, scene.voters.length);
     const locked = scene.lockedByPlayerId[spawn.id];
     const prompt = `${TAG_LABEL_BY_PLAYER_ID[spawn.id]} ${locked ? 'Locked in!' : 'Press jump to vote'}`;
     drawText(context, prompt, centerX - Math.floor(measureText(prompt) / 2), promptY, {
