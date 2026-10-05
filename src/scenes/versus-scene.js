@@ -2,12 +2,20 @@ import { ComputerPlayer } from '../computer/computer-player.js';
 import { touchLayoutForPlayers } from '../engine/touch-input.js';
 import { crateCardFor, GOLDEN_PICKUP_USES, PICKUP_USES } from '../cards/card-definitions.js';
 import {
+  spawnBanana,
+  spawnBomb,
+  spawnBouncePad,
+  spawnIceShot,
+  spawnRocket,
+  startMagnet,
+  updateCardItems,
+  updateFlyingCardItems,
+} from '../cards/card-items.js';
+import {
   CALLOUT_CAUSE_TICKS,
   GOLDEN_CRATE_AFTER_TICKS,
   KNOCKOUT_SLOWMO_STEP_INTERVAL,
   KNOCKOUT_SLOWMO_TICKS,
-  MAGNET_PULL_SPEED,
-  MAGNET_STOP_DISTANCE,
   MODIFIER_EVERY_N_ROUNDS,
   MODIFIER_PICK_TICKS,
   ROUND_COUNTDOWN_BEAT_TICKS,
@@ -16,57 +24,28 @@ import {
   ROUND_MODIFIERS,
   SCREEN_WIDTH,
   SHOVE_CHARGE_REPORT_INTERVAL_TICKS,
-  SHOVE_CLASH_BOUNCE_VELOCITY_X,
-  SHOVE_CLASH_CHARGE_MARGIN,
-  SHOVE_CLASH_WIN_KNOCKBACK_MULTIPLIER,
   SHOVE_MAX_CHARGE_TICKS,
   SHOVE_WINDUP_TICKS,
   TICK_RATE,
-  TILE_SIZE,
   TIMER_URGENT_SECONDS,
   TIME_LOW_SECONDS,
 } from '../engine/config.js';
-import {
-  BLAST_STRENGTH,
-  blastIsReady,
-  blastReaches,
-  crateSlideVelocity,
-  knockBackPlayersInBlast,
-} from '../engine/blast.js';
+import { BLAST_STRENGTH, blastReaches, crateSlideVelocity, knockBackPlayersInBlast } from '../engine/blast.js';
 import { EntityGroups } from '../engine/entity-groups.js';
 import { EventEmitter } from '../engine/events.js';
 import { SeededRandom } from '../engine/seeded-random.js';
 import { wrapAroundScreen } from '../engine/wrap-around-screen.js';
-import {
-  Banana,
-  BANANA_HEIGHT,
-  BANANA_SLIP_TICKS,
-  BANANA_THROW_SPEED_X,
-  BANANA_THROW_SPEED_Y,
-  BANANA_WIDTH,
-} from '../entities/banana.js';
-import { BananaDrop } from '../entities/banana-drop.js';
-import { Bomb, BOMB_WIDTH, BOMB_HEIGHT } from '../entities/bomb.js';
-import {
-  BouncePad,
-  BOUNCE_PAD_WIDTH,
-  BOUNCE_PAD_HEIGHT,
-  BOUNCE_PAD_LAUNCH_VELOCITY,
-  BOUNCE_PAD_FLING_VELOCITY_X,
-  BOUNCE_PAD_FLING_VELOCITY_Y,
-} from '../entities/bounce-pad.js';
-import { IceShot, ICE_SHOT_WIDTH, ICE_SHOT_HEIGHT } from '../entities/ice-shot.js';
+import { BouncePad } from '../entities/bounce-pad.js';
 import { DEFAULT_JOINED_PLAYERS } from '../entities/characters.js';
 import { BLAST_SLIDE_SPEED, Crate, CRATE_WIDTH, CRATE_HEIGHT, CRATE_WARNING_TICKS } from '../entities/crate.js';
-import { Platform } from '../entities/platform.js';
 import { Player } from '../entities/player.js';
-import { Rocket, ROCKET_WIDTH, ROCKET_HEIGHT } from '../entities/rocket.js';
-import { knockBackShoveTarget, resolveShoveHit, resolveShoveHitOnCrate } from '../entities/shove.js';
+import { resolveShoveHit, resolveShoveHitOnCrate } from '../entities/shove.js';
 import { HoldTheHill } from './hold-the-hill.js';
 import { PassTheBomb } from './pass-the-bomb.js';
+import { resolvePlayerCollisions, resolveShoveClashes } from './player-clashes.js';
 import { drawArenaBackground, drawArenaMotion } from '../levels/arena-backgrounds.js';
+import { blockIsInBlast, blockOverlaps, BreakableArena } from '../levels/breakable-arena.js';
 import { createHazards } from '../levels/level-hazards.js';
-import { solidRuns } from '../levels/level-loader.js';
 import { PLAYERS } from '../levels/versus-arena.js';
 import { drawHeldCardIcons } from '../ui/held-card-icons.js';
 import { Callouts } from '../ui/callouts.js';
@@ -98,13 +77,6 @@ const MODE_RULES = { hill: HoldTheHill, bomb: PassTheBomb };
 const WINS_NEEDED = 5;
 const POINT_PAUSE_TICKS = 90;
 const RESTART_DELAY_TICKS = 60;
-// How far one player's feet may sit above the other's head and still count as jumping over, not landing on them.
-const DASH_HEAD_CLEARANCE = 8;
-// Players knocked apart to a gap this small still count as the same contact, so the hit does not refire every tick.
-const DASH_CONTACT_GAP = 6;
-const DASH_KNOCKBACK_VELOCITY_X = 8;
-// Smaller than the blast radius that knocks players back, so a blast knocks players far but only bites a chunk out of the arena.
-const BLOCK_BLAST_RADIUS = 24;
 // A dashing player stopped by a wall only touches it, so the body reaches this far sideways to break it.
 const DASH_BREAK_REACH = 1;
 
@@ -115,23 +87,6 @@ function rectanglesOverlap(first, second) {
     first.y < second.y + second.height &&
     first.y + first.height > second.y
   );
-}
-
-function blockOverlaps(block, rectangle) {
-  return (
-    block.x < rectangle.x + rectangle.width &&
-    block.x + block.size > rectangle.x &&
-    block.y < rectangle.y + rectangle.height &&
-    block.y + block.size > rectangle.y
-  );
-}
-
-function blockIsInBlast(block, blastCenterX, blastCenterY) {
-  const nearestX = Math.max(block.x, Math.min(blastCenterX, block.x + block.size));
-  const nearestY = Math.max(block.y, Math.min(blastCenterY, block.y + block.size));
-  const distanceX = nearestX - blastCenterX;
-  const distanceY = nearestY - blastCenterY;
-  return Math.sqrt(distanceX * distanceX + distanceY * distanceY) <= BLOCK_BLAST_RADIUS;
 }
 
 const SUDDEN_DEATH_ROUND_TICKS = 1800; // 30 seconds; the round timer and the warning start point
@@ -172,6 +127,7 @@ export class VersusScene {
     this.events = new EventEmitter();
     this.random = new SeededRandom(seed);
     this.entityGroups = new EntityGroups();
+    this.breakableArena = new BreakableArena({ level, entityGroups: this.entityGroups, events: this.events });
     this.level = level;
     this.suddenDeathRisePerTick = (level.waterLineY - level.suddenDeathLineY) / SUDDEN_DEATH_RISE_TICKS;
 
@@ -262,6 +218,26 @@ export class VersusScene {
     return this.entityGroups.get('players');
   }
 
+  get blocks() {
+    return this.breakableArena.blocks;
+  }
+
+  get solidCells() {
+    return this.breakableArena.solidCells;
+  }
+
+  get brokenTiles() {
+    return this.breakableArena.brokenTiles;
+  }
+
+  get openTops() {
+    return this.breakableArena.openTops;
+  }
+
+  removeSolidCell(column, row) {
+    this.breakableArena.removeSolidCell(column, row);
+  }
+
   get suddenDeathCountdownTicks() {
     return Math.max(0, (this.modeRules?.roundTicks ?? SUDDEN_DEATH_ROUND_TICKS) - this.fightTicks);
   }
@@ -288,7 +264,7 @@ export class VersusScene {
     this.entityGroups.clear('hazards');
     for (const hazard of createHazards(this.level.hazards, { level: this.level, random: this.random }))
       this.entityGroups.add('hazards', hazard);
-    this.restoreBlocks();
+    this.breakableArena.restoreBlocks();
     for (const { x, y } of this.level.bouncePads) {
       this.entityGroups.add('bouncePads', new BouncePad({ x, y, lifetimeTicks: Infinity }));
     }
@@ -388,88 +364,6 @@ export class VersusScene {
     return Math.round(CRATE_SPAWN_DELAY_TICKS * (this.activeModifier.crateDelayMultiplier ?? 1));
   }
 
-  // A banana falls from above the screen onto a random open platform, but only after its marker has flashed there.
-  updateBananaRain() {
-    for (const drop of this.entityGroups.get('bananaDrops')) {
-      drop.update();
-      if (drop.ticksRemaining > 0) continue;
-
-      this.entityGroups.add('bananas', new Banana({ x: drop.x, y: -BANANA_HEIGHT, dropperId: null }));
-      this.entityGroups.remove('bananaDrops', drop);
-    }
-    if (!this.activeModifier.bananaRainIntervalTicks) return;
-
-    this.ticksUntilBananaDrop--;
-    if (this.ticksUntilBananaDrop > 0) return;
-
-    const openTops = this.openTops.filter((openTop) => openTop.y < this.waterLineY);
-    if (openTops.length === 0) return;
-
-    const openTop = openTops[Math.floor(this.random.next() * openTops.length)];
-    const x = openTop.x + this.random.next() * (openTop.width - BANANA_WIDTH);
-    this.entityGroups.add('bananaDrops', new BananaDrop({ x, landingY: openTop.y }));
-    this.ticksUntilBananaDrop = this.activeModifier.bananaRainIntervalTicks;
-  }
-
-  // Blocks broken in a round are gone until the next one. The level itself is never changed, so the next round
-  // and the thumbnails still see every block.
-  restoreBlocks() {
-    this.blocks = [...this.level.blocks];
-    this.solidCells = this.level.solidCells.map((row) => [...row]);
-    this.brokenTiles = new Set();
-    this.rebuildSolids();
-  }
-
-  removeSolidCell(column, row) {
-    this.solidCells[row][column] = false;
-    this.rebuildSolids();
-  }
-
-  rebuildSolids() {
-    const { platforms, openTops } = solidRuns(this.solidCells);
-    this.entityGroups.clear('platforms');
-    for (const layout of platforms) this.entityGroups.add('platforms', new Platform(layout));
-    this.openTops = openTops;
-  }
-
-  breakBlocksWhere(touchesBlock) {
-    const brokenBlocks = this.blocks.filter(touchesBlock);
-    if (brokenBlocks.length === 0) return;
-
-    this.blocks = this.blocks.filter((block) => !brokenBlocks.includes(block));
-    for (const block of brokenBlocks) {
-      const firstColumn = block.x / TILE_SIZE;
-      const firstRow = block.y / TILE_SIZE;
-      for (let row = firstRow; row < firstRow + block.size / TILE_SIZE; row++) {
-        for (let column = firstColumn; column < firstColumn + block.size / TILE_SIZE; column++) {
-          this.solidCells[row][column] = false;
-        }
-      }
-      this.brokenTiles.add(block.tile);
-      this.events.emit('block-broken', { x: block.x, y: block.y, size: block.size });
-    }
-    this.rebuildSolids();
-    this.dropUnsupportedBouncePads(brokenBlocks);
-  }
-
-  // A pad that stood on a broken block goes with it, unless another solid cell still holds it up.
-  dropUnsupportedBouncePads(brokenBlocks) {
-    for (const bouncePad of this.entityGroups.get('bouncePads')) {
-      const padBottomY = bouncePad.y + bouncePad.height;
-      const stoodOnBrokenBlock = brokenBlocks.some(
-        (block) =>
-          block.y === padBottomY && block.x < bouncePad.x + bouncePad.width && block.x + block.size > bouncePad.x,
-      );
-      if (!stoodOnBrokenBlock) continue;
-      const row = this.solidCells[padBottomY / TILE_SIZE] ?? [];
-      const firstColumn = Math.floor(bouncePad.x / TILE_SIZE);
-      const lastColumn = Math.floor((bouncePad.x + bouncePad.width - 1) / TILE_SIZE);
-      let supported = false;
-      for (let column = firstColumn; column <= lastColumn; column++) if (row[column]) supported = true;
-      if (!supported) this.entityGroups.remove('bouncePads', bouncePad);
-    }
-  }
-
   update(inputByPlayerId) {
     if (this.computerPlayers.length > 0) {
       inputByPlayerId = { ...inputByPlayerId };
@@ -504,13 +398,7 @@ export class VersusScene {
         this.updateSuddenDeath();
         this.updatePlayers(inputByPlayerId);
         this.updateHazards();
-        this.updateRockets();
-        this.updateBombs();
-        this.updateIceShots();
-        this.updateMagnets();
-        this.updateBouncePads();
-        this.updateBananaRain();
-        this.updateBananas();
+        updateCardItems(this);
         this.updateCrates();
         this.modeRules?.update(this);
         this.checkRoundEnd();
@@ -518,17 +406,13 @@ export class VersusScene {
       case 'knockout':
         if (worldSteps) {
           this.updatePlayers(null);
-          this.updateRockets();
-          this.updateBombs();
-          this.updateIceShots();
+          updateFlyingCardItems(this);
         }
         if (this.ticksRemaining <= 0) this.endRound();
         break;
       case 'point':
         this.updatePlayers(null);
-        this.updateRockets();
-        this.updateBombs();
-        this.updateIceShots();
+        updateFlyingCardItems(this);
         if (this.ticksRemaining <= 0) this.startNextRound();
         break;
       case 'modifier':
@@ -536,9 +420,7 @@ export class VersusScene {
         break;
       case 'match':
         this.updatePlayers(null);
-        this.updateRockets();
-        this.updateBombs();
-        this.updateIceShots();
+        updateFlyingCardItems(this);
         break;
     }
   }
@@ -577,12 +459,12 @@ export class VersusScene {
       if (player.onGround && !wasOnGround && fallSpeed >= HARD_LANDING_SPEED) this.events.emit('player-landed', feet);
       if (player.playedCardName) {
         this.events.emit('card-played', { playerId: player.id, cardName: player.playedCardName });
-        if (player.playedCardName === 'rocket') this.spawnRocket(player);
-        if (player.playedCardName === 'bouncePad') this.spawnBouncePad(player);
-        if (player.playedCardName === 'bomb') this.spawnBomb(player);
-        if (player.playedCardName === 'banana') this.spawnBanana(player);
-        if (player.playedCardName === 'freeze') this.spawnIceShot(player);
-        if (player.playedCardName === 'magnet') this.startMagnet(player);
+        if (player.playedCardName === 'rocket') spawnRocket(this, player);
+        if (player.playedCardName === 'bouncePad') spawnBouncePad(this, player);
+        if (player.playedCardName === 'bomb') spawnBomb(this, player);
+        if (player.playedCardName === 'banana') spawnBanana(this, player);
+        if (player.playedCardName === 'freeze') spawnIceShot(this, player);
+        if (player.playedCardName === 'magnet') startMagnet(this, player);
       }
       if (player.shoveJustFullyCharged) this.events.emit('shove-fully-charged', { playerId: player.id });
       if (
@@ -597,7 +479,7 @@ export class VersusScene {
       if (player.shoveJustStarted) {
         this.shoveHitIdsByShoverId.set(player.id, new Set());
         const hitZone = player.shoveHitZone;
-        this.breakBlocksWhere((block) => blockOverlaps(block, hitZone));
+        this.breakableArena.breakBlocksWhere((block) => blockOverlaps(block, hitZone));
       }
       if (player.dashTicksRemaining > 0 && !player.inWater) {
         const reachedBody = {
@@ -606,7 +488,7 @@ export class VersusScene {
           width: player.width + 2 * DASH_BREAK_REACH,
           height: player.height,
         };
-        this.breakBlocksWhere((block) => blockOverlaps(block, reachedBody));
+        this.breakableArena.breakBlocksWhere((block) => blockOverlaps(block, reachedBody));
       }
       if (!player.inWater && player.y + player.height >= this.waterLineY) {
         const fallSpeed = player.velocityY;
@@ -623,7 +505,7 @@ export class VersusScene {
       this.wrapPlayerAroundScreen(player);
     }
     // Hits resolve once everyone has moved, so a freeze lasts the same number of ticks for every player.
-    this.resolveShoveClashes();
+    resolveShoveClashes(this);
     for (const shover of this.players) {
       if (!shover.isShoveActive) continue;
       resolveShoveHit({
@@ -644,7 +526,7 @@ export class VersusScene {
         });
       }
     }
-    this.resolvePlayerCollisions();
+    resolvePlayerCollisions(this);
   }
 
   recordCause(playerId, cause) {
@@ -657,92 +539,8 @@ export class VersusScene {
     return recent && this.tickCount - recent.tick <= CALLOUT_CAUSE_TICKS ? recent.cause : null;
   }
 
-  // Resolves every pair in a fixed order, once per pair of shoves.
-  resolveShoveClashes() {
-    const players = this.players;
-    for (let firstIndex = 0; firstIndex < players.length; firstIndex++) {
-      for (let secondIndex = firstIndex + 1; secondIndex < players.length; secondIndex++) {
-        this.resolveShoveClash(players[firstIndex], players[secondIndex]);
-      }
-    }
-  }
-
-  // Shoves clash when the players face each other, one shove is active and the other is winding up or just fired, and
-  // a hit zone reaches the other body. The stronger charge wins with reduced knockback. Otherwise neither lands and
-  // both players bounce apart, which also cancels a shove still winding up.
-  resolveShoveClash(playerA, playerB) {
-    const pairId = [playerA.id, playerB.id].sort().join('-');
-    const leftPlayer = playerA.x <= playerB.x ? playerA : playerB;
-    const rightPlayer = leftPlayer === playerA ? playerB : playerA;
-    const shovesAreClashing =
-      (leftPlayer.isShoveActive || rightPlayer.isShoveActive) &&
-      leftPlayer.isShoveClashable &&
-      rightPlayer.isShoveClashable &&
-      !leftPlayer.inWater &&
-      !rightPlayer.inWater &&
-      leftPlayer.facing > 0 &&
-      rightPlayer.facing < 0 &&
-      (rightPlayer.overlaps(leftPlayer.shoveHitZone) || leftPlayer.overlaps(rightPlayer.shoveHitZone));
-    if (!shovesAreClashing) {
-      this.shoveClashPairIds.delete(pairId);
-      return;
-    }
-    if (this.shoveClashPairIds.has(pairId)) return;
-
-    this.shoveClashPairIds.add(pairId);
-    for (const [shover, opponent] of [
-      [playerA, playerB],
-      [playerB, playerA],
-    ]) {
-      if (shover.isShoveActive) this.shoveHitIdsByShoverId.get(shover.id).add(opponent.id);
-    }
-    const chargeLead = playerA.shoveClashCharge - playerB.shoveClashCharge;
-    if (Math.abs(chargeLead) >= SHOVE_CLASH_CHARGE_MARGIN) {
-      const winner = chargeLead > 0 ? playerA : playerB;
-      knockBackShoveTarget({
-        events: this.events,
-        shover: winner,
-        opponent: winner === playerA ? playerB : playerA,
-        knockbackScale: SHOVE_CLASH_WIN_KNOCKBACK_MULTIPLIER,
-      });
-    } else {
-      leftPlayer.freeze('light', -SHOVE_CLASH_BOUNCE_VELOCITY_X, 0);
-      rightPlayer.freeze('light', SHOVE_CLASH_BOUNCE_VELOCITY_X, 0);
-    }
-    const centerX = (leftPlayer.x + leftPlayer.width / 2 + rightPlayer.x + rightPlayer.width / 2) / 2;
-    const centerY = (leftPlayer.y + leftPlayer.height / 2 + rightPlayer.y + rightPlayer.height / 2) / 2;
-    this.events.emit('shove-clash', { x: centerX, y: centerY, playerIds: [playerA.id, playerB.id] });
-  }
-
-  spawnRocket(player) {
-    const spawnX = player.facing > 0 ? player.x + player.width : player.x - ROCKET_WIDTH;
-    const spawnY = player.y + player.height / 2 - ROCKET_HEIGHT / 2;
-    this.entityGroups.add('rockets', new Rocket({ x: spawnX, y: spawnY, facing: player.facing, shooterId: player.id }));
-  }
-
   updateHazards() {
     for (const hazard of this.entityGroups.get('hazards')) hazard.update(this);
-  }
-
-  updateRockets() {
-    const platforms = this.entityGroups.get('platforms');
-    for (const rocket of this.entityGroups.get('rockets')) {
-      rocket.update(this.players, platforms);
-      wrapAroundScreen(rocket);
-      if (!rocket.exploded) {
-        this.popCrateParachute((bounds) => rectanglesOverlap(bounds, rocket), Math.sign(rocket.velocityX), 'rocket');
-      }
-      if (rocket.exploded && blastIsReady(rocket, this.players, rocket.shooterId)) this.resolveRocketExplosion(rocket);
-    }
-  }
-
-  resolveRocketExplosion(rocket) {
-    const blastCenterX = rocket.x + rocket.width / 2;
-    const blastCenterY = rocket.y + rocket.height / 2;
-    const playerIds = this.resolveBlast(blastCenterX, blastCenterY);
-    for (const playerId of playerIds) if (playerId !== rocket.shooterId) this.recordCause(playerId, 'rocket');
-    this.events.emit('rocket-exploded', { x: blastCenterX, y: blastCenterY, playerIds, strength: BLAST_STRENGTH });
-    this.entityGroups.remove('rockets', rocket);
   }
 
   resolveBlast(blastCenterX, blastCenterY) {
@@ -750,7 +548,7 @@ export class VersusScene {
     const crateVelocityX = crate ? crateSlideVelocity(crate, blastCenterX, blastCenterY, BLAST_SLIDE_SPEED) : 0;
     if (crateVelocityX !== 0) crate.slide(crateVelocityX);
     const knockedPlayerIds = knockBackPlayersInBlast(this.players, blastCenterX, blastCenterY);
-    this.breakBlocksWhere((block) => blockIsInBlast(block, blastCenterX, blastCenterY));
+    this.breakableArena.breakBlocksWhere((block) => blockIsInBlast(block, blastCenterX, blastCenterY));
     if (crate) {
       this.popCrateParachute(
         (bounds) => blastReaches(bounds, blastCenterX, blastCenterY),
@@ -761,30 +559,6 @@ export class VersusScene {
     return knockedPlayerIds;
   }
 
-  spawnBomb(player) {
-    const spawnX = player.facing > 0 ? player.x + player.width : player.x - BOMB_WIDTH;
-    const spawnY = player.y + player.height / 2 - BOMB_HEIGHT / 2;
-    this.entityGroups.add('bombs', new Bomb({ x: spawnX, y: spawnY, facing: player.facing, throwerId: player.id }));
-  }
-
-  updateBombs() {
-    const platforms = this.entityGroups.get('platforms');
-    for (const bomb of this.entityGroups.get('bombs')) {
-      bomb.update(this.players, platforms, this.waterLineY);
-      wrapAroundScreen(bomb);
-      if (!bomb.exploded) {
-        this.popCrateParachute((bounds) => rectanglesOverlap(bounds, bomb), Math.sign(bomb.velocityX), 'bomb');
-      }
-      if (!bomb.exploded || !blastIsReady(bomb, this.players, bomb.throwerId)) continue;
-
-      const blastCenterX = bomb.x + bomb.width / 2;
-      const blastCenterY = bomb.y + bomb.height / 2;
-      const playerIds = this.resolveBlast(blastCenterX, blastCenterY);
-      this.events.emit('bomb-exploded', { x: blastCenterX, y: blastCenterY, playerIds, strength: BLAST_STRENGTH });
-      this.entityGroups.remove('bombs', bomb);
-    }
-  }
-
   // Pass the bomb's fuse ran out on this player: they are out, and the blast knocks back anyone near.
   blowUpPlayer(player) {
     player.blowUp();
@@ -793,138 +567,6 @@ export class VersusScene {
     const playerIds = this.resolveBlast(blastCenterX, blastCenterY);
     this.events.emit('player-blown-up', { playerId: player.id });
     this.events.emit('bomb-exploded', { x: blastCenterX, y: blastCenterY, playerIds, strength: BLAST_STRENGTH });
-  }
-
-  spawnIceShot(player) {
-    const x = player.facing > 0 ? player.x + player.width : player.x - ICE_SHOT_WIDTH;
-    const y = player.y + player.height / 2 - ICE_SHOT_HEIGHT / 2;
-    this.entityGroups.add('iceShots', new IceShot({ x, y, facing: player.facing, shooterId: player.id }));
-  }
-
-  updateIceShots() {
-    const platforms = this.entityGroups.get('platforms');
-    for (const iceShot of this.entityGroups.get('iceShots')) {
-      iceShot.update(this.players, platforms);
-      wrapAroundScreen(iceShot);
-      if (!iceShot.finished) continue;
-
-      const target = this.players.find((player) => player.id === iceShot.hitPlayerId);
-      const x = iceShot.x + iceShot.width / 2;
-      const y = iceShot.y + iceShot.height / 2;
-      if (target) {
-        target.freezeSolid();
-        this.events.emit('player-iced', { shooterId: iceShot.shooterId, targetId: target.id, x, y });
-      } else {
-        this.events.emit('ice-shattered', { x, y });
-      }
-      this.entityGroups.remove('iceShots', iceShot);
-    }
-  }
-
-  startMagnet(player) {
-    const targetIds = this.players.filter((other) => other !== player && !other.inWater).map((other) => other.id);
-    this.events.emit('magnet-pulled', { playerId: player.id, targetIds });
-  }
-
-  // Pulls sideways only, straight across the screen, and never slower than a pull already carrying the player.
-  updateMagnets() {
-    for (const puller of this.players) {
-      if (puller.magnetTicksRemaining <= 0) continue;
-      puller.magnetTicksRemaining = puller.inWater ? 0 : puller.magnetTicksRemaining - 1;
-      for (const target of this.players) {
-        if (target === puller || target.inWater) continue;
-        const distanceX = puller.x - target.x;
-        if (Math.abs(distanceX) <= MAGNET_STOP_DISTANCE) continue;
-        const direction = Math.sign(distanceX);
-        if (target.knockbackVelocityX * direction < MAGNET_PULL_SPEED) {
-          target.knockbackVelocityX = direction * MAGNET_PULL_SPEED;
-        }
-      }
-    }
-  }
-
-  // Tossed backward from just behind the player in a short arc, landing on the ground behind them or in the sea.
-  spawnBanana(player) {
-    const x = player.facing > 0 ? player.x - BANANA_WIDTH : player.x + player.width;
-    const y = player.y + player.height - BANANA_HEIGHT;
-    this.entityGroups.add(
-      'bananas',
-      new Banana({
-        x,
-        y,
-        dropperId: player.id,
-        velocityX: -player.facing * BANANA_THROW_SPEED_X,
-        velocityY: BANANA_THROW_SPEED_Y,
-      }),
-    );
-  }
-
-  updateBananas() {
-    const platforms = this.entityGroups.get('platforms');
-    for (const banana of this.entityGroups.get('bananas')) {
-      banana.update(platforms);
-      if (banana.expired || banana.y + banana.height >= this.waterLineY) {
-        this.entityGroups.remove('bananas', banana);
-        continue;
-      }
-      const slippingPlayer = this.players.find((player) => banana.canSlip(player) && player.overlaps(banana));
-      if (!slippingPlayer) continue;
-
-      slippingPlayer.makeSlip(BANANA_SLIP_TICKS);
-      this.recordCause(slippingPlayer.id, 'banana');
-      this.events.emit('player-slipped', { playerId: slippingPlayer.id });
-      this.entityGroups.remove('bananas', banana);
-    }
-  }
-
-  // Placed under the player's feet wherever they are, even in midair over the sea. It only ever
-  // affects the other players.
-  spawnBouncePad(player) {
-    const x = player.x + player.width / 2 - BOUNCE_PAD_WIDTH / 2;
-    const y = player.y + player.height - BOUNCE_PAD_HEIGHT;
-    this.entityGroups.add('bouncePads', new BouncePad({ x, y, ownerId: player.id }));
-  }
-
-  updateBouncePads() {
-    for (const bouncePad of this.entityGroups.get('bouncePads')) {
-      bouncePad.update();
-      if (bouncePad.expired) {
-        this.entityGroups.remove('bouncePads', bouncePad);
-        continue;
-      }
-      if (bouncePad.ownerId === null) this.launchPlayersLandingOn(bouncePad);
-      else this.flingFirstOpponentTouching(bouncePad);
-    }
-  }
-
-  launchPlayersLandingOn(bouncePad) {
-    for (const player of this.players) {
-      if (!player.inWater && bouncePad.isLandedOnBy(player)) {
-        player.launchUpward(BOUNCE_PAD_LAUNCH_VELOCITY);
-      }
-    }
-  }
-
-  // The trap throws the opponent back the way they came, or away from its center if they stood
-  // still, then breaks.
-  flingFirstOpponentTouching(bouncePad) {
-    for (const player of this.players) {
-      if (player.id === bouncePad.ownerId || player.inWater || !player.overlaps(bouncePad)) continue;
-
-      const movingDirection = Math.sign(player.velocityX + player.knockbackVelocityX);
-      const awayFromCenterDirection = player.x + player.width / 2 < bouncePad.x + bouncePad.width / 2 ? -1 : 1;
-      const flingDirection = movingDirection === 0 ? awayFromCenterDirection : -movingDirection;
-      player.freeze('light', BOUNCE_PAD_FLING_VELOCITY_X * flingDirection, BOUNCE_PAD_FLING_VELOCITY_Y);
-      this.events.emit('trap-sprung', {
-        ownerId: bouncePad.ownerId,
-        targetId: player.id,
-        directionX: 0,
-        directionY: -1,
-        strength: 'light',
-      });
-      this.entityGroups.remove('bouncePads', bouncePad);
-      return;
-    }
   }
 
   updateCrates() {
@@ -1005,58 +647,6 @@ export class VersusScene {
   wrapPlayerAroundScreen(player) {
     if (!wrapAroundScreen(player)) return;
     this.events.emit('player-wrapped', { playerId: player.id, x: player.x, y: player.y });
-  }
-
-  // Resolves every pair in a fixed order so the outcome never depends on iteration order.
-  resolvePlayerCollisions() {
-    const players = this.players;
-    for (let firstIndex = 0; firstIndex < players.length; firstIndex++) {
-      for (let secondIndex = firstIndex + 1; secondIndex < players.length; secondIndex++) {
-        this.resolvePlayerPair(players[firstIndex], players[secondIndex]);
-      }
-    }
-  }
-
-  // Players pass through each other. Only a dash hurts: it knocks both players apart once per contact.
-  resolvePlayerPair(playerA, playerB) {
-    const pairId = [playerA.id, playerB.id].sort().join('-');
-    const isDashing = playerA.dashTicksRemaining > 0 || playerB.dashTicksRemaining > 0;
-    if (playerA.inWater || playerB.inWater || !isDashing) {
-      this.dashHitPairIds.delete(pairId);
-      return;
-    }
-
-    if (this.playersAreTouching(playerA, playerB, 0)) {
-      const leftPlayer = playerA.x <= playerB.x ? playerA : playerB;
-      const rightPlayer = leftPlayer === playerA ? playerB : playerA;
-      if (!this.dashHitPairIds.has(pairId)) {
-        this.dashHitPairIds.add(pairId);
-        leftPlayer.freeze('medium', -DASH_KNOCKBACK_VELOCITY_X, 0);
-        rightPlayer.freeze('medium', DASH_KNOCKBACK_VELOCITY_X, 0);
-        const dasher = playerA.dashTicksRemaining > 0 ? playerA : playerB;
-        this.events.emit('dash-hit', {
-          playerIds: [playerA.id, playerB.id],
-          directionX: dasher.facing,
-          directionY: 0,
-          strength: 'medium',
-        });
-      }
-    }
-
-    if (!this.playersAreTouching(playerA, playerB, DASH_CONTACT_GAP)) this.dashHitPairIds.delete(pairId);
-  }
-
-  // A player whose feet are clearly above the other's head is jumping over them, not touching them.
-  // horizontalPadding widens the gap that still counts as touching, so a hit kept apart by a few pixels
-  // is still the same contact instead of a fresh one.
-  playersAreTouching(playerA, playerB, horizontalPadding) {
-    const higherPlayer = playerA.y < playerB.y ? playerA : playerB;
-    const lowerPlayer = higherPlayer === playerA ? playerB : playerA;
-    if (higherPlayer.y + higherPlayer.height <= lowerPlayer.y + DASH_HEAD_CLEARANCE) return false;
-
-    const leftPlayer = playerA.x <= playerB.x ? playerA : playerB;
-    const rightPlayer = leftPlayer === playerA ? playerB : playerA;
-    return leftPlayer.x + leftPlayer.width + horizontalPadding > rightPlayer.x;
   }
 
   checkRoundEnd() {
