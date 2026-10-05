@@ -11,9 +11,11 @@ export class Renderer {
   constructor() {
     this.backgroundCanvas = createLayerCanvas();
     this.gameCanvas = createLayerCanvas();
+    this.glowCanvas = createLayerCanvas();
     this.uiCanvas = createLayerCanvas();
     this.backgroundContext = this.backgroundCanvas.getContext('2d');
     this.gameContext = this.gameCanvas.getContext('2d');
+    this.glowContext = this.glowCanvas.getContext('2d');
     this.uiContext = this.uiCanvas.getContext('2d');
     this.backgroundChanged = false;
     // Whole pixels the shader moves the background and game layers by. The UI layer never moves.
@@ -30,8 +32,11 @@ export class Renderer {
     this.backgroundChanged = true;
   }
 
+  // Clears the glow layer too. Entities draw their bright pixels onto glowContext as well as the game layer, and only
+  // those pixels glow.
   clearGameLayer() {
     this.gameContext.clearRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    this.glowContext.clearRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
   }
 
   clearUiLayer() {

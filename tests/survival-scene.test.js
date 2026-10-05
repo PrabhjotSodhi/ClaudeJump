@@ -215,6 +215,7 @@ test('render draws every block of every row shifted by the camera', () => {
     clearGameLayer() {},
     clearUiLayer() {},
     gameContext,
+    glowContext: { save() {}, restore() {}, translate() {}, fillRect() {} },
     uiContext: recordingContext(),
   };
   const climb = makeClimber(scene);

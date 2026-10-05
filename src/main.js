@@ -232,6 +232,7 @@ async function main() {
     gameWindow.render({
       backgroundCanvas: renderer.backgroundChanged ? renderer.backgroundCanvas : null,
       gameCanvas: renderer.gameCanvas,
+      glowCanvas: renderer.glowCanvas,
       uiCanvas: renderer.uiCanvas,
       shakeOffset: renderer.shakeOffset,
       zoom: renderer.zoom,

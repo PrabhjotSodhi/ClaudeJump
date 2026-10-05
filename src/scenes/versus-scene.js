@@ -714,11 +714,12 @@ export class VersusScene {
     }
     if (this.mode === 'hill') drawHillZone(renderer.gameContext, this);
     drawWrapPuffs(renderer.gameContext, this);
-    drawParticles(renderer.gameContext, this, 'behind');
+    drawParticles(renderer.gameContext, this, 'behind', renderer.glowContext);
     this.entityGroups.renderAll(renderer.gameContext, {
       sprites: this.sprites,
       playerEyes: this.playerEyes,
       characterAnimations: this.characterAnimations,
+      glowContext: renderer.glowContext,
       arenaName: this.level.background,
     });
     for (const player of this.players) player.renderLandedShovel(renderer.gameContext, this.sprites);
@@ -726,8 +727,8 @@ export class VersusScene {
     if (this.mode === 'bomb') drawHeldBomb(renderer.gameContext, this);
     drawMagnetField(renderer.gameContext, this);
     drawSplashes(renderer.gameContext, this);
-    drawParticles(renderer.gameContext, this, 'front');
-    drawBlastClouds(renderer.gameContext, this);
+    drawParticles(renderer.gameContext, this, 'front', renderer.glowContext);
+    drawBlastClouds(renderer.gameContext, this, renderer.glowContext);
     drawClashSparks(renderer.gameContext, this);
     drawHeldCardIcons(renderer.gameContext, this);
     drawPlayerTags(renderer.gameContext, this);

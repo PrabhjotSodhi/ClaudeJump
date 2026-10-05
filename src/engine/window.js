@@ -4,6 +4,7 @@ import { fitScreen, isPortraitOnTouchDevice } from './screen-fit.js';
 
 const TEXTURE_UNIT_BY_LAYER_NAME = { background: 0, game: 1, ui: 2 };
 const SEA_TEXTURE_UNIT = 3;
+const GLOW_TEXTURE_UNIT = 4;
 
 function compileShader(webglContext, type, source) {
   const shader = webglContext.createShader(type);
@@ -115,6 +116,14 @@ export function createWindow(canvas, vertexShaderSource, fragmentShaderSource, {
   webglContext.texParameteri(webglContext.TEXTURE_2D, webglContext.TEXTURE_WRAP_S, webglContext.CLAMP_TO_EDGE);
   webglContext.texParameteri(webglContext.TEXTURE_2D, webglContext.TEXTURE_WRAP_T, webglContext.CLAMP_TO_EDGE);
   webglContext.uniform1i(webglContext.getUniformLocation(program, 'u_seaHeights'), SEA_TEXTURE_UNIT);
+  // The glow layer is the one layer sampled smoothly: the shader blurs it, and it is only ever added on top.
+  webglContext.activeTexture(webglContext.TEXTURE0 + GLOW_TEXTURE_UNIT);
+  webglContext.bindTexture(webglContext.TEXTURE_2D, webglContext.createTexture());
+  webglContext.texParameteri(webglContext.TEXTURE_2D, webglContext.TEXTURE_MIN_FILTER, webglContext.LINEAR);
+  webglContext.texParameteri(webglContext.TEXTURE_2D, webglContext.TEXTURE_MAG_FILTER, webglContext.LINEAR);
+  webglContext.texParameteri(webglContext.TEXTURE_2D, webglContext.TEXTURE_WRAP_S, webglContext.CLAMP_TO_EDGE);
+  webglContext.texParameteri(webglContext.TEXTURE_2D, webglContext.TEXTURE_WRAP_T, webglContext.CLAMP_TO_EDGE);
+  webglContext.uniform1i(webglContext.getUniformLocation(program, 'u_glowLayer'), GLOW_TEXTURE_UNIT);
   webglContext.uniform2f(webglContext.getUniformLocation(program, 'u_resolution'), SCREEN_WIDTH, SCREEN_HEIGHT);
   const waterLineUniformLocation = webglContext.getUniformLocation(program, 'u_waterLine');
   const shakeOffsetUniformLocation = webglContext.getUniformLocation(program, 'u_shakeOffset');
@@ -149,10 +158,29 @@ export function createWindow(canvas, vertexShaderSource, fragmentShaderSource, {
     get portraitLayout() {
       return portraitLayout;
     },
-    render({ backgroundCanvas, gameCanvas, uiCanvas, shakeOffset, zoom, seaRippleBytes, waterLineY, timeSeconds }) {
+    render({
+      backgroundCanvas,
+      gameCanvas,
+      glowCanvas,
+      uiCanvas,
+      shakeOffset,
+      zoom,
+      seaRippleBytes,
+      waterLineY,
+      timeSeconds,
+    }) {
       if (backgroundCanvas) uploadLayer('background', backgroundCanvas);
       uploadLayer('game', gameCanvas);
       uploadLayer('ui', uiCanvas);
+      webglContext.activeTexture(webglContext.TEXTURE0 + GLOW_TEXTURE_UNIT);
+      webglContext.texImage2D(
+        webglContext.TEXTURE_2D,
+        0,
+        webglContext.RGBA,
+        webglContext.RGBA,
+        webglContext.UNSIGNED_BYTE,
+        glowCanvas,
+      );
       webglContext.activeTexture(webglContext.TEXTURE0 + SEA_TEXTURE_UNIT);
       webglContext.texImage2D(
         webglContext.TEXTURE_2D,
