@@ -1,4 +1,5 @@
 import { ComputerPlayer } from '../computer/computer-player.js';
+import { touchLayoutForPlayers } from '../engine/touch-input.js';
 import { crateCardFor, GOLDEN_PICKUP_USES, PICKUP_USES } from '../cards/card-definitions.js';
 import {
   CALLOUT_CAUSE_TICKS,
@@ -153,7 +154,7 @@ export class VersusScene {
     heat = false,
     mode = 'knockout',
   } = {}) {
-    this.touchLayout = 'twoPlayers';
+    this.touchLayout = touchLayoutForPlayers(players);
     // The joined players, each { id, character, computer }, in seat order. Every level has a spawn for each id. A
     // computer player's input comes from a ComputerPlayer instead of the input records.
     this.joinedPlayers = players;
