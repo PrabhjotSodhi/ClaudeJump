@@ -35,13 +35,17 @@ const JOIN_TEXT_BY_PLAYER_ID = {
 const NEXT_STATE = { unjoined: 'picking', computer: 'picking', picking: 'ready' };
 
 const MINIMUM_PLAYERS = 2;
-const COMPUTER_TEXT = ['', 'Ready players add', 'a computer with right'];
+const COMPUTER_TEXT = ['', 'Ready? Right adds', 'a computer'];
 const COMPUTER_COLOR = '#8b9bb4';
 
 // Once everyone who joined is ready, this many ticks pass before the match starts, so a player still reaching for
 // their pad can join. A join or an un-ready cancels it.
 export const START_COUNTDOWN_TICKS = 120;
 const COUNTDOWN_Y = 290;
+
+export function emptyCardMessage(playerId) {
+  return [JOIN_TEXT_BY_PLAYER_ID[playerId], ...COMPUTER_TEXT];
+}
 
 export function playerCardBox(seatIndex) {
   return selectCardBox(seatIndex, CARD_TOP_Y);
@@ -269,7 +273,7 @@ function drawPlayerCard(context, scene, spawn, textScale) {
   const seatIndex = PLAYERS.indexOf(spawn);
   const box = playerCardBox(seatIndex);
   if (state === 'unjoined') {
-    drawEmptySelectCard(context, box, spawn, [JOIN_TEXT_BY_PLAYER_ID[spawn.id], ...COMPUTER_TEXT], textScale);
+    drawEmptySelectCard(context, box, spawn, emptyCardMessage(spawn.id), textScale);
     return;
   }
   context.save();
