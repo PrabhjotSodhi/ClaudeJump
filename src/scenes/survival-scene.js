@@ -18,6 +18,7 @@ import { drawSurvivalHud } from '../ui/hud.js';
 import { MenuInput } from '../ui/menu-input.js';
 import { drawParticles, Particles } from '../vfx/particles.js';
 import { CharacterAnimations } from '../vfx/character-animations.js';
+import { drawClouds } from '../vfx/clouds.js';
 import { PlayerEyes } from '../vfx/player-eyes.js';
 import { ScreenShake } from '../vfx/screen-shake.js';
 import { SeaRipple } from '../vfx/sea-ripple.js';
@@ -470,6 +471,7 @@ export class SurvivalScene {
     renderer.clearGameLayer();
     renderer.clearUiLayer();
     const context = renderer.gameContext;
+    drawClouds(context, 'rooftops', this.runTicks);
     context.save();
     context.translate(0, -this.cameraTopY);
     for (const row of this.rows) {
