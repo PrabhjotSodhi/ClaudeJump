@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://largelanguagemayhem.netlify.app"><img src="docs/media/banner.png" width="640" alt="Large Language Mayhem: seven AI characters standing on stone blocks under the pixel logo"></a>
+  <a href="https://largelanguagemayhem.netlify.app"><img src="docs/media/banner.png" width="640" alt="Large Language Mayhem title screen: the stacked pixel logo, the subtitle, four AI characters on stone blocks and the menu"></a>
 </p>
 
 <p align="center"><b>Two players, one keyboard. Shove your friend into the sea.</b></p>
@@ -21,12 +21,12 @@
 
 <table>
   <tr>
-    <td><img src="docs/media/versus.png" width="320" alt="Four players fighting with cards on the Server Farm arena"></td>
-    <td><img src="docs/media/survival.png" width="320" alt="Survival: climbing the night city rows above the sea"></td>
+    <td><img src="docs/media/versus.png" width="320" alt="Four players fighting with rocket cards on the Pier arena under the Ferris wheel"></td>
+    <td><img src="docs/media/survival.png" width="320" alt="Survival: climbing rows of ice and crumbling platforms above the rising sea"></td>
   </tr>
   <tr>
-    <td><img src="docs/media/player-select.png" width="320" alt="Player select with Red and Blue joined"></td>
-    <td><img src="docs/media/results.png" width="320" alt="The winner on the pedestal with the match stats"></td>
+    <td><img src="docs/media/player-select.png" width="320" alt="Player select with Red and Blue ready and two computer players"></td>
+    <td><img src="docs/media/results.png" width="320" alt="The results screen with the winner on the pedestal and each player's match stats"></td>
   </tr>
 </table>
 
