@@ -1,5 +1,7 @@
 <p align="center">
-  <a href="https://largelanguagemayhem.netlify.app"><img src="docs/media/banner.png" width="640" alt="Large Language Mayhem title screen: the stacked pixel logo, the subtitle, four AI characters on stone blocks and the menu"></a>
+  
+  https://github.com/user-attachments/assets/276afd88-8250-47ff-aa7e-216f1f86d600
+  
 </p>
 
 <p align="center"><b>Two players, one keyboard. Shove your friend into the sea.</b></p>
@@ -21,12 +23,14 @@
 
 <table>
   <tr>
+    <td><img src="docs/media/banner.png" width="320" alt="Large Language Mayhem title screen: the stacked pixel logo, the subtitle, four AI characters on stone blocks and the menu"></td>
     <td><img src="docs/media/versus.png" width="320" alt="Four players fighting with rocket cards on the Pier arena under the Ferris wheel"></td>
     <td><img src="docs/media/survival.png" width="320" alt="Survival: climbing rows of ice and crumbling platforms above the rising sea"></td>
   </tr>
   <tr>
     <td><img src="docs/media/player-select.png" width="320" alt="Player select with Red and Blue ready and two computer players"></td>
     <td><img src="docs/media/results.png" width="320" alt="The results screen with the winner on the pedestal and each player's match stats"></td>
+    
   </tr>
 </table>
 
