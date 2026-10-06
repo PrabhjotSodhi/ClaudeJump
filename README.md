@@ -1,10 +1,6 @@
-<p align="center">
-  
-  https://github.com/user-attachments/assets/276afd88-8250-47ff-aa7e-216f1f86d600
-  
-</p>
+https://github.com/user-attachments/assets/276afd88-8250-47ff-aa7e-216f1f86d600
 
-<p align="center"><b>Two players, one keyboard. Shove your friend into the sea.</b></p>
+<p align="center"><b>Up to four players. Shove your friends into the sea.</b></p>
 
 <p align="center">
   <a href="https://largelanguagemayhem.netlify.app"><b>▶ Play now in your browser</b></a><br>
@@ -30,7 +26,7 @@
   <tr>
     <td><img src="docs/media/player-select.png" width="320" alt="Player select with Red and Blue ready and two computer players"></td>
     <td><img src="docs/media/results.png" width="320" alt="The results screen with the winner on the pedestal and each player's match stats"></td>
-    
+
   </tr>
 </table>
 
